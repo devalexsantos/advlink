@@ -16,6 +16,32 @@ bun dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+## Auth & Prisma
+
+1. Create a `.env` file with:
+
+```
+DATABASE_URL="postgresql://USER:PASSWORD@HOST:PORT/DBNAME?schema=public"
+NEXTAUTH_URL="http://localhost:3000"
+NEXTAUTH_SECRET="replace-with-strong-secret"
+```
+
+2. Initialize database:
+
+```
+npx prisma db push
+```
+
+3. Run Prisma Studio:
+
+```
+npx prisma studio
+```
+
+4. Auth endpoints:
+- `/api/auth/signin` for sign-in
+- Protected routes: `/onboarding/**` (via middleware)
+
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
