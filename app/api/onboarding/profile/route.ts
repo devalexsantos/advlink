@@ -8,7 +8,7 @@ import { uploadToS3 } from "@/lib/s3"
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
-  const userId = (session as any)?.user?.id as string | undefined
+  const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -125,8 +125,9 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true })
-  } catch (err: any) {
-    return NextResponse.json({ error: err?.message ?? "Internal error" }, { status: 500 })
+  } catch (err: unknown) {
+    const message = typeof err === 'object' && err && 'message' in err ? String((err as { message?: string }).message || 'Internal error') : 'Internal error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 

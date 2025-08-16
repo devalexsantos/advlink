@@ -7,7 +7,7 @@ export const runtime = "nodejs"
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
-  const userId = (session as any)?.user?.id as string | undefined
+  const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ valid: false, message: "Unauthorized" }, { status: 401 })
 
   const { slug } = await req.json()

@@ -3,11 +3,12 @@
 import { useState } from "react"
 import { signIn } from "next-auth/react"
 import { useSearchParams } from "next/navigation"
+import { Suspense } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 
-export default function LoginPage() {
+function LoginInner() {
   const searchParams = useSearchParams()
   const callbackUrl = searchParams.get("callbackUrl") ?? "/onboarding"
   const [email, setEmail] = useState("")
@@ -46,6 +47,14 @@ export default function LoginPage() {
         <Button type="submit" disabled={loading} className="w-full">{loading ? "Entrando..." : "Entrar"}</Button>
       </form>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense>
+      <LoginInner />
+    </Suspense>
   )
 }
 

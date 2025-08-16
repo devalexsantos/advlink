@@ -57,12 +57,26 @@ const profileEditSchema = z.object({
 
 type ProfileEditValues = z.infer<typeof profileEditSchema>
 type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
+type AddressData = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
+type ProfileData = {
+  publicName?: string | null
+  aboutDescription?: string | null
+  publicEmail?: string | null
+  publicPhone?: string | null
+  whatsapp?: string | null
+  calendlyUrl?: string | null
+  avatarUrl?: string | null
+  coverUrl?: string | null
+  primaryColor?: string | null
+  textColor?: string | null
+  slug?: string | null
+}
 
 // Queries
 async function fetchProfile() {
   const res = await fetch("/api/profile", { cache: "no-store" })
   if (!res.ok) throw new Error("Falha ao carregar perfil")
-  return res.json() as Promise<{ profile: any; areas: Area[]; address?: any }>
+  return res.json() as Promise<{ profile: ProfileData | null; areas: Area[]; address?: AddressData }>
 }
 async function validateSlug(slug: string) {
   const res = await fetch("/api/profile/validate-slug", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) })
@@ -98,7 +112,7 @@ export default function EditProfileForm() {
     resolver: zodResolver(profileEditSchema),
     defaultValues: { publicName: "", aboutDescription: "", publicEmail: "", publicPhone: "", whatsapp: "", calendlyUrl: "", addressPublic: true, zipCode: "", street: "", number: "", complement: "", neighborhood: "", city: "", state: "" },
   })
-  const { register, handleSubmit, formState: { errors }, reset, watch, control } = form
+  const { register, handleSubmit, formState: { errors }, reset, control } = form
 
   const [areas, setAreas] = useState<Area[]>([])
   const [editingArea, setEditingArea] = useState<Area | null>(null)
@@ -153,10 +167,27 @@ export default function EditProfileForm() {
 
   const saveProfileMutation = useMutation({
     mutationFn: updateProfile,
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["profile"] }),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["profile"] })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    },
   })
-  const createAreaMutation = useMutation({ mutationFn: createArea, onSuccess: (res) => setAreas((prev) => [...prev, res.area]) })
-  const patchAreaMutation = useMutation({ mutationFn: patchArea, onSuccess: (res) => setAreas((prev) => prev.map((a) => (a.id === res.area.id ? res.area : a))) })
+  const createAreaMutation = useMutation({
+    mutationFn: createArea,
+    onSuccess: async (res) => {
+      setAreas((prev) => [...prev, res.area])
+      await qc.invalidateQueries({ queryKey: ["profile"] })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    }
+  })
+  const patchAreaMutation = useMutation({
+    mutationFn: patchArea,
+    onSuccess: async (res) => {
+      setAreas((prev) => prev.map((a) => (a.id === res.area.id ? res.area : a)))
+      await qc.invalidateQueries({ queryKey: ["profile"] })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    }
+  })
   const aiMutation = useMutation({ mutationFn: aiGenerateDescription })
 
   const draftMdRef = useRef<string>("")
@@ -166,7 +197,7 @@ export default function EditProfileForm() {
   }, [editingArea?.description])
   const turndown = useMemo(() => {
     const t = new TurndownService({ headingStyle: "atx", emDelimiter: "*" })
-    t.addRule("emptyParagraph", { filter: (node: any) => node.nodeName === "P" && !String(node.textContent || "").trim(), replacement: () => "\n\n" })
+    t.addRule("emptyParagraph", { filter: (node: Element) => node.nodeName === "P" && !String((node.textContent || "")).trim(), replacement: () => "\n\n" })
     t.addRule("paragraph", { filter: ["p"], replacement: (content: string) => `${content}\n\n` })
     t.addRule("lineBreak", { filter: ["br"], replacement: () => "  \n" })
     t.addRule("underline", { filter: ["u"], replacement: (content: string) => `<u>${content}</u>` })
@@ -177,9 +208,9 @@ export default function EditProfileForm() {
     content: editingAreaHtml,
     immediatelyRender: false,
     editorProps: { attributes: { class: "prose prose-invert max-w-none min-h-[200px] max-h-[400px] overflow-auto focus:outline-none" } },
-    onUpdate: ({ editor }: any) => { const html = editor.getHTML(); const md = turndown.turndown(html); draftMdRef.current = md },
+    onUpdate: ({ editor }: { editor: { getHTML: () => string } }) => { const html = editor.getHTML(); const md = turndown.turndown(html); draftMdRef.current = md },
   })
-  useEffect(() => { if (editor && editingArea) { editor.commands.setContent(editingAreaHtml, { emitUpdate: false }); draftMdRef.current = editingArea.description ?? "" } }, [editor, editingArea?.id, editingAreaHtml])
+  useEffect(() => { if (editor && editingArea) { editor.commands.setContent(editingAreaHtml, { emitUpdate: false }); draftMdRef.current = editingArea.description ?? "" } }, [editor, editingArea, editingAreaHtml])
 
   async function onSubmit(values: ProfileEditValues) {
     if (slugInput !== (initialSlug || "") && slugValid !== true) { alert("O slug informado não é válido ou não foi verificado. Por favor, verifique o slug antes de salvar."); return }
@@ -210,6 +241,9 @@ export default function EditProfileForm() {
     }
     if (coverFile) fd.set("cover", coverFile)
     await saveProfileMutation.mutateAsync(fd)
+    // Garantia extra: invalida e refaz o fetch do Preview
+    await qc.invalidateQueries({ queryKey: ["profile"] })
+    await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
     alert("Perfil salvo!")
   }
 
@@ -335,7 +369,7 @@ export default function EditProfileForm() {
             <Controller
               control={control}
               name="addressPublic"
-              render={({ field }: { field: any }) => (
+              render={({ field }: { field: { value?: boolean; onChange: (v: boolean) => void } }) => (
                 <Switch id="addressPublic" checked={!!field.value} onCheckedChange={field.onChange} />
               )}
             />
@@ -438,7 +472,7 @@ export default function EditProfileForm() {
 
 
       <Dialog open={!!editingArea} onOpenChange={(v) => !v && (setEditingArea(null), setRemoveAreaCover(false))}>
-        <DialogContent>
+        <DialogContent className="overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="text-zinc-300">Editar área</DialogTitle>
           </DialogHeader>
@@ -522,7 +556,9 @@ export default function EditProfileForm() {
                   {aiMutation.isPending ? (
                     <div className="py-16 text-center text-sm text-zinc-400">Gerando descrição com IA...</div>
                   ) : (
+                    <div className="max-h-[300px] overflow-y-auto">
                     <EditorContent editor={editor} />
+                    </div>
                   )}
                 </div>
               </div>
@@ -542,6 +578,8 @@ export default function EditProfileForm() {
                         if (!res.ok) { alert("Falha ao salvar área"); return }
                         const data = await res.json()
                         setAreas((prev) => prev.map((a) => (a.id === data.area.id ? data.area : a)))
+                        await qc.invalidateQueries({ queryKey: ["profile"] })
+                        await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
                         setAreaCoverFile(null)
                         setAreaCoverPreview(null)
                         setRemoveAreaCover(false)
@@ -554,6 +592,8 @@ export default function EditProfileForm() {
                           coverImageUrl: removeAreaCover ? null : editingArea.coverImageUrl
                         }
                         await patchAreaMutation.mutateAsync(toSave)
+                        await qc.invalidateQueries({ queryKey: ["profile"] })
+                        await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
                         setEditingArea(null)
                         setRemoveAreaCover(false)
                       }

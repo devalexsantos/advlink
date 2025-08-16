@@ -7,7 +7,7 @@ import { uploadToS3 } from "@/lib/s3"
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
-  const userId = (session as any)?.user?.id as string | undefined
+  const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const body = await req.json()
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
 
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions)
-  const userId = (session as any)?.user?.id as string | undefined
+  const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const contentType = req.headers.get("content-type") || ""

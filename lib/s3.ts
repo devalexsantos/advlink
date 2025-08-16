@@ -33,7 +33,7 @@ async function detectBucketRegion(): Promise<string> {
     // Legacy "EU" mapping
     resolvedRegion = loc === "EU" ? "eu-west-1" : loc
     return resolvedRegion
-  } catch (e) {
+  } catch {
     // Fallback to env region if detection fails
     resolvedRegion = ENV_REGION
     return resolvedRegion

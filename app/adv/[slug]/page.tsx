@@ -1,13 +1,14 @@
 import { prisma } from "@/lib/prisma"
 import { AreasCarousel } from "./AreasCarousel"
+import { marked } from "marked"
 import { Calendar, Heart, HeartHandshake, Mail, MapPin, Phone, Scale } from "lucide-react"
 import whatsAppIcon from "@/assets/icons/whatsapp-icon.svg"
 import Link from "next/link"
 
-type PageProps = { params: { slug: string } }
+type RouteParams = Promise<{ slug: string }>
 
-export default async function PublicProfilePage({ params }: PageProps) {
-  const slug = params.slug
+export default async function PublicProfilePage({ params }: { params: RouteParams }) {
+  const { slug } = await params
   const profile = await prisma.profile.findFirst({
     where: { slug },
     include: { user: { include: { Address: true } } },
@@ -31,6 +32,9 @@ export default async function PublicProfilePage({ params }: PageProps) {
 
   const primary = profile.primaryColor || "#8B0000"
   const text = profile.textColor || "#FFFFFF"
+
+  type AreaLite = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
+  const areasTyped: AreaLite[] = areas.map((a) => ({ id: a.id, title: a.title, description: a.description, coverImageUrl: a.coverImageUrl }))
 
   return (
     <div className="min-h-screen" style={{color: text, backgroundColor: primary }}>
@@ -88,7 +92,7 @@ export default async function PublicProfilePage({ params }: PageProps) {
             <Scale className="w-10 h-10" />
             Serviços
             </h2>
-          <AreasCarousel areas={areas as any} primary={primary} text={text} whatsapp={profile.whatsapp} publicPhone={profile.publicPhone} publicEmail={profile.publicEmail} />
+          <AreasCarousel areas={areasTyped} primary={primary} text={text} whatsapp={profile.whatsapp} publicPhone={profile.publicPhone} publicEmail={profile.publicEmail} />
         </div>
       )}
           {profile.aboutDescription && (
@@ -98,7 +102,11 @@ export default async function PublicProfilePage({ params }: PageProps) {
             Sobre
             </h2>
             <div className="w-full mx-auto flex flex-col items-center max-w-6xl rounded-xl p-4" style={{ backgroundColor: `${text}14` }}>
-              <p className="w-full text-center text-balance text-lg leading-relaxed p-4 " style={{ color: text }} dangerouslySetInnerHTML={{ __html: profile.aboutDescription.replace(/\n/g, "<br/>") }} />
+              <div
+                className="w-full prose prose-invert max-w-none text-lg leading-relaxed p-4"
+                style={{ color: text }}
+                dangerouslySetInnerHTML={{ __html: marked.parse(profile.aboutDescription || "") as string }}
+              />
             </div>
           </div>
           )}

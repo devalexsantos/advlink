@@ -19,8 +19,9 @@ export async function POST(req: Request) {
     const apiKey = process.env.OPENAI_API_KEY ?? ""
     const [desc] = await generateActivityDescriptions([t], apiKey)
     return NextResponse.json({ description: desc ?? "" })
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "Internal error" }, { status: 500 })
+  } catch (e: unknown) {
+    const message = typeof e === 'object' && e && 'message' in e ? String((e as { message?: string }).message || 'Internal error') : 'Internal error'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }
 

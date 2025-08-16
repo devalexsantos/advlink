@@ -6,7 +6,7 @@ import { uploadToS3 } from "@/lib/s3"
 
 export async function GET() {
   const session = await getServerSession(authOptions)
-  const userId = (session as any)?.user?.id as string | undefined
+  const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const [profile, areas, address] = await Promise.all([
@@ -19,7 +19,7 @@ export async function GET() {
 
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions)
-  const userId = (session as any)?.user?.id as string | undefined
+  const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
   const contentType = req.headers.get("content-type") || ""
@@ -122,7 +122,7 @@ export async function PATCH(req: Request) {
   const slug = await validateOrGenerateSlug(publicName, slugInput)
 
   // Upload opcional do avatar
-  let avatarUrl: string | undefined
+  let avatarUrl: string | null | undefined
   if (avatarFile) {
     const arrayBuffer = await avatarFile.arrayBuffer()
     const ext = avatarFile.type.split("/")[1] || "jpg"
@@ -136,11 +136,11 @@ export async function PATCH(req: Request) {
     avatarUrl = uploaded.url
   }
   if (removeAvatar) {
-    avatarUrl = null as any
+    avatarUrl = null
   }
 
   // Upload opcional da capa
-  let coverUrl: string | undefined
+  let coverUrl: string | null | undefined
   if (coverFile) {
     const arrayBuffer = await coverFile.arrayBuffer()
     const ext = coverFile.type.split("/")[1] || "jpg"
@@ -154,7 +154,7 @@ export async function PATCH(req: Request) {
     coverUrl = uploaded.url
   }
   if (removeCover) {
-    coverUrl = null as any
+    coverUrl = null
   }
 
   function nopt(val?: string) {

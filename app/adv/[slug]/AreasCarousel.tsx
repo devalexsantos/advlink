@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react"
 import useEmblaCarousel from "embla-carousel-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import type { CSSProperties } from "react"
 import { Button } from "@/components/ui/button"
 import { marked } from "marked"
 import { Info, Mail, Phone } from "lucide-react"
@@ -82,13 +83,21 @@ export function AreasCarousel({
                       </div>
                     )}
                   <h3 className="text-lg font-semibold" style={{ color: text }}>{area.title}</h3>
-                  {area.description && (
-                    <div
-                      className="mt-2 text-sm "
-                      style={{ display: "-webkit-box", WebkitLineClamp: 6, WebkitBoxOrient: "vertical" as any, overflow: "hidden" }}
-                      dangerouslySetInnerHTML={{ __html: marked.parse(area.description) as string }}
-                    />
-                  )}
+                  {area.description && (() => {
+                    const clampStyle: CSSProperties = {
+                      display: "-webkit-box",
+                      WebkitLineClamp: 6 as unknown as string,
+                      WebkitBoxOrient: "vertical" as unknown as CSSProperties["WebkitBoxOrient"],
+                      overflow: "hidden",
+                    }
+                    return (
+                      <div
+                        className="mt-2 text-sm"
+                        style={clampStyle}
+                        dangerouslySetInnerHTML={{ __html: marked.parse(area.description) as string }}
+                      />
+                    )
+                  })()}
                     <div className="mt-3"
                     >
                       <Button size="sm" 

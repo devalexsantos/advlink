@@ -10,11 +10,24 @@ import Link from "next/link"
 
 type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
+type Profile = {
+  primaryColor?: string | null
+  secondaryColor?: string | null
+  textColor?: string | null
+  coverUrl?: string | null
+  publicName?: string | null
+  avatarUrl?: string | null
+  whatsapp?: string | null
+  publicEmail?: string | null
+  publicPhone?: string | null
+  calendlyUrl?: string | null
+  aboutDescription?: string | null
+}
 
 async function fetchProfile() {
   const res = await fetch("/api/profile", { cache: "no-store" })
   if (!res.ok) throw new Error("Falha ao carregar preview")
-  return res.json() as Promise<{ profile: any; areas: Area[]; address?: Address }>
+  return res.json() as Promise<{ profile: Profile | null; areas: Area[]; address?: Address }>
 }
 
 export default function Preview() {
@@ -38,7 +51,6 @@ export default function Preview() {
   if (!profile) return null
 
   const primary = profile.primaryColor || "#8B0000"
-  const secondary = profile.secondaryColor || "#000000"
   const text = profile.textColor || "#FFFFFF"
 
   return (
@@ -103,7 +115,7 @@ export default function Preview() {
               </h2>
               <div className={mode === "mobile" ? "w-full max-w-[390px] mx-auto" : "w-full mx-auto max-w-6xl"}>
                 <div className={mode === "mobile" ? "w-full [&_.min-w-0]:!basis-full [&_.shrink-0]:!basis-full" : ""}>
-                  <AreasCarousel areas={areas as any} primary={primary} text={text} whatsapp={profile.whatsapp} publicPhone={profile.publicPhone} publicEmail={profile.publicEmail} />
+                  <AreasCarousel areas={areas} primary={primary} text={text} whatsapp={profile.whatsapp || null} publicPhone={profile.publicPhone || null} publicEmail={profile.publicEmail || null} />
                 </div>
               </div>
             </div>
