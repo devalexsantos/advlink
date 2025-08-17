@@ -3,7 +3,8 @@
 import { useEffect, useRef } from "react"
 import Link from "next/link"
 import { Wand2, ArrowRight, WandSparkles } from "lucide-react"
-
+import logo from "@/assets/icons/logo.svg"
+import Image from "next/image"
 export function Hero() {
   const sceneRef = useRef<HTMLDivElement>(null)
   const layer1Ref = useRef<HTMLDivElement>(null)
@@ -58,6 +59,12 @@ export function Hero() {
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-blue-500/30 bg-blue-500/10 px-4 py-1 text-xs tracking-wide text-blue-200">
           <Wand2 className="h-4 w-4" /> Crie sua landing page jurídica com IA em minutos
         </div>
+        <div className="flex items-center gap-2 mb-4">
+          <Image src={logo} alt="Logo" width={80} height={80} />
+          <span className="text-2xl underline md:text-6xl font-extrabold leading-tight tracking-tight bg-gradient-to-r from-slate-100 via-slate-300 to-blue-200 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(59,130,246,0.25)]">
+            AdvLink
+          </span>
+        </div>
         <h1
           className="text-4xl md:text-6xl font-extrabold leading-tight tracking-tight bg-gradient-to-r from-slate-100 via-slate-300 to-blue-200 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(59,130,246,0.25)]"
           style={{ textShadow: "0 1px 0 rgba(255,255,255,0.35), 0 2px 6px rgba(59,130,246,0.25)" }}
@@ -66,9 +73,9 @@ export function Hero() {
             5 minutos
         </h1>
         <div className="flex flex-col gap-4 justify-center items-center mt-4 max-w-2xl text-blue-200/80 text-lg">
-        <h2 className="text-center text-xl">
+        <h3 className="text-center text-xl">
           Gere uma página moderna focada em <strong>advogados e escritórios de advocacia</strong>, rápida e persuasiva para captar clientes. Personalize cores, áreas de atuação e apresente seus diferenciais
-        </h2>
+        </h3>
           <div className="text-blue-200 flex items-center gap-2 mt-2 px-4 py-2 rounded-full bg-blue-500/10 border border-blue-500/30">
             <WandSparkles className="h-4 w-4" /> 
            <span className="font-bold">tudo com auxílio de IA</span>

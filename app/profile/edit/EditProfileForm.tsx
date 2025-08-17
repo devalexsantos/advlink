@@ -490,12 +490,15 @@ export default function EditProfileForm() {
         </div>
         <div className="space-y-2">
           {areas.map((a, idx) => (
-            <div key={a.id} className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2">
-              <div className="flex items-center gap-2">
-                <span className="text-xs text-zinc-400 w-6 text-right">{idx + 1}</span>
-                <span className="text-sm">{a.title}</span>
+            <div
+              key={a.id}
+              className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2"
+            >
+              <div className="flex items-center gap-2 w-full min-w-0">
+                <span className="text-xs text-zinc-400 w-6 text-right hidden md:inline-block">{idx + 1}</span>
+                <span className="text-sm truncate flex-1 min-w-0">{a.title}</span>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 w-full md:w-auto justify-end">
                 <Button
                   type="button"
                   size="icon"
@@ -534,10 +537,26 @@ export default function EditProfileForm() {
                 >
                   <ArrowDown className="w-4 h-4" />
                 </Button>
-                <Button type="button" size="sm" variant="ghost" className="gap-2" onClick={() => { setEditingArea(a); setRemoveAreaCover(false) }}>
-                  <Pencil className="w-4 h-4" /> Editar
+                {/* Edit button: icon-only on mobile, with text on md+ */}
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="gap-2"
+                  onClick={() => { setEditingArea(a); setRemoveAreaCover(false) }}
+                  aria-label="Editar área"
+                >
+                  <Pencil className="w-4 h-4" />
+                  <span className="hidden md:inline">Editar</span>
                 </Button>
-                <Button type="button" size="icon" variant="destructive" className="h-8 w-8" onClick={() => setDeleteConfirm(a)} aria-label="Excluir área">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="destructive"
+                  className="h-8 w-8"
+                  onClick={() => setDeleteConfirm(a)}
+                  aria-label="Excluir área"
+                >
                   <Trash2 className="w-4 h-4" />
                 </Button>
               </div>
