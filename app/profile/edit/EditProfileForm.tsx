@@ -267,7 +267,7 @@ export default function EditProfileForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
 <h1 className="text-2xl font-semibold">Editar informações</h1>
         {/* Foto de Perfil */}
-        <div>
+        <div className="w-full">
           <Label className="mb-2 block">Foto de perfil</Label>
           <div className="flex flex-col md:flex-row items-center gap-4">
             <div className="relative h-32 w-32 mb-4">
