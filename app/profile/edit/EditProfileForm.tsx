@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Camera, Pencil, Plus, Save, Upload, WandSparkles, X } from "lucide-react"
+import { useToast } from "@/components/toast/ToastProvider"
 import TurndownService from "turndown"
 import { marked } from "marked"
 import { EditorContent, useEditor } from "@tiptap/react"
@@ -132,6 +133,7 @@ export default function EditProfileForm() {
   const [initialSlug, setInitialSlug] = useState("")
   const [areaSaving, setAreaSaving] = useState(false)
   const [removeAreaCover, setRemoveAreaCover] = useState(false)
+  const { showToast } = useToast()
 
   useEffect(() => {
     if (!data) return
@@ -168,7 +170,7 @@ export default function EditProfileForm() {
   const saveProfileMutation = useMutation({
     mutationFn: updateProfile,
     onSuccess: async () => {
-      await qc.invalidateQueries({ queryKey: ["profile"] })
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
     },
   })
@@ -176,7 +178,7 @@ export default function EditProfileForm() {
     mutationFn: createArea,
     onSuccess: async (res) => {
       setAreas((prev) => [...prev, res.area])
-      await qc.invalidateQueries({ queryKey: ["profile"] })
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
     }
   })
@@ -184,7 +186,7 @@ export default function EditProfileForm() {
     mutationFn: patchArea,
     onSuccess: async (res) => {
       setAreas((prev) => prev.map((a) => (a.id === res.area.id ? res.area : a)))
-      await qc.invalidateQueries({ queryKey: ["profile"] })
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
     }
   })
@@ -242,9 +244,9 @@ export default function EditProfileForm() {
     if (coverFile) fd.set("cover", coverFile)
     await saveProfileMutation.mutateAsync(fd)
     // Garantia extra: invalida e refaz o fetch do Preview
-    await qc.invalidateQueries({ queryKey: ["profile"] })
+    await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
     await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
-    alert("Perfil salvo!")
+    showToast("Salvo com sucesso!")
   }
 
   async function onCheckSlug() {
@@ -298,6 +300,27 @@ export default function EditProfileForm() {
               </label>
             </div>
           </div>
+        </div>
+        {/* Link público */}
+        <div>
+          <Label htmlFor="slug" className="mb-2 block">Link público</Label>
+          <div className="flex items-center gap-2">
+            <div className="flex w-full max-w-xl items-center overflow-hidden rounded-md border border-zinc-800 bg-zinc-900">
+              <span className="pl-3 pr-1 py-2 text-sm text-zinc-400 whitespace-nowrap select-none">https://advlink.site/adv/</span>
+              <input
+                id="slug"
+                value={slugInput}
+                onChange={(e) => { setSlugInput(e.target.value); setSlugValid(null) }}
+                placeholder="seu-slug"
+                className="flex-1 bg-transparent text-sm text-zinc-100 outline-none px-0 py-2"
+              />
+            </div>
+            <Button type="button" variant="secondary" onClick={onCheckSlug} disabled={slugChecking || slugInput.trim().length === 0 || slugInput === initialSlug}>
+              {slugChecking ? "Verificando..." : "Verificar"}
+            </Button>
+          </div>
+          {slugValid === false && (<p className="mt-1 text-sm text-red-400">Este slug já existe. Escolha outro.</p>)}
+          {slugValid === true && (<p className="mt-1 text-sm text-green-400">Slug disponível!</p>)}
         </div>
 
         {/* Capa */}
@@ -422,18 +445,7 @@ export default function EditProfileForm() {
           </div>
         </div>
 
-        {/* Slug */}
-        <div>
-          <Label htmlFor="slug" className="mb-2 block">Slug público</Label>
-          <div className="flex items-center gap-2">
-            <Input id="slug" value={slugInput} onChange={(e) => { setSlugInput(e.target.value); setSlugValid(null) }} placeholder="seu-slug" />
-            <Button type="button" variant="secondary" onClick={onCheckSlug} disabled={slugChecking || slugInput.trim().length === 0 || slugInput === initialSlug}>
-              {slugChecking ? "Verificando..." : "Verificar"}
-            </Button>
-          </div>
-          {slugValid === false && (<p className="mt-1 text-sm text-red-400">Este slug já existe. Escolha outro.</p>)}
-          {slugValid === true && (<p className="mt-1 text-sm text-green-400">Slug disponível!</p>)}
-        </div>
+
 
         {/* WhatsApp */}
         <div>
@@ -615,6 +627,8 @@ export default function EditProfileForm() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Toast global via ToastProvider */}
     </>
   )
 }
