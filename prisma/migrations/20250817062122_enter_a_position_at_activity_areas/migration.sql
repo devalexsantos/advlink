@@ -1,2 +1,2 @@
 -- DropIndex
-DROP INDEX "public"."ActivityAreas_userId_position_idx";
+DROP INDEX IF EXISTS "public"."ActivityAreas_userId_position_idx";

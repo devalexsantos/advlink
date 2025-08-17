@@ -60,8 +60,8 @@ export function Hero() {
           <Wand2 className="h-4 w-4" /> Crie sua landing page jurídica com IA em minutos
         </div>
         <div className="flex items-center gap-2 mb-4">
-          <Image src={logo} alt="Logo" width={80} height={80} />
-          <span className="text-2xl underline md:text-6xl font-extrabold leading-tight tracking-tight bg-gradient-to-r from-slate-100 via-slate-300 to-blue-200 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(59,130,246,0.25)]">
+          <Image src={logo} alt="Logo" width={80} height={80} className="w-20 h-20" />
+          <span className="text-2xl md:text-6xl font-extrabold leading-tight tracking-tight bg-gradient-to-r from-slate-100 via-slate-300 to-blue-200 bg-clip-text text-transparent drop-shadow-[0_2px_8px_rgba(59,130,246,0.25)]">
             AdvLink
           </span>
         </div>

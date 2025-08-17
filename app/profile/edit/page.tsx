@@ -1,7 +1,26 @@
 import EditProfileForm from "./EditProfileForm"
 import Preview from "./Preview"
+import { redirect } from "next/navigation"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/auth"
+import { prisma } from "@/lib/prisma"
 
-export default function ProfileEditPage() {
+export default async function ProfileEditPage() {
+  const session = await getServerSession(authOptions)
+  const userId = (session?.user as { id?: string } | undefined)?.id
+  if (!userId) {
+    redirect("/login")
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId! },
+    select: { completed_onboarding: true },
+  })
+
+  if (!user || user.completed_onboarding === false) {
+    redirect("/onboarding/profile")
+  }
+
   return (
     <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
       <div className="space-y-4 w-full h-screen overflow-y-scroll">

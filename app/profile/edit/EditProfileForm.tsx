@@ -728,7 +728,7 @@ export default function EditProfileForm() {
           </DialogHeader>
           {deleteConfirm && (
             <div className="space-y-3 text-zinc-300">
-              <p>Tem certeza que deseja excluir a área "{deleteConfirm.title}"? Essa ação não pode ser desfeita.</p>
+              <p>Tem certeza que deseja excluir a área &quot;{deleteConfirm.title}&quot;? Essa ação não pode ser desfeita.</p>
               <div className="flex justify-end gap-2">
                 <Button variant="ghost" onClick={() => setDeleteConfirm(null)} className="cursor-pointer">Cancelar</Button>
                 <Button

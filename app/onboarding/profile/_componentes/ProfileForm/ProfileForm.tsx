@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -63,6 +64,7 @@ const defaultAreaSuggestions = [
 ]
 
 export function ProfileForm() {
+  const router = useRouter()
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [areaInput, setAreaInput] = useState("")
   const fileInputRef = useRef<HTMLInputElement | null>(null)
@@ -174,8 +176,7 @@ export function ProfileForm() {
       alert("Falha ao salvar. Tente novamente.")
       return
     }
-    // eslint-disable-next-line no-alert
-    alert("Informações salvas com sucesso!")
+    router.replace("/profile/edit")
   }
 
   return (

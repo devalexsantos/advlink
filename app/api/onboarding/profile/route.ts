@@ -120,9 +120,16 @@ export async function POST(req: Request) {
         userId,
         title,
         description: descriptions[i] ? descriptions[i].slice(0, 2000) : null,
+        position: i + 1,
       }))
       await prisma.activityAreas.createMany({ data })
     }
+
+    // 4) Marca onboarding como concluído
+    await prisma.user.update({
+      where: { id: userId },
+      data: { completed_onboarding: true },
+    })
 
     return NextResponse.json({ ok: true })
   } catch (err: unknown) {
