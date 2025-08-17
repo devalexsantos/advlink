@@ -11,7 +11,7 @@ export async function GET() {
 
   const [profile, areas, address] = await Promise.all([
     prisma.profile.findUnique({ where: { userId } }),
-    prisma.activityAreas.findMany({ where: { userId }, orderBy: { createdAt: "asc" } }),
+    prisma.activityAreas.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     prisma.address.findFirst({ where: { userId } }),
   ])
   return NextResponse.json({ profile, areas, address })

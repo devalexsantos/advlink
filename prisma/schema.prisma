@@ -93,6 +93,7 @@ model ActivityAreas {
   title         String
   coverImageUrl String?
   description   String?
+  position      Int
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

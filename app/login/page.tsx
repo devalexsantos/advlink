@@ -46,6 +46,10 @@ function LoginInner() {
         {error && <p className="text-sm text-red-400">{error}</p>}
         <Button type="submit" disabled={loading} className="w-full">{loading ? "Entrando..." : "Entrar"}</Button>
       </form>
+      <Button onClick={() => signIn("google", {
+        redirect: true,
+        callbackUrl: "/profile/edit",
+      })}>Entrar com Google</Button>
     </div>
   )
 }

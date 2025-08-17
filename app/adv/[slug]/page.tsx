@@ -26,7 +26,7 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
 
   const areas = await prisma.activityAreas.findMany({
     where: { userId: profile.userId },
-    orderBy: { createdAt: "asc" },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
   })
   const address = profile.user.Address?.[0]
 

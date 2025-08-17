@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Camera, Pencil, Plus, Save, Upload, WandSparkles, X } from "lucide-react"
+import { Camera, Pencil, Plus, Save, Trash2, Upload, WandSparkles, X, ArrowDown, ArrowUp } from "lucide-react"
 import { useToast } from "@/components/toast/ToastProvider"
 import TurndownService from "turndown"
 import { marked } from "marked"
@@ -57,7 +57,7 @@ const profileEditSchema = z.object({
 })
 
 type ProfileEditValues = z.infer<typeof profileEditSchema>
-type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
+type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null; position?: number }
 type AddressData = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
 type ProfileData = {
   publicName?: string | null
@@ -99,6 +99,16 @@ async function patchArea(area: Area) {
   if (!res.ok) throw new Error("Falha ao salvar área")
   return res.json() as Promise<{ area: Area }>
 }
+async function reorderAreas(order: { id: string; position: number }[]) {
+  const res = await fetch("/api/activity-areas", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ order }) })
+  if (!res.ok) throw new Error("Falha ao reordenar áreas")
+  return res.json() as Promise<{ ok: boolean }>
+}
+async function deleteArea(id: string) {
+  const res = await fetch(`/api/activity-areas?id=${encodeURIComponent(id)}`, { method: "DELETE" })
+  if (!res.ok) throw new Error("Falha ao excluir área")
+  return res.json() as Promise<{ ok: boolean }>
+}
 async function aiGenerateDescription(title: string) {
   const res = await fetch("/api/activity-areas/generate-description", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }) })
   if (!res.ok) throw new Error("Falha ao gerar descrição")
@@ -133,6 +143,7 @@ export default function EditProfileForm() {
   const [initialSlug, setInitialSlug] = useState("")
   const [areaSaving, setAreaSaving] = useState(false)
   const [removeAreaCover, setRemoveAreaCover] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState<Area | null>(null)
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -186,6 +197,22 @@ export default function EditProfileForm() {
     mutationFn: patchArea,
     onSuccess: async (res) => {
       setAreas((prev) => prev.map((a) => (a.id === res.area.id ? res.area : a)))
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    }
+  })
+  const reorderMutation = useMutation({
+    mutationFn: reorderAreas,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    }
+  })
+  const deleteMutation = useMutation({
+    mutationFn: deleteArea,
+    onSuccess: async () => {
+      setAreas((prev) => prev.filter((a) => a.id !== (deleteConfirm?.id ?? "")))
+      setDeleteConfirm(null)
       await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
     }
@@ -462,12 +489,58 @@ export default function EditProfileForm() {
           </Button>
         </div>
         <div className="space-y-2">
-          {areas.map((a) => (
+          {areas.map((a, idx) => (
             <div key={a.id} className="flex items-center justify-between rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2">
-              <span className="text-sm">{a.title}</span>
-              <Button type="button" size="sm" variant="ghost" className="gap-2" onClick={() => { setEditingArea(a); setRemoveAreaCover(false) }}>
-                <Pencil className="w-4 h-4" /> Editar
-              </Button>
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-zinc-400 w-6 text-right">{idx + 1}</span>
+                <span className="text-sm">{a.title}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  disabled={idx === 0 || reorderMutation.isPending}
+                  onClick={async () => {
+                    const next = [...areas]
+                    const tmp = next[idx - 1]
+                    next[idx - 1] = next[idx]
+                    next[idx] = tmp
+                    setAreas(next)
+                    const order = next.map((it, i) => ({ id: it.id, position: i + 1 }))
+                    try { await reorderMutation.mutateAsync(order) } catch { showToast("Falha ao reordenar") }
+                  }}
+                  aria-label="Mover para cima"
+                >
+                  <ArrowUp className="w-4 h-4" />
+                </Button>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  disabled={idx === areas.length - 1 || reorderMutation.isPending}
+                  onClick={async () => {
+                    const next = [...areas]
+                    const tmp = next[idx + 1]
+                    next[idx + 1] = next[idx]
+                    next[idx] = tmp
+                    setAreas(next)
+                    const order = next.map((it, i) => ({ id: it.id, position: i + 1 }))
+                    try { await reorderMutation.mutateAsync(order) } catch { showToast("Falha ao reordenar") }
+                  }}
+                  aria-label="Mover para baixo"
+                >
+                  <ArrowDown className="w-4 h-4" />
+                </Button>
+                <Button type="button" size="sm" variant="ghost" className="gap-2" onClick={() => { setEditingArea(a); setRemoveAreaCover(false) }}>
+                  <Pencil className="w-4 h-4" /> Editar
+                </Button>
+                <Button type="button" size="icon" variant="destructive" className="h-8 w-8" onClick={() => setDeleteConfirm(a)} aria-label="Excluir área">
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           ))}
         </div>
@@ -623,6 +696,38 @@ export default function EditProfileForm() {
                   <X className="w-4 h-4" /> Fechar
                 </Button>
               </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmar exclusão de área */}
+      <Dialog open={!!deleteConfirm} onOpenChange={(v) => !v && setDeleteConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir área</DialogTitle>
+          </DialogHeader>
+          {deleteConfirm && (
+            <div className="space-y-3 text-zinc-300">
+              <p>Tem certeza que deseja excluir a área "{deleteConfirm.title}"? Essa ação não pode ser desfeita.</p>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setDeleteConfirm(null)} className="cursor-pointer">Cancelar</Button>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    try {
+                      await deleteMutation.mutateAsync(deleteConfirm.id)
+                      showToast("Área excluída")
+                    } catch {
+                      showToast("Falha ao excluir área")
+                    }
+                  }}
+                  className="cursor-pointer"
+                  disabled={deleteMutation.isPending}
+                >
+                  {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>
