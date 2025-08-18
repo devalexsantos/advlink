@@ -35,6 +35,11 @@ export async function PATCH(req: Request) {
   let avatarFile: File | undefined
   let coverFile: File | undefined
   let calendlyUrl: string | undefined
+  // SEO
+  let metaTitle: string | undefined
+  let metaDescription: string | undefined
+  let keywords: string | undefined
+  let gtmContainerId: string | undefined
   let removeAvatar = false
   let removeCover = false
   // Address
@@ -59,6 +64,10 @@ export async function PATCH(req: Request) {
     secondaryColor = body.secondaryColor
     textColor = body.textColor
     calendlyUrl = body.calendlyUrl
+    metaTitle = body.metaTitle
+    metaDescription = body.metaDescription
+    keywords = body.keywords
+    gtmContainerId = body.gtmContainerId
     removeAvatar = Boolean(body.removeAvatar)
     removeCover = Boolean(body.removeCover)
     addressPublic = body.addressPublic
@@ -81,6 +90,10 @@ export async function PATCH(req: Request) {
     secondaryColor = String(form.get("secondaryColor") ?? "") || undefined
     textColor = String(form.get("textColor") ?? "") || undefined
     calendlyUrl = String(form.get("calendlyUrl") ?? "")
+    metaTitle = String(form.get("metaTitle") ?? "") || undefined
+    metaDescription = String(form.get("metaDescription") ?? "") || undefined
+    keywords = String(form.get("keywords") ?? "") || undefined
+    gtmContainerId = String(form.get("gtmContainerId") ?? "") || undefined
     removeAvatar = String(form.get("removeAvatar") ?? "").toLowerCase() === "true"
     removeCover = String(form.get("removeCover") ?? "").toLowerCase() === "true"
     addressPublic = String(form.get("addressPublic") ?? "")
@@ -189,6 +202,10 @@ export async function PATCH(req: Request) {
       textColor,
       coverUrl,
       calendlyUrl: validateCalendly(calendlyUrl),
+      metaTitle: nopt(metaTitle),
+      metaDescription: nopt(metaDescription),
+      keywords: nopt(keywords),
+      gtmContainerId: nopt(gtmContainerId),
     },
     create: {
       userId,
@@ -204,6 +221,10 @@ export async function PATCH(req: Request) {
       textColor,
       coverUrl,
       calendlyUrl: validateCalendly(calendlyUrl),
+      metaTitle: nopt(metaTitle),
+      metaDescription: nopt(metaDescription),
+      keywords: nopt(keywords),
+      gtmContainerId: nopt(gtmContainerId),
     },
   })
   // Upsert Address if any field provided (including boolean public)

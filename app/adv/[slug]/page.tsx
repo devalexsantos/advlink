@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma"
+import type { Metadata } from "next"
 import { AreasCarousel } from "./AreasCarousel"
 import { marked } from "marked"
 import { Calendar, Heart, HeartHandshake, Mail, MapPin, Phone, Scale } from "lucide-react"
@@ -167,5 +168,30 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
       </div>
     </div>
   )
+}
+
+export async function generateMetadata({ params }: { params: RouteParams }): Promise<Metadata> {
+  const { slug } = await params
+  const profile = await prisma.profile.findFirst({ where: { slug }, select: { metaTitle: true, metaDescription: true, publicName: true, aboutDescription: true, avatarUrl: true } })
+  const title = profile?.metaTitle || profile?.publicName || "Advogado"
+  const description = profile?.metaDescription || profile?.aboutDescription || ""
+  const image = profile?.avatarUrl || undefined
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      type: "website",
+      url: `/adv/${slug}`,
+      images: image ? [image] : undefined,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: image ? [image] : undefined,
+    },
+  }
 }
 

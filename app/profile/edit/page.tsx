@@ -4,6 +4,8 @@ import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import MobileTabs from "./tabs"
+
 
 export default async function ProfileEditPage() {
   const session = await getServerSession(authOptions)
@@ -22,13 +24,21 @@ export default async function ProfileEditPage() {
   }
 
   return (
-    <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-      <div className="space-y-4 w-full h-screen overflow-y-scroll">
-        <EditProfileForm />
+    <div className="h-screen overflow-hidden p-0 md:p-6 rounded-xl">
+      {/* Mobile: tabs to switch between Edit and Preview */}
+      <div className="md:hidden">
+        <MobileTabs />
       </div>
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/30 w-full">
-        <h2 className="text-lg font-semibold mb-2 p-4">Pré-visualização</h2>
-        <Preview />
+
+      {/* Desktop: two scrollable columns, no page scroll */}
+      <div className="hidden md:grid h-full grid-cols-2 gap-6">
+        <div className="h-full min-h-0 overflow-y-auto pr-2">
+          <EditProfileForm />
+        </div>
+        <div className="h-full min-h-0 overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900/30">
+          <h2 className="text-lg font-semibold mb-2 p-4">Pré-visualização</h2>
+          <Preview />
+        </div>
       </div>
     </div>
   )

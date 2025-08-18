@@ -152,3 +152,30 @@
   scrollbar-width: thin;
   scrollbar-color: #3f3f46 #18181b; /* thumb track */
 }
+
+.mdxeditor-contenteditable {
+  color: white !important;
+}
+
+/* Garante que o dropdown do BlockTypeSelect fique acima de qualquer coisa */
+.mdxeditor [data-radix-popper-content],
+.mdxeditor [role="menu"],
+/* wrapper que Radix usa para o portal/poppers */
+[data-radix-popper-content-wrapper],
+[data-radix-portal] {
+  z-index: 100000 !important;
+}
+
+/* (opcional) assegura que o content editável continue claro em tema dark */
+.mdxeditor .mdxeditor-contenteditable {
+  color: #fff !important;
+}
+
+.mdxeditor [contenteditable="true"] {
+	color: rgb(250 250 250 / 1) !important; /* zinc-50 */
+}
+/* Ensure popovers/menus not clipped */
+.mdxeditor {
+	overflow: visible !important;
+	position: relative;
+}

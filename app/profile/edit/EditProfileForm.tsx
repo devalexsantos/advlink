@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useForm, Controller } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -10,14 +10,27 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Camera, Pencil, Plus, Save, Trash2, Upload, WandSparkles, X, ArrowDown, ArrowUp } from "lucide-react"
+import { Camera, Pencil, Plus, Save, Trash2, Upload, WandSparkles, X, ArrowDown, ArrowUp, ExternalLink } from "lucide-react"
 import { useToast } from "@/components/toast/ToastProvider"
-import TurndownService from "turndown"
-import { marked } from "marked"
-import { EditorContent, useEditor } from "@tiptap/react"
-import StarterKit from "@tiptap/starter-kit"
-import Underline from "@tiptap/extension-underline"
+import "@mdxeditor/editor/style.css"
+import {
+  toolbarPlugin,
+  BoldItalicUnderlineToggles,
+  HighlightToggle,
+  StrikeThroughSupSubToggles,
+  ListsToggle,
+  UndoRedo,
+  BlockTypeSelect,
+  Separator,
+  headingsPlugin,
+  listsPlugin,
+  thematicBreakPlugin,
+  markdownShortcutPlugin
+} from "@mdxeditor/editor"
+import dynamic from "next/dynamic"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+
+const MDXEditor = dynamic(() => import("@mdxeditor/editor").then(m => m.MDXEditor), { ssr: false })
 
 const profileEditSchema = z.object({
   publicName: z.string().min(2, "Informe pelo menos 2 caracteres."),
@@ -43,6 +56,15 @@ const profileEditSchema = z.object({
     .string()
     .url("Informe uma URL válida.")
     .regex(/^https:\/\/calendly\.com\//i, "A URL deve iniciar com https://calendly.com/")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  // SEO
+  metaTitle: z.string().max(80, "Máximo de 80 caracteres.").optional().or(z.literal("").transform(() => undefined)),
+  metaDescription: z.string().max(160, "Máximo de 160 caracteres.").optional().or(z.literal("").transform(() => undefined)),
+  keywords: z.string().optional().or(z.literal("").transform(() => undefined)),
+  gtmContainerId: z
+    .string()
+    .regex(/^GTM-[A-Z0-9]+$/i, "Informe um ID válido, ex: GTM-XXXXXXX")
     .optional()
     .or(z.literal("").transform(() => undefined)),
   // Address (all optional)
@@ -71,6 +93,10 @@ type ProfileData = {
   primaryColor?: string | null
   textColor?: string | null
   slug?: string | null
+  metaTitle?: string | null
+  metaDescription?: string | null
+  keywords?: string | null
+  gtmContainerId?: string | null
 }
 
 // Queries
@@ -121,7 +147,26 @@ export default function EditProfileForm() {
 
   const form = useForm<ProfileEditValues>({
     resolver: zodResolver(profileEditSchema),
-    defaultValues: { publicName: "", aboutDescription: "", publicEmail: "", publicPhone: "", whatsapp: "", calendlyUrl: "", addressPublic: true, zipCode: "", street: "", number: "", complement: "", neighborhood: "", city: "", state: "" },
+    defaultValues: {
+      publicName: "",
+      aboutDescription: "",
+      publicEmail: "",
+      publicPhone: "",
+      whatsapp: "",
+      calendlyUrl: "",
+      metaTitle: "",
+      metaDescription: "",
+      keywords: "",
+      gtmContainerId: "",
+      addressPublic: true,
+      zipCode: "",
+      street: "",
+      number: "",
+      complement: "",
+      neighborhood: "",
+      city: "",
+      state: ""
+    },
   })
   const { register, handleSubmit, formState: { errors }, reset, control } = form
 
@@ -135,6 +180,7 @@ export default function EditProfileForm() {
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null)
   const [coverFile, setCoverFile] = useState<File | null>(null)
   const [removeCover, setRemoveCover] = useState<boolean>(false)
+  const [areaCoverGenerating, setAreaCoverGenerating] = useState<boolean>(false)
   const [primaryColor, setPrimaryColor] = useState<string>("#8B0000")
   const [textColor, setTextColor] = useState<string>("#FFFFFF")
   const [slugInput, setSlugInput] = useState("")
@@ -157,6 +203,10 @@ export default function EditProfileForm() {
       publicPhone: p.publicPhone ?? "",
       whatsapp: p.whatsapp ?? "",
       calendlyUrl: p.calendlyUrl ?? "",
+      metaTitle: p.metaTitle ?? "",
+      metaDescription: p.metaDescription ?? "",
+      keywords: p.keywords ?? "",
+      gtmContainerId: p.gtmContainerId ?? "",
       addressPublic: a.public ?? true,
       zipCode: a.zipCode ?? "",
       street: a.street ?? "",
@@ -219,30 +269,44 @@ export default function EditProfileForm() {
   })
   const aiMutation = useMutation({ mutationFn: aiGenerateDescription })
 
+  // ------- QUEBRAS DE LINHA: helpers -------
   const draftMdRef = useRef<string>("")
-  const editingAreaHtml = useMemo(() => {
-    const md = editingArea?.description ?? draftMdRef.current ?? ""
-    return md ? (marked.parse(md) as string) : ""
-  }, [editingArea?.description])
-  const turndown = useMemo(() => {
-    const t = new TurndownService({ headingStyle: "atx", emDelimiter: "*" })
-    t.addRule("emptyParagraph", { filter: (node: Element) => node.nodeName === "P" && !String((node.textContent || "")).trim(), replacement: () => "\n\n" })
-    t.addRule("paragraph", { filter: ["p"], replacement: (content: string) => `${content}\n\n` })
-    t.addRule("lineBreak", { filter: ["br"], replacement: () => "  \n" })
-    t.addRule("underline", { filter: ["u"], replacement: (content: string) => `<u>${content}</u>` })
-    return t
-  }, [])
-  const editor = useEditor({
-    extensions: [StarterKit.configure({ bulletList: { keepMarks: true }, orderedList: { keepMarks: true } }), Underline],
-    content: editingAreaHtml,
-    immediatelyRender: false,
-    editorProps: { attributes: { class: "prose prose-invert max-w-none min-h-[200px] max-h-[400px] overflow-auto focus:outline-none" } },
-    onUpdate: ({ editor }: { editor: { getHTML: () => string } }) => { const html = editor.getHTML(); const md = turndown.turndown(html); draftMdRef.current = md },
-  })
-  useEffect(() => { if (editor && editingArea) { editor.commands.setContent(editingAreaHtml, { emitUpdate: false }); draftMdRef.current = editingArea.description ?? "" } }, [editor, editingArea, editingAreaHtml])
+  const [editorMarkdown, setEditorMarkdown] = useState<string>("")
+
+  // Decodifica entidades HTML vindas do banco (ex.: &lt;br /&gt; -> <br />)
+  function decodeEntities(s: string) {
+    if (typeof window === "undefined") {
+      return s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
+    }
+    const ta = document.createElement("textarea")
+    ta.innerHTML = s
+    return ta.value
+  }
+
+  // Preserva espaço vertical extra transformando quebras além de 2 \n em <br />
+  function preserveVerticalSpace(md: string) {
+    return md.replace(/\n{3,}/g, (block) => {
+      const extra = block.length - 2
+      return "\n\n" + Array.from({ length: extra }).map(() => "<br />").join("\n")
+    })
+  }
+
+  useEffect(() => {
+    if (editingArea) {
+      const raw = editingArea.description ?? ""
+      const initial = decodeEntities(raw) // transforma &lt;br/&gt; em <br />
+      draftMdRef.current = initial
+      setEditorMarkdown(initial)
+    }
+  }, [editingArea])
+
+  // ------------------------------------------
 
   async function onSubmit(values: ProfileEditValues) {
-    if (slugInput !== (initialSlug || "") && slugValid !== true) { alert("O slug informado não é válido ou não foi verificado. Por favor, verifique o slug antes de salvar."); return }
+    if (slugInput !== (initialSlug || "") && slugValid !== true) {
+      alert("O slug informado não é válido ou não foi verificado. Por favor, verifique o slug antes de salvar.")
+      return
+    }
     const fd = new FormData()
     fd.set("publicName", values.publicName)
     fd.set("aboutDescription", values.aboutDescription ?? "")
@@ -250,6 +314,10 @@ export default function EditProfileForm() {
     if (values.publicPhone) fd.set("publicPhone", values.publicPhone)
     if (values.whatsapp) fd.set("whatsapp", values.whatsapp)
     if (values.calendlyUrl) fd.set("calendlyUrl", values.calendlyUrl)
+    if (values.metaTitle) fd.set("metaTitle", values.metaTitle)
+    if (values.metaDescription) fd.set("metaDescription", values.metaDescription)
+    if (values.keywords) fd.set("keywords", values.keywords)
+    if (values.gtmContainerId) fd.set("gtmContainerId", values.gtmContainerId)
     if (values.addressPublic !== undefined) fd.set("addressPublic", String(values.addressPublic))
     if (values.zipCode) fd.set("zipCode", values.zipCode)
     if (values.street) fd.set("street", values.street)
@@ -291,11 +359,59 @@ export default function EditProfileForm() {
 
   return (
     <>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
-<h1 className="text-2xl font-semibold">Editar informações</h1>
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 px-6 pb-6">
+        {/* Sticky top bar with actions */}
+        <div className="hidden md:flex sticky top-0 -mx-6 px-6 pb-3 z-10 bg-zinc-900/70 backdrop-blur-md border-b border-zinc-800">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-t-xl bg-cover mt-2">
+            <h1 className="text-2xl font-semibold">Editar informações</h1>
+            <div className="flex items-center gap-2">
+              <Button type="button" variant="secondary" className="cursor-pointer" onClick={() => {
+                const targetSlug = (slugInput || initialSlug || '').trim()
+                const url = targetSlug ? `/adv/${encodeURIComponent(targetSlug)}` : '/profile/edit'
+                window.open(url, '_blank')
+              }}>
+                <ExternalLink className="w-4 h-4" />
+                Visualizar
+              </Button>
+              <Button type="submit" disabled={saveProfileMutation.isPending} className="gap-2 cursor-pointer">
+                <Save className="w-4 h-4" />
+                {saveProfileMutation.isPending ? "Salvando..." : "Salvar"}
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Floating save button (mobile only) */}
+        <Button
+          type="submit"
+          disabled={saveProfileMutation.isPending}
+          aria-label="Salvar"
+          size="icon"
+          className="md:hidden fixed bottom-4 right-4 z-20 shadow-lg h-12 w-12 rounded-full backdrop-blur-md border border-zinc-800"
+        >
+          <Save className="w-10 h-10" />
+        </Button>
+
+        {/* Visual */}
+        <div className="mt-12">
+          <h2 className="text-xl font-bold mb-4">Visual</h2>
+        </div>
+
+        {/* Cores */}
+        <div className="flex items-center gap-4">
+          <div>
+            <Label htmlFor="primaryColor" className="mb-2 block font-bold">Cor Principal</Label>
+            <input id="primaryColor" type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-20 w-20 border border-zinc-800 bg-zinc-900"/>
+          </div>
+          <div>
+            <Label htmlFor="textColor" className="mb-2 block font-bold">Cor do Texto</Label>
+            <input id="textColor" type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} className="h-20 w-20 border border-zinc-800 bg-zinc-900"/>
+          </div>
+        </div>
+
         {/* Foto de Perfil */}
         <div className="w-full">
-          <Label className="mb-2 block">Foto de perfil</Label>
+          <Label className="mb-2 block font-bold">Foto de perfil</Label>
           <div className="flex flex-col md:flex-row items-center gap-4">
             <div className="relative h-32 w-32 mb-4">
               <div className="h-full w-full overflow-hidden rounded-full ring-2 ring-zinc-800">
@@ -323,11 +439,19 @@ export default function EditProfileForm() {
               <label className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm cursor-pointer hover:bg-zinc-800">
                 <Upload className="w-4 h-4" />
                 <span>Enviar foto</span>
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; setRemoveAvatar(false); setPhotoFile(f); const url = URL.createObjectURL(f); setPreviewUrl((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url }) }} />
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (!f) return
+                  setRemoveAvatar(false)
+                  setPhotoFile(f)
+                  const url = URL.createObjectURL(f)
+                  setPreviewUrl((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url })
+                }} />
               </label>
             </div>
           </div>
         </div>
+
         {/* Link público */}
         <div>
           <Label htmlFor="slug" className="mb-2 block">Link público</Label>
@@ -352,7 +476,7 @@ export default function EditProfileForm() {
 
         {/* Capa */}
         <div className="flex flex-col gap-2 mt-4">
-          <Label className="mb-2 block">Capa da página</Label>
+          <Label className="mb-2 block font-bold">Capa da página</Label>
           <div className="flex flex-col gap-4">
             <div className="relative h-44 w-full overflow-hidden rounded-md ring-2 ring-zinc-800">
               {coverPreviewUrl ? (
@@ -376,37 +500,53 @@ export default function EditProfileForm() {
               <label className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm cursor-pointer hover:bg-zinc-800">
                 <Upload className="w-4 h-4" />
                 <span>Enviar capa</span>
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (!f) return; setRemoveCover(false); setCoverFile(f); const url = URL.createObjectURL(f); setCoverPreviewUrl((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url }) }} />
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (!f) return
+                  setRemoveCover(false)
+                  setCoverFile(f)
+                  const url = URL.createObjectURL(f)
+                  setCoverPreviewUrl((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url })
+                }} />
               </label>
             </div>
           </div>
         </div>
 
-        {/* Campos básicos */}
-        <div className="flex flex-col gap-2 mt-12">
-          <Label htmlFor="publicName" className="mb-2 block">Nome de exibição</Label>
+        {/* Perfil */}
+        <div className="mt-12">
+          <h2 className="text-xl font-bold mb-4">Perfil</h2>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="publicName" className="mb-2 block font-bold">Nome de exibição <span className="text-red-500" aria-hidden>*</span></Label>
           <Input id="publicName" {...register("publicName")} />
           {errors.publicName && <p className="mt-1 text-sm text-red-400">{errors.publicName.message}</p>}
         </div>
         <div>
-          <Label htmlFor="aboutDescription" className="mb-2 block">Sobre mim</Label>
+          <Label htmlFor="aboutDescription" className="mb-2 block font-bold">Sobre mim</Label>
           <Textarea id="aboutDescription" rows={5} {...register("aboutDescription")} />
           {errors.aboutDescription && <p className="mt-1 text-sm text-red-400">{errors.aboutDescription.message as string}</p>}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="publicEmail" className="mb-2 block">E-mail para contato</Label>
+            <Label htmlFor="publicEmail" className="mb-2 block font-bold">E-mail para contato</Label>
             <Input id="publicEmail" type="email" {...register("publicEmail")} />
             {errors.publicEmail && <p className="mt-1 text-sm text-red-400">{errors.publicEmail.message}</p>}
           </div>
           <div>
-            <Label htmlFor="publicPhone" className="mb-2 block">Telefone</Label>
+            <Label htmlFor="publicPhone" className="mb-2 block font-bold">Telefone</Label>
             <Input id="publicPhone" {...register("publicPhone")} />
           </div>
+          {/* WhatsApp */}
+          <div>
+            <Label htmlFor="whatsapp" className="mb-2 block">WhatsApp</Label>
+            <Input id="whatsapp" {...register("whatsapp")} />
+          </div>
         </div>
+
         <div>
-          <Label htmlFor="calendlyUrl" className="mb-2 block">Calendly URL</Label>
+          <Label htmlFor="calendlyUrl" className="mb-2 block font-bold">Calendly URL</Label>
           <Input id="calendlyUrl" placeholder="https://calendly.com/seu-usuario" {...register("calendlyUrl")} />
           {errors.calendlyUrl && <p className="mt-1 text-sm text-red-400">{errors.calendlyUrl.message}</p>}
         </div>
@@ -415,7 +555,7 @@ export default function EditProfileForm() {
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
           <h3 className="text-base font-semibold">Endereço</h3>
           <div className="flex items-center gap-3">
-            <Label htmlFor="addressPublic">Mostrar Endereço?</Label>
+            <Label htmlFor="addressPublic" className="font-bold">Mostrar Endereço?</Label>
             <Controller
               control={control}
               name="addressPublic"
@@ -426,144 +566,156 @@ export default function EditProfileForm() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <Label htmlFor="zipCode" className="mb-1 block">CEP</Label>
-              <Input id="zipCode" placeholder="00000-000" {...register("zipCode", { onChange: (e) => { const v = e.target.value.replace(/\D/g, '').slice(0,8); const masked = v.length > 5 ? `${v.slice(0,5)}-${v.slice(5)}` : v; e.target.value = masked } })} />
+              <Label htmlFor="zipCode" className="mb-2 block font-bold">CEP</Label>
+              <Input
+                id="zipCode"
+                placeholder="00000-000"
+                {...register("zipCode", {
+                  onChange: (e) => {
+                    const v = e.target.value.replace(/\D/g, '').slice(0, 8)
+                    const masked = v.length > 5 ? `${v.slice(0, 5)}-${v.slice(5)}` : v
+                    e.target.value = masked
+                  }
+                })}
+              />
             </div>
             <div className="md:col-span-2">
-              <Label htmlFor="street" className="mb-1 block">Endereço</Label>
+              <Label htmlFor="street" className="mb-2 block font-bold">Endereço</Label>
               <Input id="street" {...register("street")} />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
-              <Label htmlFor="number" className="mb-1 block">Número</Label>
+              <Label htmlFor="number" className="mb-2 block font-bold">Número</Label>
               <Input id="number" {...register("number")} />
             </div>
             <div className="md:col-span-3">
-              <Label htmlFor="complement" className="mb-1 block">Complemento</Label>
+              <Label htmlFor="complement" className="mb-2 block font-bold">Complemento</Label>
               <Input id="complement" {...register("complement")} />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div>
-              <Label htmlFor="neighborhood" className="mb-1 block">Bairro</Label>
+              <Label htmlFor="neighborhood" className="mb-2 block font-bold">Bairro</Label>
               <Input id="neighborhood" {...register("neighborhood")} />
             </div>
             <div>
-              <Label htmlFor="city" className="mb-1 block">Cidade</Label>
+              <Label htmlFor="city" className="mb-2 block font-bold">Cidade</Label>
               <Input id="city" {...register("city")} />
             </div>
             <div>
-              <Label htmlFor="state" className="mb-1 block">Estado</Label>
+              <Label htmlFor="state" className="mb-2 block font-bold">Estado</Label>
               <Input id="state" placeholder="UF" maxLength={2} {...register("state")} />
             </div>
           </div>
         </div>
 
-        {/* Cores */}
-        <div className="flex items-center gap-4">
-          <div>
-            <Label htmlFor="primaryColor" className="mb-2 block">Cor Principal</Label>
-            <input id="primaryColor" type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-20 w-20 border border-zinc-800 bg-zinc-900"/>
+        {/* Lista de áreas */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Áreas de atuação</h2>
+            <Button type="button" variant="secondary" className="gap-2" onClick={() => createAreaMutation.mutate()}>
+              <Plus className="w-4 h-4" /> Nova área
+            </Button>
           </div>
-          <div>
-            <Label htmlFor="textColor" className="mb-2 block">Cor do Texto</Label>
-            <input id="textColor" type="color" value={textColor} onChange={(e) => setTextColor(e.target.value)} className="h-20 w-20 border border-zinc-800 bg-zinc-900"/>
+          <div className="space-y-2">
+            {areas.map((a, idx) => (
+              <div
+                key={a.id}
+                className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2"
+              >
+                <div className="flex items-center gap-2 w-full min-w-0">
+                  <span className="text-xs text-zinc-400 w-6 text-right hidden md:inline-block">{idx + 1}</span>
+                  <span className="text-sm truncate flex-1 min-w-0">{a.title}</span>
+                </div>
+                <div className="flex items-center gap-1 w-full md:w-auto justify-end">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    disabled={idx === 0 || reorderMutation.isPending}
+                    onClick={async () => {
+                      const next = [...areas]
+                      const tmp = next[idx - 1]
+                      next[idx - 1] = next[idx]
+                      next[idx] = tmp
+                      setAreas(next)
+                      const order = next.map((it, i) => ({ id: it.id, position: i + 1 }))
+                      try { await reorderMutation.mutateAsync(order) } catch { showToast("Falha ao reordenar") }
+                    }}
+                    aria-label="Mover para cima"
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    disabled={idx === areas.length - 1 || reorderMutation.isPending}
+                    onClick={async () => {
+                      const next = [...areas]
+                      const tmp = next[idx + 1]
+                      next[idx + 1] = next[idx]
+                      next[idx] = tmp
+                      setAreas(next)
+                      const order = next.map((it, i) => ({ id: it.id, position: i + 1 }))
+                      try { await reorderMutation.mutateAsync(order) } catch { showToast("Falha ao reordenar") }
+                    }}
+                    aria-label="Mover para baixo"
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                  </Button>
+                  {/* Edit button: icon-only on mobile, with text on md+ */}
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="gap-2"
+                    onClick={() => { setEditingArea(a); setRemoveAreaCover(false) }}
+                    aria-label="Editar área"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    <span className="hidden md:inline">Editar</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="destructive"
+                    className="h-8 w-8"
+                    onClick={() => setDeleteConfirm(a)}
+                    aria-label="Excluir área"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-
-
-        {/* WhatsApp */}
+        {/* SEO */}
+        <div className="mt-12">
+          <h2 className="text-xl font-bold mb-4">SEO</h2>
+        </div>
         <div>
-          <Label htmlFor="whatsapp" className="mb-2 block">WhatsApp</Label>
-          <Input id="whatsapp" {...register("whatsapp")} />
+          <Label htmlFor="metaTitle" className="mb-2 block font-bold">Meta Title</Label>
+          <Input id="metaTitle" maxLength={80} placeholder="Título curto e persuasivo (até 80 caracteres)" {...register("metaTitle")} />
         </div>
-
-              {/* Lista de áreas */}
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Áreas de atuação</h2>
-          <Button type="button" variant="secondary" className="gap-2" onClick={() => createAreaMutation.mutate()}>
-            <Plus className="w-4 h-4" /> Nova área
-          </Button>
+        <div>
+          <Label htmlFor="metaDescription" className="mb-2 block font-bold">Meta Description</Label>
+          <Textarea id="metaDescription" rows={3} placeholder="Descrição curta e persuasiva" {...register("metaDescription")} />
         </div>
-        <div className="space-y-2">
-          {areas.map((a, idx) => (
-            <div
-              key={a.id}
-              className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2"
-            >
-              <div className="flex items-center gap-2 w-full min-w-0">
-                <span className="text-xs text-zinc-400 w-6 text-right hidden md:inline-block">{idx + 1}</span>
-                <span className="text-sm truncate flex-1 min-w-0">{a.title}</span>
-              </div>
-              <div className="flex items-center gap-1 w-full md:w-auto justify-end">
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8"
-                  disabled={idx === 0 || reorderMutation.isPending}
-                  onClick={async () => {
-                    const next = [...areas]
-                    const tmp = next[idx - 1]
-                    next[idx - 1] = next[idx]
-                    next[idx] = tmp
-                    setAreas(next)
-                    const order = next.map((it, i) => ({ id: it.id, position: i + 1 }))
-                    try { await reorderMutation.mutateAsync(order) } catch { showToast("Falha ao reordenar") }
-                  }}
-                  aria-label="Mover para cima"
-                >
-                  <ArrowUp className="w-4 h-4" />
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="ghost"
-                  className="h-8 w-8"
-                  disabled={idx === areas.length - 1 || reorderMutation.isPending}
-                  onClick={async () => {
-                    const next = [...areas]
-                    const tmp = next[idx + 1]
-                    next[idx + 1] = next[idx]
-                    next[idx] = tmp
-                    setAreas(next)
-                    const order = next.map((it, i) => ({ id: it.id, position: i + 1 }))
-                    try { await reorderMutation.mutateAsync(order) } catch { showToast("Falha ao reordenar") }
-                  }}
-                  aria-label="Mover para baixo"
-                >
-                  <ArrowDown className="w-4 h-4" />
-                </Button>
-                {/* Edit button: icon-only on mobile, with text on md+ */}
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  className="gap-2"
-                  onClick={() => { setEditingArea(a); setRemoveAreaCover(false) }}
-                  aria-label="Editar área"
-                >
-                  <Pencil className="w-4 h-4" />
-                  <span className="hidden md:inline">Editar</span>
-                </Button>
-                <Button
-                  type="button"
-                  size="icon"
-                  variant="destructive"
-                  className="h-8 w-8"
-                  onClick={() => setDeleteConfirm(a)}
-                  aria-label="Excluir área"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          ))}
+        <div>
+          <Label htmlFor="keywords" className="mb-2 block font-bold">Palavras-chave</Label>
+          <Input id="keywords" placeholder="ex.: advocacia civil, direito do consumidor" {...register("keywords")} />
+          <p className="mt-1 text-xs text-zinc-400">Separe por vírgulas.</p>
         </div>
-      </div>
+        <div>
+          <Label htmlFor="gtmContainerId" className="mb-2 block font-bold">Google Tag Manager</Label>
+          <Input id="gtmContainerId" placeholder="GTM-XXXXXXX" {...register("gtmContainerId")} />
+        </div>
 
         <div className="flex justify-end mt-12">
           <Button type="submit" disabled={saveProfileMutation.isPending} className="gap-2 w-full cursor-pointer">
@@ -573,10 +725,8 @@ export default function EditProfileForm() {
         </div>
       </form>
 
-
-
-      <Dialog open={!!editingArea} onOpenChange={(v) => !v && (setEditingArea(null), setRemoveAreaCover(false))}>
-        <DialogContent className="overflow-y-auto">
+      <Dialog open={!!editingArea} onOpenChange={(v) => !v && (setEditingArea(null), setRemoveAreaCover(false), setAreaCoverPreview(null), setAreaCoverGenerating(false))}>
+        <DialogContent className="overflow-visible w-full max-w-6xl">
           <DialogHeader>
             <DialogTitle className="text-zinc-300">Editar área</DialogTitle>
           </DialogHeader>
@@ -591,13 +741,15 @@ export default function EditProfileForm() {
                 <Label className="mb-2 block">Capa da área</Label>
                 <div className="flex items-center gap-4">
                   <div className="relative h-40 w-40 overflow-hidden rounded-md ring-2 ring-zinc-800">
-                    {(areaCoverPreview || (editingArea.coverImageUrl && !removeAreaCover)) ? (
+                    {areaCoverGenerating ? (
+                      <div className="grid h-full w-full place-items-center bg-zinc-800 text-xs text-zinc-300 text-center px-2">Estamos gerando sua capa com iA…</div>
+                    ) : (areaCoverPreview || (editingArea.coverImageUrl && !removeAreaCover)) ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={areaCoverPreview || (editingArea.coverImageUrl as string)} alt="Capa da área" className="h-full w-full object-cover" />
                     ) : (
                       <div className="grid h-full w-full place-items-center bg-zinc-800 text-xs text-zinc-400">Capa</div>
                     )}
-                    {(areaCoverPreview || (editingArea.coverImageUrl && !removeAreaCover)) && (
+                    {!areaCoverGenerating && (areaCoverPreview || (editingArea.coverImageUrl && !removeAreaCover)) && (
                       <button
                         type="button"
                         className="absolute right-1 top-1 z-10 rounded-full border border-zinc-600 bg-zinc-900/80 p-1 text-zinc-200 shadow-md backdrop-blur hover:bg-zinc-800"
@@ -627,6 +779,7 @@ export default function EditProfileForm() {
                   </label>
                 </div>
               </div>
+
               <div>
                 <div className="mb-2 mt-8 flex items-center justify-between">
                   <Label className="block">Descrição</Label>
@@ -639,9 +792,9 @@ export default function EditProfileForm() {
                       if (!editingArea) return
                       try {
                         const { description } = await aiMutation.mutateAsync(editingArea.title)
-                        // Preenche editor com o markdown gerado
-                        draftMdRef.current = description
-                        editor?.commands.setContent(marked.parse(description) as string, { emitUpdate: false })
+                        const md = description ?? ""
+                        draftMdRef.current = md
+                        setEditorMarkdown(md)
                       } catch {
                         alert("Falha ao gerar descrição com IA")
                       }
@@ -651,21 +804,38 @@ export default function EditProfileForm() {
                     {aiMutation.isPending ? "Gerando com IA..." : "Gerar com IA"}
                   </Button>
                 </div>
-                <div className="rounded-md border border-zinc-800 bg-zinc-900 p-3">
-                  {editor && (
-                    <div className="mb-3 flex flex-wrap gap-2">
-                      <Button type="button" size="sm" variant={editor.isActive('bold') ? 'default' : 'secondary'} onClick={() => editor.chain().focus().toggleBold().run()}>Negrito</Button>
-                    </div>
-                  )}
-                  {aiMutation.isPending ? (
-                    <div className="py-16 text-center text-sm text-zinc-400">Gerando descrição com IA...</div>
-                  ) : (
-                    <div className="max-h-[300px] overflow-y-auto">
-                    <EditorContent editor={editor} />
-                    </div>
-                  )}
-                </div>
+
+                {aiMutation.isPending ? (
+                  <div className="py-16 text-center text-sm text-zinc-300">
+                    Estamos gerando sua descrição com iA…
+                  </div>
+                ) : (
+                  <div className="relative overflow-visible z-[1000]">
+                    <MDXEditor
+                      className="mdxeditor min-h-[350px] max-h-[65vh] overflow-visible"
+                      contentEditableClassName="min-h-[350px] p-4 cursor-text !text-zinc-50 whitespace-pre-wrap"
+                      markdown={editorMarkdown}
+                      onChange={(md: string) => { draftMdRef.current = md; setEditorMarkdown(md) }}
+                      plugins={[
+                        toolbarPlugin({
+                          toolbarContents: () => (
+                            <>
+                              <UndoRedo />
+                              <Separator />
+                              <BoldItalicUnderlineToggles />
+                            </>
+                          )
+                        }),
+                        headingsPlugin(),
+                        listsPlugin(),
+                        thematicBreakPlugin(),
+                        markdownShortcutPlugin({ remarkBreaks: true })
+                      ]}
+                    />
+                  </div>
+                )}
               </div>
+
               <DialogFooter>
                 <Button
                   onClick={async () => {
@@ -676,7 +846,8 @@ export default function EditProfileForm() {
                         const fd = new FormData()
                         fd.set("id", editingArea.id)
                         fd.set("title", editingArea.title)
-                        fd.set("description", draftMdRef.current)
+                        // ✅ preserva quebras extras aqui também
+                        fd.set("description", preserveVerticalSpace(draftMdRef.current))
                         fd.set("cover", areaCoverFile)
                         const res = await fetch("/api/activity-areas", { method: "PATCH", body: fd })
                         if (!res.ok) { alert("Falha ao salvar área"); return }
@@ -689,13 +860,12 @@ export default function EditProfileForm() {
                         setRemoveAreaCover(false)
                         setEditingArea(null)
                       } else {
-                        // Se não há arquivo novo, verifique se deve remover a imagem
-                        const toSave = { 
-                          ...editingArea, 
-                          description: draftMdRef.current,
+                        await patchAreaMutation.mutateAsync({
+                          ...editingArea,
+                          // ✅ preserva quebras extras
+                          description: preserveVerticalSpace(draftMdRef.current),
                           coverImageUrl: removeAreaCover ? null : editingArea.coverImageUrl
-                        }
-                        await patchAreaMutation.mutateAsync(toSave)
+                        })
                         await qc.invalidateQueries({ queryKey: ["profile"] })
                         await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
                         setEditingArea(null)
@@ -756,5 +926,3 @@ export default function EditProfileForm() {
     </>
   )
 }
-
-

@@ -89,6 +89,6 @@ Regras de formatação:
   return results
 }
 
-// Removido: geração de imagens de capa por IA
+// Image generation removed on request
 
 

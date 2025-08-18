@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { uploadToS3 } from "@/lib/s3"
+// IA de capa removida
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -56,9 +57,11 @@ export async function PATCH(req: Request) {
     const existing = await prisma.activityAreas.findFirst({ where: { id, userId } })
     if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 })
 
+    // Preserve null to explicitly clear, undefined to leave unchanged
+    const newCoverUrl: string | null | undefined = coverImageUrl
     const updated = await prisma.activityAreas.update({
       where: { id },
-      data: { title, description: description ?? null, coverImageUrl, position: position ?? existing.position },
+      data: { title, description: description ?? null, coverImageUrl: newCoverUrl, position: position ?? existing.position },
     })
     return NextResponse.json({ area: updated })
   }
