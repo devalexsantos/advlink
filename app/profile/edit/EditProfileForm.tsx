@@ -226,6 +226,10 @@ export default function EditProfileForm() {
     setSlugInput(currentSlug)
     setInitialSlug(currentSlug)
     setAreas(data.areas ?? [])
+    // Carrega "Sobre mim" no MDX com quebras preservadas (decodificando entidades)
+    const rawAbout = p.aboutDescription ?? ""
+    const initialAbout = decodeEntities(rawAbout)
+    setAboutMarkdown(initialAbout)
   }, [data, reset])
 
   const saveProfileMutation = useMutation({
@@ -272,6 +276,7 @@ export default function EditProfileForm() {
   // ------- QUEBRAS DE LINHA: helpers -------
   const draftMdRef = useRef<string>("")
   const [editorMarkdown, setEditorMarkdown] = useState<string>("")
+  const [aboutMarkdown, setAboutMarkdown] = useState<string>("")
 
   // Decodifica entidades HTML vindas do banco (ex.: &lt;br /&gt; -> <br />)
   function decodeEntities(s: string) {
@@ -309,7 +314,8 @@ export default function EditProfileForm() {
     }
     const fd = new FormData()
     fd.set("publicName", values.publicName)
-    fd.set("aboutDescription", values.aboutDescription ?? "")
+    // Usa o MDX "Sobre mim" (aboutMarkdown) com preservação de quebras extras
+    fd.set("aboutDescription", preserveVerticalSpace(aboutMarkdown || ""))
     if (values.publicEmail) fd.set("publicEmail", values.publicEmail)
     if (values.publicPhone) fd.set("publicPhone", values.publicPhone)
     if (values.whatsapp) fd.set("whatsapp", values.whatsapp)
@@ -524,8 +530,29 @@ export default function EditProfileForm() {
         </div>
         <div>
           <Label htmlFor="aboutDescription" className="mb-2 block font-bold">Sobre mim</Label>
-          <Textarea id="aboutDescription" rows={5} {...register("aboutDescription")} />
-          {errors.aboutDescription && <p className="mt-1 text-sm text-red-400">{errors.aboutDescription.message as string}</p>}
+          <div className="relative overflow-visible z-[1000]">
+            <MDXEditor
+              className="mdxeditor min-h-[350px] max-h-[65vh] overflow-visible"
+              contentEditableClassName="min-h-[350px] p-4 cursor-text !text-zinc-50 whitespace-pre-wrap"
+              markdown={aboutMarkdown}
+              onChange={(md: string) => setAboutMarkdown(md)}
+              plugins={[
+                toolbarPlugin({
+                  toolbarContents: () => (
+                    <>
+                      <UndoRedo />
+                      <Separator />
+                      <BoldItalicUnderlineToggles />
+                    </>
+                  )
+                }),
+                headingsPlugin(),
+                listsPlugin(),
+                thematicBreakPlugin(),
+                markdownShortcutPlugin({ remarkBreaks: true })
+              ]}
+            />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
