@@ -26,6 +26,7 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   Address   Address[]
+  Links     Links[]
 }
 
 model Account {
@@ -85,6 +86,7 @@ model Profile {
   metaTitle        String?
   keywords         String?
   gtmContainerId   String?
+  theme            String? @default("modern")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -104,6 +106,21 @@ model ActivityAreas {
   updatedAt DateTime @updatedAt
 
   @@index([userId, position], map: "ActivityAreas_userId_position_idx")
+}
+
+model Links {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title         String
+  description   String?
+  url           String
+  coverImageUrl String?
+  position      Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Address {

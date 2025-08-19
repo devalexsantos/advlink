@@ -3,7 +3,7 @@
 import { motion } from "framer-motion"
 import { AreasCarousel } from "@/app/adv/[slug]/AreasCarousel"
 import { marked } from "marked"
-import { Calendar, Heart, HeartHandshake, Mail, MapPin, Phone, Scale, Hammer } from "lucide-react"
+import { Calendar, Heart, HeartHandshake, Link2, Mail, MapPin, Phone, Scale } from "lucide-react"
 import Link from "next/link"
 import whatsAppIcon from "@/assets/icons/whatsapp-icon.svg"
 
@@ -11,15 +11,16 @@ type Props = {
   profile: any
   areas: any[]
   address?: any
+  links?: any[]
   primary: string
   text: string
 }
 
-export default function Theme03({ profile, areas, address, primary, text }: Props) {
+export default function Theme03({ profile, areas, address, primary, text, links = [] }: Props) {
   return (
     <div
       className="min-h-screen relative overflow-hidden"
-      style={{ color: text, background: `linear-gradient(135deg, ${primary} 0%, #0a0a0a 100%)` }}
+      style={{ color: text, background: `linear-gradient(135deg, ${primary} 90%, #0a0a0a 100%)` }}
     >
       {/* ====== FUNDO GERAL (continua preenchendo o restante) ====== */}
       <div
@@ -34,23 +35,6 @@ export default function Theme03({ profile, areas, address, primary, text }: Prop
       />
       <div className="absolute inset-6 rounded-[24px] pointer-events-none"
            style={{ boxShadow: `inset 0 0 0 1px ${text}22, inset 0 0 0 8px #00000020, inset 0 0 60px #00000080` }} />
-      <motion.div
-        className="absolute -top-10 -left-10 opacity-10"
-        initial={{ rotate: -6, y: -10 }}
-        animate={{ rotate: 0, y: 0 }}
-        transition={{ duration: 6, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-      >
-        <Scale className="w-[200px] h-[200px]" />
-      </motion.div>
-      <motion.div
-        className="absolute bottom-10 -right-6 opacity-10"
-        initial={{ rotate: 8, y: 0 }}
-        animate={{ rotate: 0, y: -10 }}
-        transition={{ duration: 7, repeat: Infinity, repeatType: "reverse", ease: "easeInOut" }}
-      >
-        <Hammer className="w-[180px] h-[180px]" />
-      </motion.div>
-
       {/* ====== HERO (header limitado a max-w-6xl) ====== */}
       <section className="relative z-10">
         <motion.div
@@ -117,7 +101,7 @@ export default function Theme03({ profile, areas, address, primary, text }: Prop
           </motion.div>
 
           {profile.publicName && (
-            <h1 className="mt-5 text-3xl md:text-5xl font-extrabold tracking-tight">
+            <h1 className="mt-5 text-3xl md:text-5xl font-extrabold tracking-tight font-serif">
               {profile.publicName}
             </h1>
           )}
@@ -183,7 +167,7 @@ export default function Theme03({ profile, areas, address, primary, text }: Prop
             className="mx-auto mb-8 h-[2px] w-24 rounded"
             style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
           />
-          <h2 className="mb-8 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3">
+          <h2 className="mb-8 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif">
             <Scale className="w-10 h-10" /> Serviços
           </h2>
           <AreasCarousel
@@ -206,7 +190,7 @@ export default function Theme03({ profile, areas, address, primary, text }: Prop
           transition={{ duration: 0.6 }}
           className="relative z-10 px-6 py-16 max-w-5xl mx-auto text-center"
         >
-          <h2 className="mb-6 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3">
+          <h2 className="mb-6 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif">
             <HeartHandshake className="w-10 h-10" /> Sobre
           </h2>
           <div
@@ -221,6 +205,66 @@ export default function Theme03({ profile, areas, address, primary, text }: Prop
         </motion.section>
       )}
 
+      {/* ====== LINKS ====== */}
+      {Array.isArray(links) && links.length > 0 && (
+        <motion.section
+          initial={{ opacity: 0, y: 36 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6 }}
+          className="relative z-10 px-6 py-16 mx-auto max-w-6xl"
+        >
+          <div
+            className="mx-auto mb-8 h-[2px] w-24 rounded"
+            style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
+          />
+          <h2 className="mb-8 text-4xl md:text-5xl font-bold text-center font-serif flex items-center justify-center gap-3">
+            <Link2 className="w-10 h-10" />
+            Links
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {links.map((l: any, idx: number) => (
+              <motion.div
+                key={l.id || idx}
+                initial={{ opacity: 0, y: 18 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: Math.min(idx * 0.05, 0.3) }}
+                className="rounded-2xl overflow-hidden border shadow-[0_18px_50px_rgba(0,0,0,0.35)] backdrop-blur-sm flex flex-col"
+                style={{ borderColor: `${text}22`, background: `${text}07` }}
+              >
+                {l.coverImageUrl && (
+                <div className="aspect-video w-full bg-black/40">
+                  {l.coverImageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={l.coverImageUrl} alt={l.title} className="w-full h-full object-cover" />
+                  ) : (
+                      <div className="w-full h-full grid place-items-center text-sm opacity-70">Sem capa</div>
+                    )}
+                  </div>
+                )}
+                <div className="p-5 flex-1 flex flex-col">
+                  <h3 className="text-xl font-semibold mb-2 line-clamp-2">{l.title}</h3>
+                  {l.description && (
+                    <p className="opacity-90 text-sm mb-4 line-clamp-3">{l.description}</p>
+                  )}
+                  <div className="mt-auto">
+                    <a
+                      href={l.url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center justify-center rounded-md px-4 py-2 font-medium border transition-colors"
+                      style={{ backgroundColor: primary, color: text, borderColor: `${text}38` }}
+                    >
+                      Visualizar
+                    </a>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.section>
+      )}
+
       {/* ====== CALENDLY ====== */}
       {profile.calendlyUrl && (
         <motion.section
@@ -230,7 +274,7 @@ export default function Theme03({ profile, areas, address, primary, text }: Prop
           transition={{ duration: 0.6 }}
           className="relative z-10 px-6 py-16 text-center"
         >
-          <h2 className="mb-6 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3">
+          <h2 className="mb-6 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif">
             <Calendar className="w-10 h-10" /> Agende uma conversa
           </h2>
           <div
@@ -251,7 +295,7 @@ export default function Theme03({ profile, areas, address, primary, text }: Prop
           transition={{ duration: 0.6 }}
           className="relative z-10 px-6 pb-16 py-10 text-center"
         >
-          <h2 className="mb-4 text-3xl md:text-4xl font-bold flex items-center justify-center gap-2">
+          <h2 className="mb-4 text-3xl md:text-4xl font-bold flex items-center justify-center gap-2 font-serif">
             <MapPin className="w-9 h-9" />
             Endereço
           </h2>

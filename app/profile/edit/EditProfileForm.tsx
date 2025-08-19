@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Camera, Pencil, Plus, Save, Trash2, Upload, WandSparkles, X, ArrowDown, ArrowUp, ExternalLink } from "lucide-react"
+import { Camera, Pencil, Plus, Save, Trash2, Upload, WandSparkles, X, ArrowDown, ArrowUp, ExternalLink, Link as LinkIcon } from "lucide-react"
 import { useToast } from "@/components/toast/ToastProvider"
 import "@mdxeditor/editor/style.css"
 import {
@@ -80,6 +80,7 @@ const profileEditSchema = z.object({
 
 type ProfileEditValues = z.infer<typeof profileEditSchema>
 type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null; position?: number }
+type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null; position?: number }
 type AddressData = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
 type ProfileData = {
   publicName?: string | null
@@ -97,13 +98,14 @@ type ProfileData = {
   metaDescription?: string | null
   keywords?: string | null
   gtmContainerId?: string | null
+  theme?: string | null
 }
 
 // Queries
 async function fetchProfile() {
   const res = await fetch("/api/profile", { cache: "no-store" })
   if (!res.ok) throw new Error("Falha ao carregar perfil")
-  return res.json() as Promise<{ profile: ProfileData | null; areas: Area[]; address?: AddressData }>
+  return res.json() as Promise<{ profile: ProfileData | null; areas: Area[]; address?: AddressData; links: LinkItem[] }>
 }
 async function validateSlug(slug: string) {
   const res = await fetch("/api/profile/validate-slug", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) })
@@ -141,6 +143,28 @@ async function aiGenerateDescription(title: string) {
   return res.json() as Promise<{ description: string }>
 }
 
+// Links API
+async function createLink() {
+  const res = await fetch("/api/links", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "Novo link", description: "", url: "https://" }) })
+  if (!res.ok) throw new Error("Falha ao criar link")
+  return res.json() as Promise<{ link: { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null; position?: number } }>
+}
+async function patchLink(link: LinkItem) {
+  const res = await fetch("/api/links", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(link) })
+  if (!res.ok) throw new Error("Falha ao salvar link")
+  return res.json() as Promise<{ link: LinkItem }>
+}
+async function reorderLinks(order: { id: string; position: number }[]) {
+  const res = await fetch("/api/links", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ order }) })
+  if (!res.ok) throw new Error("Falha ao reordenar links")
+  return res.json() as Promise<{ ok: boolean }>
+}
+async function deleteLink(id: string) {
+  const res = await fetch(`/api/links?id=${encodeURIComponent(id)}`, { method: "DELETE" })
+  if (!res.ok) throw new Error("Falha ao excluir link")
+  return res.json() as Promise<{ ok: boolean }>
+}
+
 export default function EditProfileForm() {
   const qc = useQueryClient()
   const { data, isLoading } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile })
@@ -171,9 +195,13 @@ export default function EditProfileForm() {
   const { register, handleSubmit, formState: { errors }, reset, control } = form
 
   const [areas, setAreas] = useState<Area[]>([])
+  const [links, setLinks] = useState<LinkItem[]>([])
   const [editingArea, setEditingArea] = useState<Area | null>(null)
+  const [editingLink, setEditingLink] = useState<LinkItem | null>(null)
   const [areaCoverFile, setAreaCoverFile] = useState<File | null>(null)
   const [areaCoverPreview, setAreaCoverPreview] = useState<string | null>(null)
+  const [linkCoverFile, setLinkCoverFile] = useState<File | null>(null)
+  const [linkCoverPreview, setLinkCoverPreview] = useState<string | null>(null)
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [photoFile, setPhotoFile] = useState<File | null>(null)
   const [removeAvatar, setRemoveAvatar] = useState<boolean>(false)
@@ -183,13 +211,17 @@ export default function EditProfileForm() {
   const [areaCoverGenerating, setAreaCoverGenerating] = useState<boolean>(false)
   const [primaryColor, setPrimaryColor] = useState<string>("#8B0000")
   const [textColor, setTextColor] = useState<string>("#FFFFFF")
+  const [theme, setTheme] = useState<"modern" | "classic">("modern")
   const [slugInput, setSlugInput] = useState("")
   const [slugValid, setSlugValid] = useState<boolean | null>(null)
   const [slugChecking, setSlugChecking] = useState(false)
   const [initialSlug, setInitialSlug] = useState("")
   const [areaSaving, setAreaSaving] = useState(false)
   const [removeAreaCover, setRemoveAreaCover] = useState(false)
+  const [linkSaving, setLinkSaving] = useState(false)
+  const [removeLinkCover, setRemoveLinkCover] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<Area | null>(null)
+  const [deleteLinkConfirm, setDeleteLinkConfirm] = useState<LinkItem | null>(null)
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -222,10 +254,12 @@ export default function EditProfileForm() {
     setRemoveCover(false)
     setPrimaryColor((p.primaryColor as string) ?? "#8B0000")
     setTextColor((p.textColor as string) ?? "#FFFFFF")
+    setTheme(((p.theme as string) === "classic" ? "classic" : "modern"))
     const currentSlug = (p.slug as string) ?? ""
     setSlugInput(currentSlug)
     setInitialSlug(currentSlug)
     setAreas(data.areas ?? [])
+    setLinks((data as unknown as { links?: LinkItem[] }).links ?? [])
     // Carrega "Sobre mim" no MDX com quebras preservadas (decodificando entidades)
     const rawAbout = p.aboutDescription ?? ""
     const initialAbout = decodeEntities(rawAbout)
@@ -238,6 +272,22 @@ export default function EditProfileForm() {
       await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
     },
+  })
+  const updateThemeMutation = useMutation({
+    mutationFn: async (newTheme: "modern" | "classic") => {
+      const res = await fetch("/api/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ theme: newTheme }),
+      })
+      if (!res.ok) throw new Error("Falha ao salvar tema")
+      return res.json()
+    },
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+      showToast("Tema atualizado!")
+    }
   })
   const createAreaMutation = useMutation({
     mutationFn: createArea,
@@ -273,6 +323,40 @@ export default function EditProfileForm() {
   })
   const aiMutation = useMutation({ mutationFn: aiGenerateDescription })
 
+  // Links mutations
+  const createLinkMutation = useMutation({
+    mutationFn: createLink,
+    onSuccess: async (res) => {
+      setLinks((prev) => [...prev, res.link])
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    }
+  })
+  const patchLinkMutation = useMutation({
+    mutationFn: patchLink,
+    onSuccess: async (res) => {
+      setLinks((prev) => prev.map((l) => (l.id === res.link.id ? res.link : l)))
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    }
+  })
+  const reorderLinksMutation = useMutation({
+    mutationFn: reorderLinks,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    }
+  })
+  const deleteLinkMutation = useMutation({
+    mutationFn: deleteLink,
+    onSuccess: async () => {
+      setLinks((prev) => prev.filter((l) => l.id !== (deleteLinkConfirm?.id ?? "")))
+      setDeleteLinkConfirm(null)
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    }
+  })
+
   // ------- QUEBRAS DE LINHA: helpers -------
   const draftMdRef = useRef<string>("")
   const [editorMarkdown, setEditorMarkdown] = useState<string>("")
@@ -304,6 +388,14 @@ export default function EditProfileForm() {
       setEditorMarkdown(initial)
     }
   }, [editingArea])
+
+  useEffect(() => {
+    if (editingLink) {
+      setRemoveLinkCover(false)
+      setLinkCoverPreview(null)
+      setLinkCoverFile(null)
+    }
+  }, [editingLink])
 
   // ------------------------------------------
 
@@ -403,6 +495,41 @@ export default function EditProfileForm() {
           <h2 className="text-xl font-bold mb-4">Visual</h2>
         </div>
 
+        {/* Tema */}
+        <div className="mt-8">
+          <Label className="mb-2 text-2xl block font-bold">Tema</Label>
+          <div className="flex gap-6 items-center mb-8">
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                className="w-5 h-5"
+                name="theme"
+                value="classic"
+                checked={theme === "classic"}
+                onChange={async () => {
+                  setTheme("classic")
+                  try { await updateThemeMutation.mutateAsync("classic") } catch {}
+                }}
+              />
+              <span>Clássico</span>
+            </label>
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <input
+                type="radio"
+                className="w-5 h-5"
+                name="theme"
+                value="modern"
+                checked={theme === "modern"}
+                onChange={async () => {
+                  setTheme("modern")
+                  try { await updateThemeMutation.mutateAsync("modern") } catch {}
+                }}
+              />
+              <span>Moderno</span>
+            </label>
+          </div>
+        </div>
+
         {/* Cores */}
         <div className="flex items-center gap-4">
           <div>
@@ -415,9 +542,10 @@ export default function EditProfileForm() {
           </div>
         </div>
 
+
         {/* Foto de Perfil */}
-        <div className="w-full">
-          <Label className="mb-2 block font-bold">Foto de perfil</Label>
+        <div className="mt-8 w-full">
+          <Label className="text- center mb-2 block font-bold">Foto de perfil</Label>
           <div className="flex flex-col md:flex-row items-center gap-4">
             <div className="relative h-32 w-32 mb-4">
               <div className="h-full w-full overflow-hidden rounded-full ring-2 ring-zinc-800">
@@ -530,10 +658,10 @@ export default function EditProfileForm() {
         </div>
         <div>
           <Label htmlFor="aboutDescription" className="mb-2 block font-bold">Sobre mim</Label>
-          <div className="relative overflow-visible z-[1000]">
+          <div className="relative overflow-visible z-[1000] border border-zinc-800 bg-zinc-900/50 rounded-md">
             <MDXEditor
-              className="mdxeditor min-h-[350px] max-h-[65vh] overflow-visible"
-              contentEditableClassName="min-h-[350px] p-4 cursor-text !text-zinc-50 whitespace-pre-wrap"
+              className="mdxeditor min-h-[300px] max-h-[65vh] overflow-visible"
+              contentEditableClassName="min-h-[310px] p-4 cursor-text !text-zinc-50 whitespace-pre-wrap"
               markdown={aboutMarkdown}
               onChange={(md: string) => setAboutMarkdown(md)}
               plugins={[
@@ -713,6 +841,90 @@ export default function EditProfileForm() {
                     className="h-8 w-8"
                     onClick={() => setDeleteConfirm(a)}
                     aria-label="Excluir área"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Links */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold flex items-center gap-2"><LinkIcon className="w-4 h-4" /> Links</h2>
+            <Button type="button" variant="secondary" className="gap-2" onClick={() => createLinkMutation.mutate()}>
+              <Plus className="w-4 h-4" /> Novo link
+            </Button>
+          </div>
+          <div className="space-y-2">
+            {links.map((l, idx) => (
+              <div
+                key={l.id}
+                className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2"
+              >
+                <div className="flex items-center gap-2 w-full min-w-0">
+                  <span className="text-xs text-zinc-400 w-6 text-right hidden md:inline-block">{idx + 1}</span>
+                  <span className="text-sm truncate flex-1 min-w-0">{l.title} <span className="text-xs text-zinc-500">({l.url})</span></span>
+                </div>
+                <div className="flex items-center gap-1 w-full md:w-auto justify-end">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    disabled={idx === 0 || reorderLinksMutation.isPending}
+                    onClick={async () => {
+                      const next = [...links]
+                      const tmp = next[idx - 1]
+                      next[idx - 1] = next[idx]
+                      next[idx] = tmp
+                      setLinks(next)
+                      const order = next.map((it, i) => ({ id: it.id, position: i + 1 }))
+                      try { await reorderLinksMutation.mutateAsync(order) } catch { showToast("Falha ao reordenar links") }
+                    }}
+                    aria-label="Mover para cima"
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    disabled={idx === links.length - 1 || reorderLinksMutation.isPending}
+                    onClick={async () => {
+                      const next = [...links]
+                      const tmp = next[idx + 1]
+                      next[idx + 1] = next[idx]
+                      next[idx] = tmp
+                      setLinks(next)
+                      const order = next.map((it, i) => ({ id: it.id, position: i + 1 }))
+                      try { await reorderLinksMutation.mutateAsync(order) } catch { showToast("Falha ao reordenar links") }
+                    }}
+                    aria-label="Mover para baixo"
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="ghost"
+                    className="gap-2"
+                    onClick={() => { setEditingLink(l); setRemoveLinkCover(false) }}
+                    aria-label="Editar link"
+                  >
+                    <Pencil className="w-4 h-4" />
+                    <span className="hidden md:inline">Editar</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="destructive"
+                    className="h-8 w-8"
+                    onClick={() => setDeleteLinkConfirm(l)}
+                    aria-label="Excluir link"
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -917,6 +1129,118 @@ export default function EditProfileForm() {
         </DialogContent>
       </Dialog>
 
+      {/* Editar link */}
+      <Dialog open={!!editingLink} onOpenChange={(v) => !v && (setEditingLink(null), setRemoveLinkCover(false), setLinkCoverPreview(null))}>
+        <DialogContent className="overflow-visible w-full max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-300">Editar link</DialogTitle>
+          </DialogHeader>
+          {editingLink && (
+            <div className="space-y-3 text-zinc-300">
+              <div>
+                <Label className="mb-2 block">Título</Label>
+                <Input value={editingLink.title} onChange={(e) => setEditingLink({ ...editingLink, title: e.target.value })} />
+              </div>
+              <div>
+                <Label className="mb-2 block">URL</Label>
+                <Input value={editingLink.url} onChange={(e) => setEditingLink({ ...editingLink, url: e.target.value })} placeholder="https://" />
+              </div>
+              <div>
+                <Label className="mb-2 block">Descrição</Label>
+                <Textarea rows={4} value={editingLink.description ?? ""} onChange={(e) => setEditingLink({ ...editingLink, description: e.target.value })} />
+              </div>
+              <div className="flex flex-col gap-2 mt-2">
+                <Label className="mb-2 block">Capa</Label>
+                <div className="flex items-center gap-4">
+                  <div className="relative h-32 w-32 overflow-hidden rounded-md ring-2 ring-zinc-800">
+                    {(linkCoverPreview || (editingLink.coverImageUrl && !removeLinkCover)) ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={linkCoverPreview || (editingLink.coverImageUrl as string)} alt="Capa do link" className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="grid h-full w-full place-items-center bg-zinc-800 text-xs text-zinc-400">Capa</div>
+                    )}
+                    {(linkCoverPreview || (editingLink.coverImageUrl && !removeLinkCover)) && (
+                      <button
+                        type="button"
+                        className="absolute right-1 top-1 z-10 rounded-full border border-zinc-600 bg-zinc-900/80 p-1 text-zinc-200 shadow-md backdrop-blur hover:bg-zinc-800"
+                        onClick={() => { setLinkCoverFile(null); setLinkCoverPreview(null); setRemoveLinkCover(true) }}
+                        aria-label="Remover capa"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    )}
+                  </div>
+                  <label className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm cursor-pointer hover:bg-zinc-800">
+                    <Upload className="h-4 w-4" />
+                    <span>Enviar capa</span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0]
+                        if (!f) return
+                        setLinkCoverFile(f)
+                        setRemoveLinkCover(false)
+                        const url = URL.createObjectURL(f)
+                        setLinkCoverPreview((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url })
+                      }}
+                    />
+                  </label>
+                </div>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  onClick={async () => {
+                    if (!editingLink || linkSaving) return
+                    try {
+                      setLinkSaving(true)
+                      if (linkCoverFile) {
+                        const fd = new FormData()
+                        fd.set("id", editingLink.id)
+                        fd.set("title", editingLink.title)
+                        fd.set("description", editingLink.description ?? "")
+                        fd.set("url", editingLink.url)
+                        fd.set("cover", linkCoverFile)
+                        const res = await fetch("/api/links", { method: "PATCH", body: fd })
+                        if (!res.ok) { alert("Falha ao salvar link"); return }
+                        const data = await res.json()
+                        setLinks((prev) => prev.map((l) => (l.id === data.link.id ? data.link : l)))
+                        await qc.invalidateQueries({ queryKey: ["profile"] })
+                        await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+                        setLinkCoverFile(null)
+                        setLinkCoverPreview(null)
+                        setRemoveLinkCover(false)
+                        setEditingLink(null)
+                      } else {
+                        await patchLinkMutation.mutateAsync({
+                          ...editingLink,
+                          coverImageUrl: removeLinkCover ? null : editingLink.coverImageUrl,
+                        })
+                        await qc.invalidateQueries({ queryKey: ["profile"] })
+                        await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+                        setEditingLink(null)
+                        setRemoveLinkCover(false)
+                      }
+                    } finally {
+                      setLinkSaving(false)
+                    }
+                  }}
+                  className="gap-2 cursor-pointer"
+                  disabled={linkSaving || patchLinkMutation.isPending}
+                  aria-busy={linkSaving || patchLinkMutation.isPending}
+                >
+                  <Save className="w-4 h-4" /> {linkSaving || patchLinkMutation.isPending ? "Salvando..." : "Salvar alterações"}
+                </Button>
+                <Button variant="ghost" className="gap-2 cursor-pointer" onClick={() => setEditingLink(null)}>
+                  <X className="w-4 h-4" /> Fechar
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
       {/* Confirmar exclusão de área */}
       <Dialog open={!!deleteConfirm} onOpenChange={(v) => !v && setDeleteConfirm(null)}>
         <DialogContent>
@@ -942,6 +1266,38 @@ export default function EditProfileForm() {
                   disabled={deleteMutation.isPending}
                 >
                   {deleteMutation.isPending ? "Excluindo..." : "Excluir"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmar exclusão de link */}
+      <Dialog open={!!deleteLinkConfirm} onOpenChange={(v) => !v && setDeleteLinkConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir link</DialogTitle>
+          </DialogHeader>
+          {deleteLinkConfirm && (
+            <div className="space-y-3 text-zinc-300">
+              <p>Tem certeza que deseja excluir o link &quot;{deleteLinkConfirm.title}&quot;? Essa ação não pode ser desfeita.</p>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setDeleteLinkConfirm(null)} className="cursor-pointer">Cancelar</Button>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    try {
+                      await deleteLinkMutation.mutateAsync(deleteLinkConfirm.id)
+                      showToast("Link excluído")
+                    } catch {
+                      showToast("Falha ao excluir link")
+                    }
+                  }}
+                  className="cursor-pointer"
+                  disabled={deleteLinkMutation.isPending}
+                >
+                  {deleteLinkMutation.isPending ? "Excluindo..." : "Excluir"}
                 </Button>
               </div>
             </div>

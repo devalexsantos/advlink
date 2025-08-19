@@ -75,7 +75,7 @@ export function AreasCarousel({
                 key={area.id}
                 className="min-w-0 shrink-0 basis-full md:basis-1/3"
               >
-                <div className={`h-full rounded-xl border bg-white/5 p-4`} style={{ borderColor: `${text}33` }}>
+                <div className={`h-full rounded-xl border p-4`} style={{ borderColor: `${text}33` }}>
                     {area.coverImageUrl && (
                       <div className="mb-3 h-36 w-full overflow-hidden rounded-md bg-black/30">
                         {/* eslint-disable-next-line @next/next/no-img-element */}

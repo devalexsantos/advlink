@@ -27,19 +27,38 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
     where: { userId: profile.userId },
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
   })
+  const links = await prisma.links.findMany({
+    where: { userId: profile.userId },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+  })
   const address = profile.user.Address?.[0]
 
   const primary = profile.primaryColor || "#8B0000"
   const text = profile.textColor || "#FFFFFF"
-
+  const theme = profile.theme
   return (
-    <Theme02  
-    profile={profile} 
-    areas={areas} 
-    address={address} 
-    primary={primary} 
-    text={text} 
-  />
+    <div>
+      {theme === "modern" && (
+        <Theme02  
+          profile={profile} 
+          areas={areas} 
+          address={address} 
+          links={links}
+          primary={primary} 
+          text={text} 
+        />
+      )}
+      {theme === "classic" && (
+        <Theme03  
+        profile={profile} 
+        areas={areas} 
+        address={address} 
+        links={links}
+        primary={primary} 
+        text={text} 
+      />
+      )}
+    </div>
   )
 }
 

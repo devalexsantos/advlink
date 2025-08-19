@@ -9,12 +9,13 @@ export async function GET() {
   const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const [profile, areas, address] = await Promise.all([
+  const [profile, areas, address, links] = await Promise.all([
     prisma.profile.findUnique({ where: { userId } }),
     prisma.activityAreas.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     prisma.address.findFirst({ where: { userId } }),
+    prisma.links.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
   ])
-  return NextResponse.json({ profile, areas, address })
+  return NextResponse.json({ profile, areas, address, links })
 }
 
 export async function PATCH(req: Request) {
@@ -35,6 +36,7 @@ export async function PATCH(req: Request) {
   let avatarFile: File | undefined
   let coverFile: File | undefined
   let calendlyUrl: string | undefined
+  let theme: string | undefined
   // SEO
   let metaTitle: string | undefined
   let metaDescription: string | undefined
@@ -68,6 +70,7 @@ export async function PATCH(req: Request) {
     metaDescription = body.metaDescription
     keywords = body.keywords
     gtmContainerId = body.gtmContainerId
+    theme = body.theme
     removeAvatar = Boolean(body.removeAvatar)
     removeCover = Boolean(body.removeCover)
     addressPublic = body.addressPublic
@@ -94,6 +97,7 @@ export async function PATCH(req: Request) {
     metaDescription = String(form.get("metaDescription") ?? "") || undefined
     keywords = String(form.get("keywords") ?? "") || undefined
     gtmContainerId = String(form.get("gtmContainerId") ?? "") || undefined
+    theme = String(form.get("theme") ?? "") || undefined
     removeAvatar = String(form.get("removeAvatar") ?? "").toLowerCase() === "true"
     removeCover = String(form.get("removeCover") ?? "").toLowerCase() === "true"
     addressPublic = String(form.get("addressPublic") ?? "")
@@ -132,7 +136,10 @@ export async function PATCH(req: Request) {
       slug = `${desired}-${attempts}-${rand}`.slice(0, 60)
     }
   }
-  const slug = await validateOrGenerateSlug(publicName, slugInput)
+  let slug: string | undefined
+  if (slugInput !== undefined || (publicName && String(publicName).trim().length > 0)) {
+    slug = await validateOrGenerateSlug(publicName, slugInput)
+  }
 
   // Upload opcional do avatar
   let avatarUrl: string | null | undefined
@@ -206,6 +213,7 @@ export async function PATCH(req: Request) {
       metaDescription: nopt(metaDescription),
       keywords: nopt(keywords),
       gtmContainerId: nopt(gtmContainerId),
+      theme,
     },
     create: {
       userId,
@@ -225,6 +233,7 @@ export async function PATCH(req: Request) {
       metaDescription: nopt(metaDescription),
       keywords: nopt(keywords),
       gtmContainerId: nopt(gtmContainerId),
+      theme,
     },
   })
   // Upsert Address if any field provided (including boolean public)
