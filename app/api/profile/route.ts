@@ -9,13 +9,14 @@ export async function GET() {
   const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const [profile, areas, address, links] = await Promise.all([
+  const [profile, areas, address, links, gallery] = await Promise.all([
     prisma.profile.findUnique({ where: { userId } }),
     prisma.activityAreas.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     prisma.address.findFirst({ where: { userId } }),
     prisma.links.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+    prisma.gallery.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
   ])
-  return NextResponse.json({ profile, areas, address, links })
+  return NextResponse.json({ profile, areas, address, links, gallery })
 }
 
 export async function PATCH(req: Request) {

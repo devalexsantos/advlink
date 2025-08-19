@@ -82,8 +82,8 @@ export function Hero() {
           </div>
         </div>
         <div className="mt-8 flex flex-col sm:flex-row items-center gap-3">
-          <Link href="/onboarding" className="group inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-white hover:bg-blue-500 transition">
-            Testar grátis
+          <Link href="/profile/edit" className="group inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-white hover:bg-blue-500 transition">
+            Criar minha página
             <ArrowRight className="h-4 w-4 transition -translate-x-0 group-hover:translate-x-0.5" />
           </Link>
           <Link href="/login" className="inline-flex items-center gap-2 rounded-md border border-blue-500/40 bg-transparent px-6 py-3 text-blue-200 hover:bg-blue-500/10 transition">

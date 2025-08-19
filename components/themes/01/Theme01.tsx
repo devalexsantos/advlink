@@ -6,10 +6,31 @@ import { Calendar, Heart, HeartHandshake, Mail, MapPin, Phone, Scale } from "luc
 import Link from "next/link"
 import whatsAppIcon from "@/assets/icons/whatsapp-icon.svg"
 
+type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
+type Address = {
+  public?: boolean | null
+  street?: string | null
+  number?: string | null
+  complement?: string | null
+  neighborhood?: string | null
+  city?: string | null
+  state?: string | null
+  zipCode?: string | null
+}
+type Profile = {
+  publicName?: string | null
+  coverUrl?: string | null
+  avatarUrl?: string | null
+  whatsapp?: string | null
+  publicEmail?: string | null
+  publicPhone?: string | null
+  calendlyUrl?: string | null
+  aboutDescription?: string | null
+}
 type Props = {
-  profile: any
-  areas: any[]
-  address?: any
+  profile: Profile
+  areas: Area[]
+  address?: Address
   primary: string
   text: string
 }

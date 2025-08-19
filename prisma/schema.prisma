@@ -27,6 +27,7 @@ model User {
   updatedAt DateTime  @updatedAt
   Address   Address[]
   Links     Links[]
+  Gallery   Gallery[]
 }
 
 model Account {
@@ -77,7 +78,7 @@ model Profile {
   publicEmail      String?
   publicPhone      String?
   slug             String? @unique
-  primaryColor     String  @default("#8B0000")
+  primaryColor     String  @default("380000")
   secondaryColor   String  @default("#000000")
   textColor        String  @default("#FFFFFF")
   coverUrl         String?
@@ -116,6 +117,18 @@ model Links {
   title         String
   description   String?
   url           String
+  coverImageUrl String?
+  position      Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Gallery {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   coverImageUrl String?
   position      Int
 

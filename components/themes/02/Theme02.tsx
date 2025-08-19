@@ -2,12 +2,19 @@
 
 import { motion } from "framer-motion"
 import { AreasCarousel } from "@/app/adv/[slug]/AreasCarousel"
+import { GalleryCarousel } from "@/app/adv/[slug]/GalleryCarousel"
 import { marked } from "marked"
-import { Calendar, Heart, HeartHandshake, Link2, Mail, MapPin, Phone, Scale, SquareArrowOutUpRight } from "lucide-react"
+import { Calendar, Heart, HeartHandshake, Images, Link2, Mail, MapPin, Phone, Scale, SquareArrowOutUpRight } from "lucide-react"
 import Link from "next/link"
 import whatsAppIcon from "@/assets/icons/whatsapp-icon.svg"
 
-export default function Theme02({ profile, areas, address, links = [], primary, text }: any) {
+type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
+type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
+type GalleryItem = { id: string; coverImageUrl?: string | null }
+type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
+type Profile = { publicName?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null }
+
+export default function Theme02({ profile, areas, address, links = [], gallery = [], primary, text }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string }) {
   return (
     <div
       className="min-h-screen relative overflow-hidden"
@@ -158,6 +165,22 @@ export default function Theme02({ profile, areas, address, links = [], primary, 
         </motion.section>
       )}
 
+      {/* GALERIA */}
+      {Array.isArray(gallery) && gallery.length > 0 && (
+        <motion.section
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="relative z-10 px-6 py-16 text-center"
+        >
+          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3">
+            <Images className="w-10 h-10" /> Galeria
+          </h2>
+          <GalleryCarousel items={gallery} text={text} />
+        </motion.section>
+      )}
+
       {/* LINKS */}
       {Array.isArray(links) && links.length > 0 && (
         <motion.section
@@ -171,7 +194,7 @@ export default function Theme02({ profile, areas, address, links = [], primary, 
             <Link2 className="w-10 h-10" /> Links
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {links.map((l: any, idx: number) => (
+            {links.map((l: LinkItem, idx: number) => (
               <motion.div
                 key={l.id || idx}
                 initial={{ opacity: 0, y: 20 }}

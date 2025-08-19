@@ -7,8 +7,17 @@ import Theme02 from "@/components/themes/02/Theme02"
 
 type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
+type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
 type Profile = {
+  publicName?: string | null
+  coverUrl?: string | null
+  avatarUrl?: string | null
+  whatsapp?: string | null
+  publicEmail?: string | null
+  publicPhone?: string | null
+  calendlyUrl?: string | null
+  aboutDescription?: string | null
   primaryColor?: string | null
   textColor?: string | null
 }
@@ -18,9 +27,10 @@ type Props = {
   areas: Area[]
   address?: Address
   links?: LinkItem[]
+  gallery?: GalleryItem[]
 }
 
-export default function Preview02({ profile, areas, address, links = [] }: Props) {
+export default function Preview02({ profile, areas, address, links = [], gallery = [] }: Props) {
   const [mode, setMode] = useState<"desktop" | "mobile">("desktop")
   const containerStyle = useMemo(
     () => ({
@@ -46,7 +56,7 @@ export default function Preview02({ profile, areas, address, links = [] }: Props
       </div>
 
       <div className={`rounded-xl border border-zinc-800 bg-zinc-900/30 ${mode === "mobile" ? "[&_.min-w-0]:!basis-full [&_.shrink-0]:!basis-full" : ""}`} style={containerStyle}>
-        <Theme02 profile={profile} areas={areas} address={address} links={links} primary={primary} text={text} />
+        <Theme02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} primary={primary} text={text} />
       </div>
     </div>
   )

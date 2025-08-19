@@ -2,21 +2,19 @@
 
 import { motion } from "framer-motion"
 import { AreasCarousel } from "@/app/adv/[slug]/AreasCarousel"
+import { GalleryCarousel } from "@/app/adv/[slug]/GalleryCarousel"
 import { marked } from "marked"
-import { Calendar, Heart, HeartHandshake, Link2, Mail, MapPin, Phone, Scale } from "lucide-react"
+import { Calendar, Heart, HeartHandshake, Images,  Link2, Mail, MapPin, Phone, Scale, SquareArrowOutUpRight } from "lucide-react"
 import Link from "next/link"
 import whatsAppIcon from "@/assets/icons/whatsapp-icon.svg"
 
-type Props = {
-  profile: any
-  areas: any[]
-  address?: any
-  links?: any[]
-  primary: string
-  text: string
-}
+type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
+type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
+type GalleryItem = { id: string; coverImageUrl?: string | null }
+type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
+type Profile = { publicName?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null }
 
-export default function Theme03({ profile, areas, address, primary, text, links = [] }: Props) {
+export default function Theme03({ profile, areas, address, primary, text, links = [], gallery = [] }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string }) {
   return (
     <div
       className="min-h-screen relative overflow-hidden"
@@ -205,6 +203,28 @@ export default function Theme03({ profile, areas, address, primary, text, links 
         </motion.section>
       )}
 
+      {/* ====== GALERIA ====== */}
+      {Array.isArray(gallery) && gallery.length > 0 && (
+        <motion.section
+          initial={{ opacity: 0, y: 36 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, margin: "-80px" }}
+          transition={{ duration: 0.6 }}
+          className="relative z-10 px-6 py-16 text-center"
+        >
+          <div
+            className="mx-auto mb-8 h-[2px] w-24 rounded"
+            style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
+          />
+          <h2 className="mb-8 text-4xl md:text-5xl font-bold text-center font-serif flex items-center justify-center gap-3">
+            <Images className="w-10 h-10" /> Galeria
+          </h2>
+          <div className="max-w-6xl mx-auto">
+            <GalleryCarousel items={gallery} text={text} />
+          </div>
+        </motion.section>
+      )}
+
       {/* ====== LINKS ====== */}
       {Array.isArray(links) && links.length > 0 && (
         <motion.section
@@ -223,7 +243,7 @@ export default function Theme03({ profile, areas, address, primary, text, links 
             Links
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {links.map((l: any, idx: number) => (
+            {links.map((l: LinkItem, idx: number) => (
               <motion.div
                 key={l.id || idx}
                 initial={{ opacity: 0, y: 18 }}
@@ -252,10 +272,11 @@ export default function Theme03({ profile, areas, address, primary, text, links 
                       href={l.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center justify-center rounded-md px-4 py-2 font-medium border transition-colors"
+                      className="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 font-medium border transition-colors"
                       style={{ backgroundColor: primary, color: text, borderColor: `${text}38` }}
                     >
                       Visualizar
+                      <SquareArrowOutUpRight className="w-4 h-4" />
                     </a>
                   </div>
                 </div>

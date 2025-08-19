@@ -31,6 +31,10 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
     where: { userId: profile.userId },
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
   })
+  const gallery = await prisma.gallery.findMany({
+    where: { userId: profile.userId },
+    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+  })
   const address = profile.user.Address?.[0]
 
   const primary = profile.primaryColor || "#8B0000"
@@ -44,6 +48,7 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
           areas={areas} 
           address={address} 
           links={links}
+          gallery={gallery}
           primary={primary} 
           text={text} 
         />
@@ -54,6 +59,7 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
         areas={areas} 
         address={address} 
         links={links}
+        gallery={gallery}
         primary={primary} 
         text={text} 
       />

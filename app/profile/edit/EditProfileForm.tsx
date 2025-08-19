@@ -16,11 +16,7 @@ import "@mdxeditor/editor/style.css"
 import {
   toolbarPlugin,
   BoldItalicUnderlineToggles,
-  HighlightToggle,
-  StrikeThroughSupSubToggles,
-  ListsToggle,
   UndoRedo,
-  BlockTypeSelect,
   Separator,
   headingsPlugin,
   listsPlugin,
@@ -81,6 +77,7 @@ const profileEditSchema = z.object({
 type ProfileEditValues = z.infer<typeof profileEditSchema>
 type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null; position?: number }
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null; position?: number }
+type GalleryItem = { id: string; coverImageUrl?: string | null; position?: number }
 type AddressData = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
 type ProfileData = {
   publicName?: string | null
@@ -105,7 +102,7 @@ type ProfileData = {
 async function fetchProfile() {
   const res = await fetch("/api/profile", { cache: "no-store" })
   if (!res.ok) throw new Error("Falha ao carregar perfil")
-  return res.json() as Promise<{ profile: ProfileData | null; areas: Area[]; address?: AddressData; links: LinkItem[] }>
+  return res.json() as Promise<{ profile: ProfileData | null; areas: Area[]; address?: AddressData; links: LinkItem[]; gallery: GalleryItem[] }>
 }
 async function validateSlug(slug: string) {
   const res = await fetch("/api/profile/validate-slug", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) })
@@ -165,6 +162,25 @@ async function deleteLink(id: string) {
   return res.json() as Promise<{ ok: boolean }>
 }
 
+// Gallery API
+async function uploadGalleryPhoto(file: File) {
+  const fd = new FormData()
+  fd.set("cover", file)
+  const res = await fetch("/api/gallery", { method: "POST", body: fd })
+  if (!res.ok) throw new Error("Falha ao enviar foto")
+  return res.json() as Promise<{ item: GalleryItem }>
+}
+async function reorderGallery(order: { id: string; position: number }[]) {
+  const res = await fetch("/api/gallery", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ order }) })
+  if (!res.ok) throw new Error("Falha ao reordenar galeria")
+  return res.json() as Promise<{ ok: boolean }>
+}
+async function deleteGallery(id: string) {
+  const res = await fetch(`/api/gallery?id=${encodeURIComponent(id)}`, { method: "DELETE" })
+  if (!res.ok) throw new Error("Falha ao excluir foto da galeria")
+  return res.json() as Promise<{ ok: boolean }>
+}
+
 export default function EditProfileForm() {
   const qc = useQueryClient()
   const { data, isLoading } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile })
@@ -196,6 +212,7 @@ export default function EditProfileForm() {
 
   const [areas, setAreas] = useState<Area[]>([])
   const [links, setLinks] = useState<LinkItem[]>([])
+  const [gallery, setGallery] = useState<GalleryItem[]>([])
   const [editingArea, setEditingArea] = useState<Area | null>(null)
   const [editingLink, setEditingLink] = useState<LinkItem | null>(null)
   const [areaCoverFile, setAreaCoverFile] = useState<File | null>(null)
@@ -222,6 +239,8 @@ export default function EditProfileForm() {
   const [removeLinkCover, setRemoveLinkCover] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<Area | null>(null)
   const [deleteLinkConfirm, setDeleteLinkConfirm] = useState<LinkItem | null>(null)
+  const [deleteGalleryConfirm, setDeleteGalleryConfirm] = useState<GalleryItem | null>(null)
+  const [galleryUploading, setGalleryUploading] = useState(false)
   const { showToast } = useToast()
 
   useEffect(() => {
@@ -260,6 +279,7 @@ export default function EditProfileForm() {
     setInitialSlug(currentSlug)
     setAreas(data.areas ?? [])
     setLinks((data as unknown as { links?: LinkItem[] }).links ?? [])
+    setGallery((data as unknown as { gallery?: GalleryItem[] }).gallery ?? [])
     // Carrega "Sobre mim" no MDX com quebras preservadas (decodificando entidades)
     const rawAbout = p.aboutDescription ?? ""
     const initialAbout = decodeEntities(rawAbout)
@@ -352,6 +372,34 @@ export default function EditProfileForm() {
     onSuccess: async () => {
       setLinks((prev) => prev.filter((l) => l.id !== (deleteLinkConfirm?.id ?? "")))
       setDeleteLinkConfirm(null)
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    }
+  })
+
+  // Gallery mutations
+  const uploadGalleryMutation = useMutation({
+    mutationFn: uploadGalleryPhoto,
+    onMutate: () => setGalleryUploading(true),
+    onSettled: () => setGalleryUploading(false),
+    onSuccess: async (res) => {
+      setGallery((prev) => [...prev, res.item])
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    }
+  })
+  const reorderGalleryMutation = useMutation({
+    mutationFn: reorderGallery,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    }
+  })
+  const deleteGalleryMutation = useMutation({
+    mutationFn: deleteGallery,
+    onSuccess: async () => {
+      setGallery((prev) => prev.filter((g) => g.id !== (deleteGalleryConfirm?.id ?? "")))
+      setDeleteGalleryConfirm(null)
       await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
     }
@@ -850,6 +898,103 @@ export default function EditProfileForm() {
           </div>
         </div>
 
+        {/* Galeria */}
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-lg font-semibold">Galeria</h2>
+            <label className={`inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 cursor-pointer ${galleryUploading ? 'opacity-50 pointer-events-none' : 'hover:bg-zinc-100'}`}>
+              <Upload className="w-4 h-4" />
+              <span>Nova foto</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={galleryUploading}
+                onChange={async (e) => {
+                  const inputEl = e.currentTarget as HTMLInputElement
+                  const f = e.target.files?.[0]
+                  if (!f) return
+                  try {
+                    await uploadGalleryMutation.mutateAsync(f)
+                    showToast('Foto adicionada à galeria')
+                  } catch {
+                    showToast('Falha ao enviar foto')
+                  } finally {
+                    if (inputEl) inputEl.value = ''
+                  }
+                }}
+              />
+            </label>
+          </div>
+          <div className="space-y-2">
+            {gallery.map((g, idx) => (
+              <div
+                key={g.id}
+                className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2"
+              >
+                <div className="flex items-center gap-3 w-full min-w-0">
+                  <span className="text-xs text-zinc-400 w-6 text-right hidden md:inline-block">{idx + 1}</span>
+                  <div className="h-10 w-10 rounded overflow-hidden ring-1 ring-zinc-800 bg-zinc-800 shrink-0">
+                    {g.coverImageUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={g.coverImageUrl} alt="Thumb" className="h-full w-full object-cover" />
+                    ) : null}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 w-full md:w-auto justify-end">
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    disabled={idx === 0 || reorderGalleryMutation.isPending}
+                    onClick={async () => {
+                      const next = [...gallery]
+                      const tmp = next[idx - 1]
+                      next[idx - 1] = next[idx]
+                      next[idx] = tmp
+                      setGallery(next)
+                      const order = next.map((it, i) => ({ id: it.id as string, position: i + 1 }))
+                      try { await reorderGalleryMutation.mutateAsync(order) } catch { showToast('Falha ao reordenar galeria') }
+                    }}
+                    aria-label="Mover para cima"
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    disabled={idx === gallery.length - 1 || reorderGalleryMutation.isPending}
+                    onClick={async () => {
+                      const next = [...gallery]
+                      const tmp = next[idx + 1]
+                      next[idx + 1] = next[idx]
+                      next[idx] = tmp
+                      setGallery(next)
+                      const order = next.map((it, i) => ({ id: it.id as string, position: i + 1 }))
+                      try { await reorderGalleryMutation.mutateAsync(order) } catch { showToast('Falha ao reordenar galeria') }
+                    }}
+                    aria-label="Mover para baixo"
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="destructive"
+                    className="h-8 w-8"
+                    onClick={() => setDeleteGalleryConfirm(g)}
+                    aria-label="Excluir foto"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
         {/* Links */}
         <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
           <div className="mb-4 flex items-center justify-between">
@@ -1298,6 +1443,38 @@ export default function EditProfileForm() {
                   disabled={deleteLinkMutation.isPending}
                 >
                   {deleteLinkMutation.isPending ? "Excluindo..." : "Excluir"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmar exclusão de foto da galeria */}
+      <Dialog open={!!deleteGalleryConfirm} onOpenChange={(v) => !v && setDeleteGalleryConfirm(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Excluir foto</DialogTitle>
+          </DialogHeader>
+          {deleteGalleryConfirm && (
+            <div className="space-y-3 text-zinc-300">
+              <p>Tem certeza que deseja excluir esta foto da galeria? Essa ação não pode ser desfeita.</p>
+              <div className="flex justify-end gap-2">
+                <Button variant="ghost" onClick={() => setDeleteGalleryConfirm(null)} className="cursor-pointer">Cancelar</Button>
+                <Button
+                  variant="destructive"
+                  onClick={async () => {
+                    try {
+                      await deleteGalleryMutation.mutateAsync(deleteGalleryConfirm.id as string)
+                      showToast("Foto excluída")
+                    } catch {
+                      showToast("Falha ao excluir foto")
+                    }
+                  }}
+                  className="cursor-pointer"
+                  disabled={deleteGalleryMutation.isPending}
+                >
+                  {deleteGalleryMutation.isPending ? "Excluindo..." : "Excluir"}
                 </Button>
               </div>
             </div>
