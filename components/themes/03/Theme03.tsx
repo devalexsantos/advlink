@@ -7,14 +7,15 @@ import { marked } from "marked"
 import { Calendar, Heart, HeartHandshake, Images,  Link2, Mail, MapPin, Phone, Scale, SquareArrowOutUpRight } from "lucide-react"
 import Link from "next/link"
 import whatsAppIcon from "@/assets/icons/whatsapp-icon.svg"
+import instagramIcon from "@/assets/icons/instagram-icon.svg"
 
 type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
-type Profile = { publicName?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null }
+type Profile = { publicName?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null }
 
-export default function Theme03({ profile, areas, address, primary, text, links = [], gallery = [] }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string }) {
+export default function Theme03({ profile, areas, address, primary, text, secondary, links = [], gallery = [] }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string }) {
   return (
     <div
       className="min-h-screen relative overflow-hidden"
@@ -99,7 +100,7 @@ export default function Theme03({ profile, areas, address, primary, text, links 
           </motion.div>
 
           {profile.publicName && (
-            <h1 className="mt-5 text-3xl md:text-5xl font-extrabold tracking-tight font-serif">
+            <h1 className="mt-5 text-3xl md:text-5xl font-extrabold tracking-tight font-serif" style={{ color: text }}>
               {profile.publicName}
             </h1>
           )}
@@ -120,10 +121,19 @@ export default function Theme03({ profile, areas, address, primary, text, links 
                 rel="noreferrer"
                 whileHover={{ y: -2, scale: 1.04 }}
                 whileTap={{ scale: 0.96 }}
-                className="rounded-full p-2 border"
-                style={{ borderColor: `${text}38`, backgroundColor: `${text}08` }}
+             >
+                <img src={whatsAppIcon.src} alt="WhatsApp" className="w-12 h-12" />
+              </motion.a>
+            )}
+            {profile.instagramUrl && (
+              <motion.a
+                href={profile.instagramUrl}
+                target="_blank"
+                rel="noreferrer"
+                whileHover={{ y: -2, scale: 1.04 }}
+                whileTap={{ scale: 0.96 }}
               >
-                <img src={whatsAppIcon.src} alt="WhatsApp" className="w-10 h-10" />
+                <img src={instagramIcon.src} alt="Instagram" className="w-12 h-12" />
               </motion.a>
             )}
             {profile.publicEmail && (
@@ -165,13 +175,14 @@ export default function Theme03({ profile, areas, address, primary, text, links 
             className="mx-auto mb-8 h-[2px] w-24 rounded"
             style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
           />
-          <h2 className="mb-8 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif">
-            <Scale className="w-10 h-10" /> Serviços
+          <h2 className="mb-8 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif" style={{ color: secondary }}>
+            <Scale className="w-10 h-10" style={{ color: secondary }} /> Serviços
           </h2>
           <AreasCarousel
             areas={areas}
             primary={primary}
             text={text}
+            secondary={secondary}
             whatsapp={profile.whatsapp}
             publicPhone={profile.publicPhone}
             publicEmail={profile.publicEmail}
@@ -188,8 +199,8 @@ export default function Theme03({ profile, areas, address, primary, text, links 
           transition={{ duration: 0.6 }}
           className="relative z-10 px-6 py-16 max-w-5xl mx-auto text-center"
         >
-          <h2 className="mb-6 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif">
-            <HeartHandshake className="w-10 h-10" /> Sobre
+          <h2 className="mb-6 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif" style={{ color: secondary }}>
+            <HeartHandshake className="w-10 h-10" style={{ color: secondary }} /> Sobre
           </h2>
           <div
             className="rounded-2xl p-6 md:p-8 backdrop-blur-sm shadow-[0_20px_60px_rgba(0,0,0,0.35)] border"
@@ -216,11 +227,11 @@ export default function Theme03({ profile, areas, address, primary, text, links 
             className="mx-auto mb-8 h-[2px] w-24 rounded"
             style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
           />
-          <h2 className="mb-8 text-4xl md:text-5xl font-bold text-center font-serif flex items-center justify-center gap-3">
-            <Images className="w-10 h-10" /> Galeria
+          <h2 className="mb-8 text-4xl md:text-5xl font-bold text-center font-serif flex items-center justify-center gap-3" style={{ color: secondary }}>
+            <Images className="w-10 h-10" style={{ color: secondary }} /> Galeria
           </h2>
           <div className="max-w-6xl mx-auto">
-            <GalleryCarousel items={gallery} text={text} />
+            <GalleryCarousel items={gallery} text={text} secondary={secondary} />
           </div>
         </motion.section>
       )}
@@ -238,8 +249,8 @@ export default function Theme03({ profile, areas, address, primary, text, links 
             className="mx-auto mb-8 h-[2px] w-24 rounded"
             style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
           />
-          <h2 className="mb-8 text-4xl md:text-5xl font-bold text-center font-serif flex items-center justify-center gap-3">
-            <Link2 className="w-10 h-10" />
+          <h2 className="mb-8 text-4xl md:text-5xl font-bold text-center font-serif flex items-center justify-center gap-3" style={{ color: secondary }}>
+            <Link2 className="w-10 h-10" style={{ color: secondary }} />
             Links
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -295,8 +306,8 @@ export default function Theme03({ profile, areas, address, primary, text, links 
           transition={{ duration: 0.6 }}
           className="relative z-10 px-6 py-16 text-center"
         >
-          <h2 className="mb-6 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif">
-            <Calendar className="w-10 h-10" /> Agende uma conversa
+          <h2 className="mb-6 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif" style={{ color: secondary }}>
+            <Calendar className="w-10 h-10" style={{ color: secondary }} /> Agende uma conversa
           </h2>
           <div
             className="max-w-6xl mx-auto rounded-2xl overflow-hidden border shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
@@ -316,8 +327,8 @@ export default function Theme03({ profile, areas, address, primary, text, links 
           transition={{ duration: 0.6 }}
           className="relative z-10 px-6 pb-16 py-10 text-center"
         >
-          <h2 className="mb-4 text-3xl md:text-4xl font-bold flex items-center justify-center gap-2 font-serif">
-            <MapPin className="w-9 h-9" />
+          <h2 className="mb-4 text-3xl md:text-4xl font-bold flex items-center justify-center gap-2 font-serif" style={{ color: secondary }}>
+            <MapPin className="w-9 h-9" style={{ color: secondary }} />
             Endereço
           </h2>
           <p className="mb-6 text-lg opacity-90">

@@ -73,13 +73,14 @@ model Profile {
 
   avatarUrl        String?
   whatsapp         String?
+  instagramUrl     String?
   publicName       String?
   aboutDescription String?
   publicEmail      String?
   publicPhone      String?
   slug             String? @unique
   primaryColor     String  @default("380000")
-  secondaryColor   String  @default("#000000")
+  secondaryColor   String  @default("#e8e8e8")
   textColor        String  @default("#FFFFFF")
   coverUrl         String?
   calendlyUrl      String?

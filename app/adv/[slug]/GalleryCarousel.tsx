@@ -12,7 +12,7 @@ type GalleryItem = {
   coverImageUrl?: string | null
 }
 
-export function GalleryCarousel({ items, text }: { items: GalleryItem[]; text: string }) {
+export function GalleryCarousel({ items, text, secondary }: { items: GalleryItem[]; text: string; secondary: string }) {
   const [emblaRef, emblaApi] = useEmblaCarousel({ align: "start", loop: true, skipSnaps: false })
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [scrollSnaps, setScrollSnaps] = useState<number[]>([])
@@ -93,7 +93,7 @@ export function GalleryCarousel({ items, text }: { items: GalleryItem[]; text: s
           <DialogContent className="w-auto max-w-[92vw] p-0 bg-transparent border-none shadow-none">
             <DialogHeader>
               <VisuallyHidden>
-                <DialogTitle>Visualização da imagem</DialogTitle>
+                <DialogTitle style={{ color: secondary }}>Visualização da imagem</DialogTitle>
               </VisuallyHidden>
             </DialogHeader>
             <button

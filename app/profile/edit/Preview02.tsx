@@ -43,6 +43,7 @@ export default function Preview02({ profile, areas, address, links = [], gallery
 
   const primary = profile.primaryColor || "#8B0000"
   const text = profile.textColor || "#FFFFFF"
+  const secondary = (profile as { secondaryColor?: string | null }).secondaryColor || "#FFFFFF"
 
   return (
     <div className="w-full overflow-y-scroll h-screen">
@@ -56,7 +57,7 @@ export default function Preview02({ profile, areas, address, links = [], gallery
       </div>
 
       <div className={`rounded-xl border border-zinc-800 bg-zinc-900/30 ${mode === "mobile" ? "[&_.min-w-0]:!basis-full [&_.shrink-0]:!basis-full" : ""}`} style={containerStyle}>
-        <Theme02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} primary={primary} text={text} />
+        <Theme02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} primary={primary} text={text} secondary={secondary} />
       </div>
     </div>
   )

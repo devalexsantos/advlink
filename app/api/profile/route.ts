@@ -30,6 +30,7 @@ export async function PATCH(req: Request) {
   let publicEmail = ""
   let publicPhone: string | undefined
   let whatsapp: string | undefined
+  let instagramUrl: string | undefined
   let slugInput: string | undefined
   let primaryColor: string | undefined
   let secondaryColor: string | undefined
@@ -62,6 +63,7 @@ export async function PATCH(req: Request) {
     publicEmail = body.publicEmail
     publicPhone = body.publicPhone
     whatsapp = body.whatsapp
+    instagramUrl = body.instagramUrl
     slugInput = body.slug
     primaryColor = body.primaryColor
     secondaryColor = body.secondaryColor
@@ -89,6 +91,7 @@ export async function PATCH(req: Request) {
     publicEmail = String(form.get("publicEmail") ?? "")
     publicPhone = String(form.get("publicPhone") ?? "")
     whatsapp = String(form.get("whatsapp") ?? "")
+    instagramUrl = String(form.get("instagramUrl") ?? "")
     slugInput = String(form.get("slug") ?? "") || undefined
     primaryColor = String(form.get("primaryColor") ?? "") || undefined
     secondaryColor = String(form.get("secondaryColor") ?? "") || undefined
@@ -195,6 +198,17 @@ export async function PATCH(req: Request) {
     return v
   }
 
+  // Validate Instagram URL if provided
+  function validateInstagram(url?: string) {
+    const v = nopt(url)
+    if (v == null) return v
+    const ok = /^https:\/\/(www\.)?instagram\.com\//i.test(v)
+    if (!ok) {
+      throw NextResponse.json({ error: "instagramUrl inválida. Use https://instagram.com/..." }, { status: 400 })
+    }
+    return v
+  }
+
   const updated = await prisma.profile.upsert({
     where: { userId },
     update: {
@@ -203,6 +217,7 @@ export async function PATCH(req: Request) {
       publicEmail: nopt(publicEmail),
       publicPhone: nopt(publicPhone),
       whatsapp: nopt(whatsapp),
+      instagramUrl: validateInstagram(instagramUrl),
       avatarUrl,
       slug,
       primaryColor,
@@ -223,6 +238,7 @@ export async function PATCH(req: Request) {
       publicEmail: nopt(publicEmail),
       publicPhone: nopt(publicPhone),
       whatsapp: nopt(whatsapp),
+      instagramUrl: validateInstagram(instagramUrl),
       avatarUrl,
       slug,
       primaryColor,

@@ -48,6 +48,12 @@ const profileEditSchema = z.object({
     .string()
     .optional()
     .or(z.literal("").transform(() => undefined)),
+  instagramUrl: z
+    .string()
+    .url("Informe uma URL válida.")
+    .regex(/^https:\/\/(www\.)?instagram\.com\//i, "A URL deve iniciar com https://instagram.com/")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   calendlyUrl: z
     .string()
     .url("Informe uma URL válida.")
@@ -85,10 +91,12 @@ type ProfileData = {
   publicEmail?: string | null
   publicPhone?: string | null
   whatsapp?: string | null
+  instagramUrl?: string | null
   calendlyUrl?: string | null
   avatarUrl?: string | null
   coverUrl?: string | null
   primaryColor?: string | null
+  secondaryColor?: string | null
   textColor?: string | null
   slug?: string | null
   metaTitle?: string | null
@@ -193,6 +201,7 @@ export default function EditProfileForm() {
       publicEmail: "",
       publicPhone: "",
       whatsapp: "",
+      instagramUrl: "",
       calendlyUrl: "",
       metaTitle: "",
       metaDescription: "",
@@ -227,6 +236,7 @@ export default function EditProfileForm() {
   const [removeCover, setRemoveCover] = useState<boolean>(false)
   const [areaCoverGenerating, setAreaCoverGenerating] = useState<boolean>(false)
   const [primaryColor, setPrimaryColor] = useState<string>("#8B0000")
+  const [secondaryColor, setSecondaryColor] = useState<string>("#FFFFFF")
   const [textColor, setTextColor] = useState<string>("#FFFFFF")
   const [theme, setTheme] = useState<"modern" | "classic">("modern")
   const [slugInput, setSlugInput] = useState("")
@@ -253,6 +263,7 @@ export default function EditProfileForm() {
       publicEmail: p.publicEmail ?? "",
       publicPhone: p.publicPhone ?? "",
       whatsapp: p.whatsapp ?? "",
+      instagramUrl: p.instagramUrl ?? "",
       calendlyUrl: p.calendlyUrl ?? "",
       metaTitle: p.metaTitle ?? "",
       metaDescription: p.metaDescription ?? "",
@@ -272,6 +283,7 @@ export default function EditProfileForm() {
     if (p.coverUrl) setCoverPreviewUrl(p.coverUrl as string)
     setRemoveCover(false)
     setPrimaryColor((p.primaryColor as string) ?? "#8B0000")
+    setSecondaryColor((p.secondaryColor as string) ?? "#FFFFFF")
     setTextColor((p.textColor as string) ?? "#FFFFFF")
     setTheme(((p.theme as string) === "classic" ? "classic" : "modern"))
     const currentSlug = (p.slug as string) ?? ""
@@ -459,6 +471,7 @@ export default function EditProfileForm() {
     if (values.publicEmail) fd.set("publicEmail", values.publicEmail)
     if (values.publicPhone) fd.set("publicPhone", values.publicPhone)
     if (values.whatsapp) fd.set("whatsapp", values.whatsapp)
+    fd.set("instagramUrl", values.instagramUrl ?? "")
     if (values.calendlyUrl) fd.set("calendlyUrl", values.calendlyUrl)
     if (values.metaTitle) fd.set("metaTitle", values.metaTitle)
     if (values.metaDescription) fd.set("metaDescription", values.metaDescription)
@@ -473,6 +486,7 @@ export default function EditProfileForm() {
     if (values.city) fd.set("city", values.city)
     if (values.state) fd.set("state", values.state)
     fd.set("primaryColor", primaryColor)
+    fd.set("secondaryColor", secondaryColor)
     fd.set("textColor", textColor)
     if (slugInput) fd.set("slug", slugInput)
     if (removeAvatar) {
@@ -583,6 +597,10 @@ export default function EditProfileForm() {
           <div>
             <Label htmlFor="primaryColor" className="mb-2 block font-bold">Cor Principal</Label>
             <input id="primaryColor" type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="h-20 w-20 border border-zinc-800 bg-zinc-900"/>
+          </div>
+          <div>
+            <Label htmlFor="secondaryColor" className="mb-2 block font-bold">Cor de Títulos</Label>
+            <input id="secondaryColor" type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="h-20 w-20 border border-zinc-800 bg-zinc-900"/>
           </div>
           <div>
             <Label htmlFor="textColor" className="mb-2 block font-bold">Cor do Texto</Label>
@@ -706,7 +724,7 @@ export default function EditProfileForm() {
         </div>
         <div>
           <Label htmlFor="aboutDescription" className="mb-2 block font-bold">Sobre mim</Label>
-          <div className="relative overflow-visible z-[1000] border border-zinc-800 bg-zinc-900/50 rounded-md">
+          <div className="relative overflow-visible border border-zinc-800 bg-zinc-900/50 rounded-md">
             <MDXEditor
               className="mdxeditor min-h-[300px] max-h-[65vh] overflow-visible"
               contentEditableClassName="min-h-[310px] p-4 cursor-text !text-zinc-50 whitespace-pre-wrap"
@@ -741,10 +759,15 @@ export default function EditProfileForm() {
             <Label htmlFor="publicPhone" className="mb-2 block font-bold">Telefone</Label>
             <Input id="publicPhone" {...register("publicPhone")} />
           </div>
-          {/* WhatsApp */}
+          {/* WhatsApp & Instagram */}
           <div>
             <Label htmlFor="whatsapp" className="mb-2 block">WhatsApp</Label>
-            <Input id="whatsapp" {...register("whatsapp")} />
+            <Input id="whatsapp" placeholder="(00) 00000-0000" {...register("whatsapp")} />
+          </div>
+          <div>
+            <Label htmlFor="instagramUrl" className="mb-2 block">Instagram URL</Label>
+            <Input id="instagramUrl" placeholder="https://instagram.com/seu_usuario" {...register("instagramUrl")} />
+            {errors.instagramUrl && <p className="mt-1 text-sm text-red-400">{errors.instagramUrl.message}</p>}
           </div>
         </div>
 
@@ -1110,10 +1133,18 @@ export default function EditProfileForm() {
       </form>
 
       <Dialog open={!!editingArea} onOpenChange={(v) => !v && (setEditingArea(null), setRemoveAreaCover(false), setAreaCoverPreview(null), setAreaCoverGenerating(false))}>
-        <DialogContent className="overflow-visible w-full max-w-6xl">
+        <DialogContent className="w-full max-w-6xl max-h-[80vh] overflow-auto">
           <DialogHeader>
             <DialogTitle className="text-zinc-300">Editar área</DialogTitle>
           </DialogHeader>
+          <button
+            type="button"
+            onClick={() => setEditingArea(null)}
+            aria-label="Fechar modal"
+            className="absolute right-3 top-3 z-20 rounded-full bg-white text-zinc-900 p-2 shadow-md border border-zinc-300 hover:bg-zinc-100"
+          >
+            <X className="w-4 h-4" />
+          </button>
           {editingArea && (
             <div className="space-y-3 text-zinc-300">
               <div>
@@ -1194,10 +1225,10 @@ export default function EditProfileForm() {
                     Estamos gerando sua descrição com iA…
                   </div>
                 ) : (
-                  <div className="relative overflow-visible z-[1000]">
+                  <div className="relative z-[1000] max-h-[150px] md:max-h-[55vh] overflow-auto">
                     <MDXEditor
-                      className="mdxeditor min-h-[350px] max-h-[65vh] overflow-visible"
-                      contentEditableClassName="min-h-[350px] p-4 cursor-text !text-zinc-50 whitespace-pre-wrap"
+                      className="mdxeditor min-h-[300px] max-h-[150px] md:max-h-[55vh] overflow-auto"
+                      contentEditableClassName="min-h-[300px] p-4 cursor-text !text-zinc-50 whitespace-pre-wrap"
                       markdown={editorMarkdown}
                       onChange={(md: string) => { draftMdRef.current = md; setEditorMarkdown(md) }}
                       plugins={[
@@ -1280,6 +1311,14 @@ export default function EditProfileForm() {
           <DialogHeader>
             <DialogTitle className="text-zinc-300">Editar link</DialogTitle>
           </DialogHeader>
+          <button
+            type="button"
+            onClick={() => setEditingLink(null)}
+            aria-label="Fechar modal"
+            className="absolute right-3 top-3 z-20 rounded-full bg-white text-zinc-900 p-2 shadow-md border border-zinc-300 hover:bg-zinc-100"
+          >
+            <X className="w-4 h-4" />
+          </button>
           {editingLink && (
             <div className="space-y-3 text-zinc-300">
               <div>

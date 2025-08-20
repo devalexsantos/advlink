@@ -39,6 +39,7 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
 
   const primary = profile.primaryColor || "#8B0000"
   const text = profile.textColor || "#FFFFFF"
+  const secondary = profile.secondaryColor || "#FFFFFF"
   const theme = profile.theme
   return (
     <div>
@@ -51,6 +52,7 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
           gallery={gallery}
           primary={primary} 
           text={text} 
+          secondary={secondary}
         />
       )}
       {theme === "classic" && (
@@ -62,6 +64,7 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
         gallery={gallery}
         primary={primary} 
         text={text} 
+        secondary={secondary}
       />
       )}
     </div>

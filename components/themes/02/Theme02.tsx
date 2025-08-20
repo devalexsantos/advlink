@@ -7,14 +7,15 @@ import { marked } from "marked"
 import { Calendar, Heart, HeartHandshake, Images, Link2, Mail, MapPin, Phone, Scale, SquareArrowOutUpRight } from "lucide-react"
 import Link from "next/link"
 import whatsAppIcon from "@/assets/icons/whatsapp-icon.svg"
+import instagramIcon from "@/assets/icons/instagram-icon.svg"
 
 type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
-type Profile = { publicName?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null }
+type Profile = { publicName?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null }
 
-export default function Theme02({ profile, areas, address, links = [], gallery = [], primary, text }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string }) {
+export default function Theme02({ profile, areas, address, links = [], gallery = [], primary, text, secondary }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string }) {
   return (
     <div
       className="min-h-screen relative overflow-hidden"
@@ -78,7 +79,7 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
           </motion.div>
 
           {profile.publicName && (
-            <h1 className="mt-6 text-4xl md:text-5xl font-extrabold tracking-tight">{profile.publicName}</h1>
+            <h1 className="mt-6 text-4xl md:text-5xl font-extrabold tracking-tight" style={{ color: text }}>{profile.publicName}</h1>
           )}
 
           {/* Socials */}
@@ -92,6 +93,18 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
                 whileTap={{ scale: 0.96 }}
               >
                 <img src={whatsAppIcon.src} alt="WhatsApp" className="w-12 h-12" />
+              </motion.a>
+            )}
+
+            {profile.instagramUrl && (
+              <motion.a
+                href={profile.instagramUrl}
+                target="_blank"
+                rel="noreferrer"
+                whileHover={{ scale: 1.08 }}
+                whileTap={{ scale: 0.96 }}
+              >
+                <img src={instagramIcon.src} alt="Instagram" className="w-12 h-12" />
               </motion.a>
             )}
 
@@ -131,13 +144,14 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
           transition={{ duration: 0.8 }}
           className="relative z-10 px-6 py-16 text-center"
         >
-          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3">
-            <Scale className="w-10 h-10" /> Serviços
+          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            <Scale className="w-10 h-10" style={{ color: secondary }} /> Serviços
           </h2>
           <AreasCarousel
             areas={areas}
             primary={primary}
             text={text}
+            secondary={secondary}
             whatsapp={profile.whatsapp}
             publicPhone={profile.publicPhone}
             publicEmail={profile.publicEmail}
@@ -153,8 +167,8 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
           transition={{ duration: 0.8 }}
           className="relative z-10 px-6 py-16 max-w-5xl mx-auto text-center"
         >
-          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3">
-            <HeartHandshake className="w-10 h-10" /> Sobre
+          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            <HeartHandshake className="w-10 h-10" style={{ color: secondary }} /> Sobre
           </h2>
           <div className="rounded-2xl p-6 backdrop-blur-md bg-white/10 shadow-lg">
             <div
@@ -174,10 +188,10 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
           transition={{ duration: 0.8 }}
           className="relative z-10 px-6 py-16 text-center"
         >
-          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3">
-            <Images className="w-10 h-10" /> Galeria
+          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            <Images className="w-10 h-10" style={{ color: secondary }} /> Galeria
           </h2>
-          <GalleryCarousel items={gallery} text={text} />
+          <GalleryCarousel items={gallery} text={text} secondary={secondary} />
         </motion.section>
       )}
 
@@ -190,8 +204,8 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
           transition={{ duration: 0.8 }}
           className="relative z-10 px-6 py-16 max-w-6xl mx-auto"
         >
-          <h2 className="mb-8 text-5xl font-bold text-center flex items-center justify-center gap-3">
-            <Link2 className="w-10 h-10" /> Links
+          <h2 className="mb-8 text-5xl font-bold text-center flex items-center justify-center gap-3" style={{ color: secondary }}>
+            <Link2 className="w-10 h-10" style={{ color: secondary }} /> Links
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {links.map((l: LinkItem, idx: number) => (
@@ -245,8 +259,8 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
           transition={{ duration: 0.8 }}
           className="relative z-10 px-6 py-16 text-center"
         >
-          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3">
-            <Calendar className="w-10 h-10" /> Agende uma conversa
+          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            <Calendar className="w-10 h-10" style={{ color: secondary }} /> Agende uma conversa
           </h2>
           <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-lg">
             <iframe src={profile.calendlyUrl} width="100%" height="750" frameBorder="0" />
@@ -262,8 +276,8 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
           transition={{ duration: 0.8 }}
           className="relative z-10 px-6 py-16 text-center"
         >
-          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3">
-            <MapPin className="w-10 h-10" /> Endereço
+          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            <MapPin className="w-10 h-10" style={{ color: secondary }} /> Endereço
           </h2>
           <p className="mb-6 text-lg">
             {[address.street, address.number].filter(Boolean).join(", ")} - {address.city}, {address.state}

@@ -47,6 +47,11 @@ export async function POST(req: Request) {
     }
 
     // userId garantido acima
+    // Garante que o usuário exista para evitar violação de FK no Profile
+    const userExists = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } })
+    if (!userExists) {
+      await prisma.user.create({ data: { id: userId } })
+    }
 
     // 1) Gera descrições com OpenAI
     const titles = Array.from(new Set(areas ?? [])).filter(Boolean)

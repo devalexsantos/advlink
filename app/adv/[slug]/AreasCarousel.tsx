@@ -22,6 +22,7 @@ export function AreasCarousel({
   areas,
   primary,
   text,
+  secondary,
   whatsapp,
   publicPhone,
   publicEmail,
@@ -29,6 +30,7 @@ export function AreasCarousel({
   areas: Area[]
   primary: string
   text: string
+  secondary: string
   whatsapp?: string | null
   publicPhone?: string | null
   publicEmail?: string | null
@@ -101,7 +103,7 @@ export function AreasCarousel({
                     <div className="mt-3"
                     >
                       <Button size="sm" 
-                      style={{ backgroundColor: primary, color: text, border: "1px solid", borderColor: `${text}33`, cursor: "pointer" }} onClick={() => setOpenId(area.id)}>
+                      style={{ backgroundColor: `${text}33`, color: text, border: "1px solid", borderColor: `${text}33`, cursor: "pointer" }} onClick={() => setOpenId(area.id)}>
                         <Info className="w-4 h-4" />
                         Saiba mais
                       </Button>
@@ -134,7 +136,7 @@ export function AreasCarousel({
             style={{ backgroundColor: primary, color: text, borderColor: `${text}33` }}
           >
             <DialogHeader>
-              <DialogTitle className="text-3xl" style={{ color: text }}>{area.title}</DialogTitle>
+              <DialogTitle className="text-3xl" style={{ color: secondary }}>{area.title}</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
                 {area.coverImageUrl && (
