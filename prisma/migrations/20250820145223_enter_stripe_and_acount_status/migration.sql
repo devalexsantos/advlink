@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "public"."User" ADD COLUMN     "isActive" BOOLEAN NOT NULL DEFAULT false,
+ADD COLUMN     "stripeCustomerId" TEXT;

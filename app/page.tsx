@@ -3,19 +3,41 @@ import { Highlights } from "@/components/landing/Highlights"
 import { Benefits } from "@/components/landing/Benefits"
 import { Pricing } from "@/components/landing/Pricing"
 import { CTA } from "@/components/landing/CTA"
+import { Advantages } from "@/components/landing/Advantages"
+import { Steps } from "@/components/landing/Steps"
+import { InsidePreview } from "@/components/landing/InsidePreview"
+import { Navbar } from "@/components/landing/Navbar"
+import { Footer } from "@/components/landing/Footer"
 
 export default function Page() {
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-[#0a0f1a] text-zinc-100">
-      <Hero />
+    <div className="min-h-screen w-full overflow-x-hidden bg-black text-zinc-100">
+      <Navbar />
+      <div id="inicio">
+        <Hero />
+      </div>
 
-      <Highlights />
+      <div id="vantagens">
+        <Advantages />
+      </div>
 
-      <Benefits />
+      <div id="passo-a-passo">
+        <Steps />
+      </div>
 
-      <Pricing />
+      <div id="comece">
+        <CTA />
+      </div>
 
-      <CTA />
+      <div className="hidden md:block" id="por-dentro">
+        <InsidePreview />
+      </div>
+
+      <div id="preco">
+        <Pricing />
+      </div>
+
+      <Footer />
     </div>
   )
 }

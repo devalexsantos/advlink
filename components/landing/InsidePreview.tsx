@@ -1,0 +1,34 @@
+"use client"
+
+import { motion } from "framer-motion"
+
+export function InsidePreview() {
+  return (
+    <section className="relative py-12 px-6 md:py-24">
+      <div className="mx-auto max-w-6xl">
+        <motion.h2
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.6 }}
+          className="text-center text-3xl md:text-5xl font-extrabold tracking-tight mb-4"
+        >
+          Como é por dentro da plataforma
+        </motion.h2>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.5 }}
+          className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 min-h-[360px]"
+        >
+          <div className="h-full w-full grid place-items-center text-zinc-400">
+            Espaço para exemplo de print do editor/visualização
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+

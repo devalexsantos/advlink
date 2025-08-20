@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import MobileTabs from "./tabs"
+import SubscribeCTA from "./SubscribeCTA"
 
 
 export default async function ProfileEditPage() {
@@ -16,7 +17,7 @@ export default async function ProfileEditPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: userId! },
-    select: { completed_onboarding: true },
+    select: { completed_onboarding: true, isActive: true },
   })
 
   if (!user || user.completed_onboarding === false) {
@@ -25,6 +26,8 @@ export default async function ProfileEditPage() {
 
   return (
     <div className="h-screen overflow-hidden p-0 md:p-6 rounded-xl">
+      {/* Assinatura/Plano */}
+      {!user?.isActive && <SubscribeCTA />}
       {/* Mobile: tabs to switch between Edit and Preview */}
       <div className="md:hidden">
         <MobileTabs />
