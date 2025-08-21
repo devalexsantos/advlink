@@ -14,35 +14,41 @@ export const authOptions: NextAuthOptions = {
   providers: [
     EmailProvider({
       maxAge: 24 * 60 * 60,
-      server:
-        process.env.NODE_ENV === "production"
-          ? {
-              host: process.env.EMAIL_SERVER_HOST!,
-              port: Number(process.env.EMAIL_SERVER_PORT || 587),
-              auth: {
+      server: (() => {
+        const isProd = process.env.NODE_ENV === "production"
+        const hasSmtpEnv = Boolean(process.env.EMAIL_SERVER_HOST)
+        // If running locally without SMTP envs, default to local mail server (e.g., MailHog/Mailpit)
+        if (!isProd && !hasSmtpEnv) {
+          return {
+            host: "127.0.0.1",
+            port: 1025,
+            secure: false,
+            ignoreTLS: true,
+          }
+        }
+
+        const port = Number(process.env.EMAIL_SERVER_PORT || 587)
+        const useSecure = port === 465
+
+        return {
+          host: process.env.EMAIL_SERVER_HOST!,
+          port,
+          auth: (process.env.EMAIL_SERVER_USER && process.env.EMAIL_SERVER_PASSWORD)
+            ? {
                 user: process.env.EMAIL_SERVER_USER!,
                 pass: process.env.EMAIL_SERVER_PASSWORD!,
-              },
-              // TLS on 465, STARTTLS on 587/others
-              secure: Number(process.env.EMAIL_SERVER_PORT || 587) === 465,
-            }
-          : {
-              host: process.env.EMAIL_SERVER_HOST || "127.0.0.1",
-              port: Number(process.env.EMAIL_SERVER_PORT || 1025),
-              secure: false,
-              ignoreTLS: true,
-            },
+              }
+            : undefined,
+          // 465 -> implicit TLS; 587/others -> STARTTLS
+          secure: useSecure,
+          requireTLS: !useSecure,
+          ignoreTLS: false,
+        }
+      })(),
       from: process.env.EMAIL_FROM || "AdvLink <no-reply@advlink.local>",
       async sendVerificationRequest({ identifier, url, provider }) {
-        const transport =
-          process.env.NODE_ENV === "production"
-            ? nodemailer.createTransport(provider.server as any)
-            : nodemailer.createTransport({
-                host: (provider.server as any).host || process.env.EMAIL_SERVER_HOST || "127.0.0.1",
-                port: (provider.server as any).port || Number(process.env.EMAIL_SERVER_PORT || 1025),
-                secure: false,
-                ignoreTLS: true,
-              })
+        // Use the same server config above to avoid divergence between envs
+        const transport = nodemailer.createTransport(provider.server as any)
         const subject = "Seu link de acesso à AdvLink"
         const html = createSignInEmailHtml({ url })
         const text = createSignInEmailText({ url })
