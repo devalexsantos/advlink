@@ -58,10 +58,8 @@ export async function POST(req: Request) {
 
     // 1) Gera descrições com OpenAI
     const titles = Array.from(new Set(areas ?? [])).filter(Boolean)
-    console.log("[onboarding/profile] titles:", titles)
     const openaiKey = process.env.OPENAI_API_KEY ?? ""
     const descriptions = titles.length ? await generateActivityDescriptions(titles, openaiKey) : []
-    console.log("[onboarding/profile] descriptions generated:", descriptions.length)
     // Removido: geração de capas via IA neste fluxo
 
     // 2) Upsert do Profile (sem avatarUrl)
@@ -150,7 +148,6 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true })
   } catch (err: unknown) {
-    console.error("[onboarding/profile] ERROR:", err)
     const message = typeof err === 'object' && err && 'message' in err ? String((err as { message?: string }).message || 'Internal error') : 'Internal error'
     return NextResponse.json({ error: message }, { status: 500 })
   }
