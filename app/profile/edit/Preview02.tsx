@@ -46,7 +46,7 @@ export default function Preview02({ profile, areas, address, links = [], gallery
   const secondary = (profile as { secondaryColor?: string | null }).secondaryColor || "#FFFFFF"
 
   return (
-    <div className="w-full overflow-y-scroll h-screen">
+    <div className="w-full overflow-y-scroll min-h-screen">
       <div className="mb-3 hidden md:flex items-center gap-2 p-4">
         <Button type="button" variant={mode === "desktop" ? "default" : "secondary"} className="gap-2 cursor-pointer" onClick={() => setMode("desktop")}>
           <Monitor className="w-4 h-4" /> Desktop

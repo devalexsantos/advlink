@@ -1,17 +1,12 @@
-"use client"
-
-import { useState } from "react"
+import { Suspense } from "react"
 import Image from "next/image"
 import logo from "@/assets/icons/logo.svg"
-import { Input } from "@/components/ui/input"
+import { Apple, Lock, ShieldCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Label } from "@/components/ui/label"
-import { Mail, Apple, Link2, Lock, ShieldCheck } from "lucide-react"
-import { GoogleLoginButton } from "./_components/GoogleLoginButton"
+import { GoogleLoginButton } from "@/app/login/_components/GoogleLoginButton"
+import { MagicLinkForm } from "@/app/login/_components/MagicLinkForm"
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("")
-
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#0a0f1a] text-blue-50">
       {/* Background animated blobs to match landing */}
@@ -56,30 +51,9 @@ export default function LoginPage() {
           </div>
 
           {/* Magic Link */}
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/5 p-4">
-            <div className="mb-3 flex items-center gap-2 text-blue-200">
-              <Link2 className="h-4 w-4" />
-              <span className="text-sm font-medium">Magic Link</span>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              <div className="sm:col-span-2">
-                <Label htmlFor="email" className="text-blue-100/90">E-mail</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="voce@exemplo.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className="mt-1 bg-zinc-900/60 border-zinc-700 text-blue-50 placeholder:text-blue-200/50"
-                />
-              </div>
-              <div className="flex items-end">
-                <Button type="button" className="w-full bg-blue-600 hover:bg-blue-500 text-white">
-                  Enviar Magic Link
-                </Button>
-              </div>
-            </div>
-          </div>
+          <Suspense>
+            <MagicLinkForm />
+          </Suspense>
 
           {/* Divider */}
           <div className="my-6 flex items-center gap-3">

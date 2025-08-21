@@ -522,7 +522,7 @@ export default function EditProfileForm() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 px-6 pb-6">
         {/* Sticky top bar with actions */}
         <div className="hidden md:flex sticky top-0 -mx-6 px-6 pb-3 z-10 bg-zinc-900/70 backdrop-blur-md border-b border-zinc-800">
-          <div className="flex items-center justify-between gap-3 p-3 rounded-t-xl bg-cover mt-2">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-t-xl bg-cover mt-2 sticky top-0">
             <h1 className="text-2xl font-semibold">Editar informações</h1>
             <div className="flex items-center gap-2">
               <Button type="button" variant="secondary" className="cursor-pointer" onClick={() => {

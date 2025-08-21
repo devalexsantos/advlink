@@ -11,10 +11,10 @@ export function Hero() {
   return (
     <header ref={sceneRef} className="relative isolate overflow-hidden">
       {/* Geometric background */}
-      <div className="absolute inset-0 -z-10" />
+      <div className="absolute inset-0 -z-10 bg-gradient-to-b from-zinc-950 to-black" />
       {/* Subtle radial glow */}
       <div
-        className="pointer-events-none absolute inset-0 -z-10 opacity-[0.01]"
+        className="pointer-events-none absolute inset-0 -z-10 opacity-[0.56]"
         style={{
           backgroundImage:
             "radial-gradient(circle at 50% 60%, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.12) 32%, transparent 55%)",
@@ -22,7 +22,7 @@ export function Hero() {
         }}
       />
       <div className="pointer-events-none absolute inset-0 -z-10 opacity-20" style={{ backgroundImage: "linear-gradient(transparent 95%, rgba(255,255,255,.08) 95%), linear-gradient(90deg, transparent 95%, rgba(255,255,255,.08) 95%)", backgroundSize: "28px 28px" }} />
-      <div className="pointer-events-none absolute inset-0 -z-10 opacity-10" style={{ backgroundImage: "conic-gradient(from_45deg,#2b2b2b20,#0000 20%,#2b2b2b20 40%,#0000 60%,#2b2b2b20 80%,#0000)", WebkitMaskImage: "radial-gradient(ellipse at center, black 40%, transparent 70%)" }} />
+      <div className="pointer-events-none absolute inset-0 -z-10 opacity-20" style={{ backgroundImage: "conic-gradient(from_45deg,#2b2b2b20,#0000 20%,#2b2b2b20 40%,#0000 60%,#2b2b2b20 80%,#0000)", WebkitMaskImage: "radial-gradient(ellipse at center, black 40%, transparent 70%)" }} />
 
       <div className="relative z-10 mx-auto flex max-w-6xl flex-col items-center px-6 py-28 text-center">
         <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-zinc-700 bg-zinc-900/60 px-4 py-1 text-xs tracking-wide text-zinc-300">
@@ -55,7 +55,7 @@ export function Hero() {
           </div>
         </div>
         <div className="mt-8 flex flex-col sm:flex-row items-center gap-3">
-          <Link href="/profile/edit" className="group inline-flex items-center gap-2 rounded-full border border-amber-400 bg-gradient-to-b from-amber-500 to-amber-700 px-6 py-3 text-white font-bold [text-shadow:0_1px_0_rgba(0,0,0,0.35),0_2px_8px_rgba(0,0,0,0.25)] hover:from-amber-400 hover:to-amber-600 transition text-xl">
+          <Link href="/login" className="group inline-flex items-center gap-2 rounded-full border border-amber-400 bg-gradient-to-b from-amber-500 to-amber-700 px-6 py-3 text-white font-bold [text-shadow:0_1px_0_rgba(0,0,0,0.35),0_2px_8px_rgba(0,0,0,0.25)] hover:from-amber-400 hover:to-amber-600 transition text-xl">
             Criar minha página
             <ArrowRight className="h-4 w-4 transition -translate-x-0 group-hover:translate-x-0.5" />
           </Link>

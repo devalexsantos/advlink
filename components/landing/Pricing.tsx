@@ -45,7 +45,7 @@ export function Pricing() {
           ))}
         </div>
         <div className="mt-8">
-          <Link href="/onboarding" className="inline-flex items-center gap-2 rounded-full border border-amber-400 bg-gradient-to-b from-amber-500 to-amber-700 px-6 py-3 text-white font-bold [text-shadow:0_1px_0_rgba(0,0,0,0.35),0_2px_8px_rgba(0,0,0,0.25)] hover:from-amber-400 hover:to-amber-600 transition text-xl">
+          <Link href="/login" className="inline-flex items-center gap-2 rounded-full border border-amber-400 bg-gradient-to-b from-amber-500 to-amber-700 px-6 py-3 text-white font-bold [text-shadow:0_1px_0_rgba(0,0,0,0.35),0_2px_8px_rgba(0,0,0,0.25)] hover:from-amber-400 hover:to-amber-600 transition text-xl">
             Começar agora
             <Rocket className="h-4 w-4" />
           </Link>

@@ -25,7 +25,7 @@ export default async function ProfileEditPage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden p-0 md:p-6 rounded-xl">
+    <div className="min-h-screen overflow-hidden p-0 md:p-6 rounded-xl">
       {/* Assinatura/Plano */}
       {!user?.isActive && <SubscribeCTA />}
       {/* Mobile: tabs to switch between Edit and Preview */}
