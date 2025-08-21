@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import type { CSSProperties } from "react"
 import { Button } from "@/components/ui/button"
 import { marked } from "marked"
-import { Info, Mail, Phone } from "lucide-react"
+import { Info, Mail, Phone, X } from "lucide-react"
 import whatsAppIcon from "@/assets/icons/whatsapp-icon.svg"
 
 marked.setOptions({ breaks: true })
@@ -135,6 +135,14 @@ export function AreasCarousel({
             className="w-[90vw] max-w-6xl max-h-[80vh] overflow-y-auto"
             style={{ backgroundColor: primary, color: text, borderColor: `${text}33` }}
           >
+            <button
+              type="button"
+              aria-label="Fechar modal"
+              onClick={() => setOpenId(null)}
+              className="fixed cursor-pointer right-3 top-3 z-[60] rounded-full bg-zinc-50 text-zinc-900 p-2 shadow-md border border-zinc-200 hover:bg-zinc-100"
+            >
+              <X className="w-4 h-4" />
+            </button>
             <DialogHeader>
               <DialogTitle className="text-3xl" style={{ color: secondary }}>{area.title}</DialogTitle>
             </DialogHeader>

@@ -22,7 +22,7 @@ export default function PublishedCTA({ slug }: Props) {
   const href = hasSlug ? `https://advlink.site/adv/${effectiveSlug}` : undefined
 
   return (
-    <div className="w-full max-w-4xl mb-4 rounded-xl border bg-opacity-10 p-4 md:p-5 border-lime-500/60 bg-lime-500/10">
+    <div className="w-full max-w-2xl mb-4 rounded-xl border bg-opacity-10 p-4 md:p-5 border-lime-500/60 bg-lime-500/10">
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
         <div className="flex items-start gap-3">
           <div className="mt-0.5">

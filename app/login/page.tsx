@@ -5,7 +5,14 @@ import { Lock, ShieldCheck } from "lucide-react"
 import { GoogleLoginButton } from "@/app/login/_components/GoogleLoginButton"
 import { MagicLinkForm } from "@/app/login/_components/MagicLinkForm"
 
-export default function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const { error: rawError } = await searchParams
+  const error = (rawError as string | undefined) ?? undefined
+  const isOAuthAccountNotLinked = error === "OAuthAccountNotLinked"
   return (
     <div className="relative min-h-screen overflow-hidden bg-black text-zinc-100">
       {/* Background blobs in black/grey tones */}
@@ -48,6 +55,15 @@ export default function LoginPage() {
               Escolha um método para continuar. Não se preocupe, é rápido e seguro.
             </p>
           </div>
+
+          {isOAuthAccountNotLinked && (
+            <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-100">
+              <p className="text-sm">
+                Detectamos que este e-mail já foi usado com outro método de acesso. 
+                Faça login usando o <strong>Magic Link</strong> abaixo para continuar ou use o mesmo método da última vez.
+              </p>
+            </div>
+          )}
 
           {/* Magic Link */}
           <Suspense>
