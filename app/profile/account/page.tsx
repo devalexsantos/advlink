@@ -9,7 +9,7 @@ import ReactivateSubscriptionButton from "./ReactivateSubscriptionButton"
 function formatDate(ts?: number | null) {
   if (!ts) return "-"
   const d = new Date(ts * 1000)
-  return d.toLocaleDateString()
+  return d.toLocaleDateString("pt-BR")
 }
 
 export default async function AccountPage() {
@@ -63,6 +63,7 @@ export default async function AccountPage() {
       <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-5 mb-6">
         <h2 className="text-lg font-semibold mb-3">Assinatura</h2>
         <div className="grid gap-2 text-sm">
+          <p><span className="text-zinc-400">E-mail:</span> {user?.email || "-"}</p>
           <p><span className="text-zinc-400">Status:</span> {statusBadge(subscriptionStatus || (user?.isActive ? "active" : "canceled"))}</p>
           <p><span className="text-zinc-400">Expira em:</span> {formatDate(currentPeriodEnd)}</p>
           {cancelAtPeriodEnd && <p className="text-amber-400">Cancelamento ao final do período atual</p>}

@@ -8,11 +8,11 @@ import { useEffect, useState } from "react"
 type Step = { icon: React.ComponentType<{ className?: string }>; title: string; desc: string; image: string; alt: string }
 
 const steps: Step[] = [
-  { icon: UserCircle2, title: "Crie sua conta", desc: "Acesse e complete um breve onboarding.", image: "/globe.svg", alt: "Criação de conta" },
-  { icon: Brush, title: "Personalize seu site", desc: "Escolha tema, cores e edite seu conteúdo.", image: "/window.svg", alt: "Personalização" },
-  { icon: WandSparkles, title: "Use IA nas descrições", desc: "Gere textos persuasivos para suas áreas.", image: "/file.svg", alt: "Editor com IA" },
-  { icon: CreditCard, title: "Ative sua assinatura", desc: "Finalize o checkout e publique sua página.", image: "/vercel.svg", alt: "Assinatura" },
-  { icon: Rocket, title: "Publique", desc: "Compartilhe seu link único do AdvLink.", image: "/next.svg", alt: "Publicação" },
+  { icon: UserCircle2, title: "Informações Iniciais", desc: "Preencha suas informações iniciais para começar.", image: "/steps/step-01.png", alt: "Criação de conta" },
+  { icon: Brush, title: "Personalize seu site", desc: "Escolha tema, cores e edite seu conteúdo.", image: "/steps/step-02.png", alt: "Personalização" },
+  { icon: WandSparkles, title: "Use IA nas descrições", desc: "Gere textos para suas áreas com auxílio de IA. Adicione foto de capa e galeria.", image: "/steps/step-03.png", alt: "Editor com IA" },
+  { icon: CreditCard, title: "Preview ", desc: "Veja como ficou sua página no celular e desktop antes de publicar.", image: "/steps/step-04.png", alt: "Preview" },
+  { icon: Rocket, title: "Publique", desc: "Compartilhe seu link único do AdvLink.", image: "/steps/step-05.png", alt: "Publicação" },
 ]
 
 export function Steps() {
@@ -28,7 +28,7 @@ export function Steps() {
   }, [manual])
 
   return (
-    <section className="relative px-6 py-16 md:py-24">
+    <section className="relative px-6 py-12 md:py-24">
       <div className="mx-auto max-w-6xl grid grid-cols-1 lg:grid-cols-2 gap-8">
         <div>
           <motion.h2
@@ -67,8 +67,7 @@ export function Steps() {
           </div>
         </div>
 
-        <div className="min-h-[360px] rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 flex items-center justify-center">
-          <div className="relative w-full max-w-xl aspect-video overflow-hidden rounded-xl border border-zinc-800 bg-black">
+          <div className="relative w-full max-w-xl overflow-hidden rounded-2xl">
             <AnimatePresence mode="wait">
               <motion.div
                 key={active}
@@ -76,13 +75,12 @@ export function Steps() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98 }}
                 transition={{ duration: 0.35 }}
-                className="absolute inset-0 grid place-items-center"
+                className="absolute inset-0 grid place-items-center rounded-2xl border border-zinc-800 bg-zinc-900/40"
               >
-                <Image src={steps[active].image} alt={steps[active].alt} width={640} height={360} className="h-full w-full object-contain p-6" />
+                <Image src={steps[active].image} alt={steps[active].alt} width={640} height={740} quality={100} className="h-full w-full object-contain rounded-2xl p-6" />
               </motion.div>
             </AnimatePresence>
           </div>
-        </div>
       </div>
     </section>
   )

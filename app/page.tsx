@@ -1,6 +1,6 @@
 import { Hero } from "@/components/landing/Hero"
-import { Highlights } from "@/components/landing/Highlights"
-import { Benefits } from "@/components/landing/Benefits"
+// import { Highlights } from "@/components/landing/Highlights"
+// import { Benefits } from "@/components/landing/Benefits"
 import { Pricing } from "@/components/landing/Pricing"
 import { CTA } from "@/components/landing/CTA"
 import { Advantages } from "@/components/landing/Advantages"
@@ -29,7 +29,7 @@ export default function Page() {
         <CTA />
       </div>
 
-      <div className="hidden md:block" id="por-dentro">
+      <div id="por-dentro">
         <InsidePreview />
       </div>
 

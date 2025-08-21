@@ -1,8 +1,9 @@
 "use client"
 
 import { Button } from "@/components/ui/button";
-import { Mail } from "lucide-react";
 import { signIn } from "next-auth/react";
+import gmailIcon from "@/assets/icons/gmail-icon.svg"
+import Image from "next/image";
 
 export function GoogleLoginButton() {
   return (
@@ -17,8 +18,8 @@ export function GoogleLoginButton() {
        })
     }}
     >
-      <Mail className="h-4 w-4 text-red-400" />
-      Continuar com Gmail
+      <Image width={20} height={20} src={gmailIcon} alt="Gmail" />
+     Acesse com o Gmail 
     </Button>
   )
 }

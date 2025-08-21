@@ -66,7 +66,7 @@ export function MagicLinkForm() {
         </div>
         <div className="flex items-end">
           <Button type="button" onClick={handleSend} disabled={loading || !email} className="w-full bg-blue-600 hover:bg-blue-500 text-white">
-            {loading ? "Enviando..." : "Enviar Magic Link"}
+            {loading ? "Enviando..." : "Enviar link de acesso"}
           </Button>
         </div>
       </div>

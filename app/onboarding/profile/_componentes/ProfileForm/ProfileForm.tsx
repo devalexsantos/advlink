@@ -28,25 +28,31 @@ const profileSchema = z.object({
     .max(600, { message: "Máximo de 600 caracteres." })
     .optional()
     .or(z.literal("").transform(() => undefined)),
-  email: z.string().email({ message: "Informe um e-mail válido." }),
+  email: z
+    .string()
+    .email({ message: "Informe um e-mail válido." })
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   phone: z
     .string()
-    .refine((val) => {
-      const digits = val.replace(/\D/g, "")
-      return digits.length === 10 || digits.length === 11
-    }, { message: "Informe um telefone válido." }),
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   calendlyUrl: z
     .string()
     .url("Informe uma URL válida.")
     .regex(/^https:\/\/calendly\.com\//i, "A URL deve iniciar com https://calendly.com/")
     .optional()
     .or(z.literal("").transform(() => undefined)),
-    cellphone: z
-      .string()
-      .refine((val) => {
-        const digits = val.replace(/\D/g, "")
-        return digits.length === 11
-      }, { message: "Informe um celular válido (11 dígitos)." }),
+  cellphone: z
+    .string()
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
+  instagramUrl: z
+    .string()
+    .url("Informe uma URL válida.")
+    .regex(/^https:\/\/(www\.)?instagram\.com\//i, "A URL deve iniciar com https://instagram.com/")
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
 })
 
 type ProfileFormValues = z.infer<typeof profileSchema>
@@ -57,6 +63,7 @@ const defaultAreaSuggestions = [
   "Trabalhista",
   "Tributário",
   "Família",
+  "Médico",
   "Consumidor",
   "Imobiliário",
   "Empresarial",
@@ -80,6 +87,7 @@ export function ProfileForm() {
       phone: "",
       calendlyUrl: "",
       cellphone: "",
+      instagramUrl: "",
     },
     mode: "onBlur",
   })
@@ -155,16 +163,17 @@ export function ProfileForm() {
   }
 
   async function onSubmit(values: ProfileFormValues) {
-    const { photo, displayName, areas, about, email, phone, calendlyUrl } = values
+    const { photo, displayName, areas, about, email, phone, calendlyUrl, instagramUrl } = values
     const formData = new FormData()
     formData.set("displayName", displayName)
     formData.set("areas", JSON.stringify(areas))
     if (about) formData.set("about", about)
-    formData.set("email", email)
+    if (email) formData.set("email", email)
     if (phone) formData.set("phone", phone)
     if (calendlyUrl) formData.set("calendlyUrl", calendlyUrl)
     const cellphoneValue = watch("cellphone")
     if (cellphoneValue) formData.set("cellphone", cellphoneValue)
+    if (instagramUrl) formData.set("instagramUrl", instagramUrl)
     if (photo) formData.set("photo", photo)
 
     const res = await fetch("/api/onboarding/profile", {
@@ -258,12 +267,12 @@ export function ProfileForm() {
       {/* Nome de exibição */}
       <div className="mb-8">
         <Label htmlFor="displayName" className="mb-2 block text-sm font-medium text-zinc-200">
-          Nome de exibição
+          Nome de exibição <span className="text-red-500" aria-hidden>*</span>
         </Label>
         <Input
           id="displayName"
           type="text"
-          placeholder="Seu nome"
+          placeholder="Seu nome para ser exibido"
           {...register("displayName")}
         />
         {errors.displayName && (
@@ -274,7 +283,7 @@ export function ProfileForm() {
       {/* Áreas de atuação */}
       <div className="mb-8">
         <Label className="mb-2 block text-sm font-medium text-zinc-200">
-          Áreas de atuação
+          Áreas de atuação <span className="text-red-500" aria-hidden>*</span>
         </Label>
         <div className="flex flex-wrap items-center gap-2">
           {selectedAreas.map((tag) => (
@@ -333,12 +342,12 @@ export function ProfileForm() {
       {/* Sobre mim */}
       <div className="mb-4">
         <Label htmlFor="about" className="mb-2 block text-sm font-medium text-zinc-200">
-          Sobre mim
+          Sobre
         </Label>
         <Textarea
           id="about"
           rows={4}
-          placeholder="Conte um pouco sobre você"
+          placeholder="Conte um pouco mais sobre você ou seu escritório"
           {...register("about")}
         />
         {errors.about && (
@@ -346,7 +355,7 @@ export function ProfileForm() {
         )}
       </div>
 
-      {/* E-mail */}
+      {/* E-mail (opcional) */}
       <div className="mb-4">
         <Label htmlFor="email" className="mb-2 block text-sm font-medium text-zinc-200">
           E-mail para contato
@@ -362,10 +371,10 @@ export function ProfileForm() {
         )}
       </div>
 
-      {/* Telefone */}
-      <div className="mb-6">
+      {/* Telefone (opcional) */}
+      <div className="mb-4">
         <Label htmlFor="phone" className="mb-2 block text-sm font-medium text-zinc-200">
-          Telefone para contato
+          Telefone adicional para contato
         </Label>
         <Controller
           control={control}
@@ -386,7 +395,18 @@ export function ProfileForm() {
         )}
       </div>
 
-      {/* Calendly URL */}
+      {/* Instagram URL (opcional) */}
+      <div className="mb-4">
+        <Label htmlFor="instagramUrl" className="mb-2 block text-sm font-medium text-zinc-200">
+          Instagram URL
+        </Label>
+        <Input id="instagramUrl" type="url" placeholder="https://instagram.com/seu_usuario" {...register("instagramUrl")} />
+        {errors.instagramUrl && (
+          <p className="mt-2 text-sm text-red-400">{errors.instagramUrl.message as string}</p>
+        )}
+      </div>
+
+      {/* Calendly URL (opcional) */}
       <div className="mb-6">
         <Label htmlFor="calendlyUrl" className="mb-2 block text-sm font-medium text-zinc-200">
           Calendly URL
@@ -399,7 +419,7 @@ export function ProfileForm() {
 
       <div className="flex items-center justify-center gap-3">
         <Button type="submit" disabled={isSubmitting} className="w-full flex items-center gap-2 cursor-pointer">
-          {isSubmitting ? "Salvando..." : "Continuar"}
+          {isSubmitting ? "Criando sua página, aguarde..." : "Continuar"}
           <ArrowRight className="w-4 h-4" />
         </Button>
     </div>

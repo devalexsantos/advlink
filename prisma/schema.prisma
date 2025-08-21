@@ -81,10 +81,10 @@ model Profile {
   publicEmail      String?
   publicPhone      String?
   slug             String? @unique
-  primaryColor     String  @default("380000")
+  primaryColor     String  @default("#000e29")
   secondaryColor   String  @default("#e8e8e8")
   textColor        String  @default("#FFFFFF")
-  coverUrl         String?
+  coverUrl         String? @default("https://advoga-site.s3.us-east-2.amazonaws.com/covers/covers_cmehhui1b000adp8wog0ziszn.1755786112784_tiny.png")
   calendlyUrl      String?
   metaDescription  String?
   metaTitle        String?

@@ -22,6 +22,7 @@ export async function POST(req: Request) {
     let phone: string | undefined
     let cellphone: string | undefined
     let whatsapp: string | undefined
+    let instagramUrl: string | undefined
     let avatarFile: File | undefined
 
     if (contentType.includes("application/json")) {
@@ -33,6 +34,7 @@ export async function POST(req: Request) {
       phone = body.phone
       cellphone = body.cellphone
       whatsapp = body.whatsapp
+      instagramUrl = body.instagramUrl
     } else if (contentType.includes("multipart/form-data")) {
       const form = await req.formData()
       displayName = String(form.get("displayName") ?? "")
@@ -42,6 +44,7 @@ export async function POST(req: Request) {
       phone = String(form.get("phone") ?? "") || undefined
       cellphone = String(form.get("cellphone") ?? "") || undefined
       whatsapp = String(form.get("whatsapp") ?? "") || undefined
+      instagramUrl = String(form.get("instagramUrl") ?? "") || undefined
       const f = form.get("photo")
       if (f && f instanceof File) avatarFile = f
     }
@@ -106,6 +109,7 @@ export async function POST(req: Request) {
         publicEmail: email,
         publicPhone: phone ?? null,
         whatsapp: whatsapp ?? cellphone ?? null,
+        instagramUrl: instagramUrl ?? null,
         avatarUrl: avatarUrl ?? undefined,
         slug,
         metaTitle: displayName,
@@ -118,6 +122,7 @@ export async function POST(req: Request) {
         publicEmail: email,
         publicPhone: phone ?? null,
         whatsapp: whatsapp ?? cellphone ?? null,
+        instagramUrl: instagramUrl ?? null,
         avatarUrl: avatarUrl ?? undefined,
         slug,
         metaTitle: displayName,

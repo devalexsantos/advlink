@@ -33,9 +33,10 @@ type Props = {
   address?: Address
   primary: string
   text: string
+  secondary: string
 }
 
-export default function Theme01({ profile, areas, address, primary, text }: Props) {
+export default function Theme01({ profile, areas, address, primary, text, secondary }: Props) {
 
   return (
     <div className="min-h-screen" style={{color: text, backgroundColor: primary }}>
@@ -93,7 +94,7 @@ export default function Theme01({ profile, areas, address, primary, text }: Prop
             <Scale className="w-10 h-10" />
             Serviços
             </h2>
-          <AreasCarousel areas={areas} primary={primary} text={text} whatsapp={profile.whatsapp} publicPhone={profile.publicPhone} publicEmail={profile.publicEmail} />
+          <AreasCarousel areas={areas} primary={primary} text={text} secondary={secondary} whatsapp={profile.whatsapp} publicPhone={profile.publicPhone} publicEmail={profile.publicEmail} />
         </div>
       )}
           {profile.aboutDescription && (

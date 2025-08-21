@@ -63,7 +63,7 @@ const profileEditSchema = z.object({
     .or(z.literal("").transform(() => undefined)),
   // SEO
   metaTitle: z.string().max(80, "Máximo de 80 caracteres.").optional().or(z.literal("").transform(() => undefined)),
-  metaDescription: z.string().max(160, "Máximo de 160 caracteres.").optional().or(z.literal("").transform(() => undefined)),
+  metaDescription: z.string().optional().or(z.literal("").transform(() => undefined)),
   keywords: z.string().optional().or(z.literal("").transform(() => undefined)),
   gtmContainerId: z
     .string()
@@ -301,7 +301,14 @@ export default function EditProfileForm() {
 
   const saveProfileMutation = useMutation({
     mutationFn: updateProfile,
-    onSuccess: async () => {
+    onSuccess: async (res: unknown) => {
+      // Atualiza imediatamente o cache para refletir slug/fields mais recentes no UI (PublishedCTA etc.)
+      qc.setQueryData(["profile"], (old: unknown) => {
+        const next = (res as { profile?: Record<string, unknown> } | null) || null
+        if (!old) return next
+        const oldObj = old as { profile?: Record<string, unknown> }
+        return { ...oldObj, profile: { ...(oldObj.profile || {}), ...(next?.profile || {}) } }
+      })
       await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
     },
@@ -670,7 +677,12 @@ export default function EditProfileForm() {
                 className="flex-1 bg-transparent text-sm text-zinc-100 outline-none px-0 py-2"
               />
             </div>
-            <Button type="button" variant="secondary" onClick={onCheckSlug} disabled={slugChecking || slugInput.trim().length === 0 || slugInput === initialSlug}>
+            <Button 
+            type="button" 
+            variant="secondary" 
+            className="cursor-pointer"
+            onClick={onCheckSlug} 
+            disabled={slugChecking || slugInput.trim().length === 0 || slugInput === initialSlug}>
               {slugChecking ? "Verificando..." : "Verificar"}
             </Button>
           </div>
@@ -885,7 +897,7 @@ export default function EditProfileForm() {
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8"
+                    className="h-8 w-8 cursor-pointer"
                     disabled={idx === 0 || reorderMutation.isPending}
                     onClick={async () => {
                       const next = [...areas]
@@ -904,7 +916,7 @@ export default function EditProfileForm() {
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8"
+                    className="h-8 w-8 cursor-pointer"
                     disabled={idx === areas.length - 1 || reorderMutation.isPending}
                     onClick={async () => {
                       const next = [...areas]
@@ -924,7 +936,7 @@ export default function EditProfileForm() {
                     type="button"
                     size="sm"
                     variant="ghost"
-                    className="gap-2"
+                    className="gap-2 cursor-pointer"
                     onClick={() => { setEditingArea(a); setRemoveAreaCover(false) }}
                     aria-label="Editar área"
                   >
@@ -935,7 +947,7 @@ export default function EditProfileForm() {
                     type="button"
                     size="icon"
                     variant="destructive"
-                    className="h-8 w-8"
+                    className="h-8 w-8 cursor-pointer"
                     onClick={() => setDeleteConfirm(a)}
                     aria-label="Excluir área"
                   >
@@ -961,7 +973,9 @@ export default function EditProfileForm() {
           <div className="mb-4 flex items-center justify-between">
             <label className={`inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 cursor-pointer ${galleryUploading ? 'opacity-50 pointer-events-none' : 'hover:bg-zinc-100'}`}>
               <Upload className="w-4 h-4" />
-              <span>Nova foto</span>
+              <span>
+                {galleryUploading ? 'Enviando...' : 'Nova foto'}
+                </span>
               <input
                 type="file"
                 accept="image/*"
@@ -1003,7 +1017,7 @@ export default function EditProfileForm() {
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8"
+                    className="h-8 w-8 cursor-pointer"
                     disabled={idx === 0 || reorderGalleryMutation.isPending}
                     onClick={async () => {
                       const next = [...gallery]
@@ -1022,7 +1036,7 @@ export default function EditProfileForm() {
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8"
+                    className="h-8 w-8 cursor-pointer"
                     disabled={idx === gallery.length - 1 || reorderGalleryMutation.isPending}
                     onClick={async () => {
                       const next = [...gallery]
@@ -1041,7 +1055,7 @@ export default function EditProfileForm() {
                     type="button"
                     size="icon"
                     variant="destructive"
-                    className="h-8 w-8"
+                    className="h-8 w-8 cursor-pointer"
                     onClick={() => setDeleteGalleryConfirm(g)}
                     aria-label="Excluir foto"
                   >
@@ -1084,7 +1098,7 @@ export default function EditProfileForm() {
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8"
+                    className="h-8 w-8 cursor-pointer"
                     disabled={idx === 0 || reorderLinksMutation.isPending}
                     onClick={async () => {
                       const next = [...links]
@@ -1103,7 +1117,7 @@ export default function EditProfileForm() {
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8"
+                    className="h-8 w-8 cursor-pointer"
                     disabled={idx === links.length - 1 || reorderLinksMutation.isPending}
                     onClick={async () => {
                       const next = [...links]
@@ -1122,7 +1136,7 @@ export default function EditProfileForm() {
                     type="button"
                     size="sm"
                     variant="ghost"
-                    className="gap-2"
+                    className="gap-2 cursor-pointer"
                     onClick={() => { setEditingLink(l); setRemoveLinkCover(false) }}
                     aria-label="Editar link"
                   >
@@ -1133,7 +1147,7 @@ export default function EditProfileForm() {
                     type="button"
                     size="icon"
                     variant="destructive"
-                    className="h-8 w-8"
+                    className="h-8 w-8 cursor-pointer"
                     onClick={() => setDeleteLinkConfirm(l)}
                     aria-label="Excluir link"
                   >

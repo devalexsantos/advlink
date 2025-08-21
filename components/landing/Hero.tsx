@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useRef } from "react"
 import Link from "next/link"
 import { Wand2, ArrowRight, WandSparkles, User } from "lucide-react"
 import logo from "@/assets/icons/logo.svg"

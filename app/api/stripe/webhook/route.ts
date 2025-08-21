@@ -13,7 +13,6 @@ export async function POST(req: Request) {
 
   let event: Stripe.Event
   try {
-    // @ts-expect-error type provided at runtime
     event = stripe.webhooks.constructEvent(body, sig, webhookSecret)
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Unknown error"
@@ -23,9 +22,9 @@ export async function POST(req: Request) {
   try {
     switch (event.type) {
       case "checkout.session.completed": {
-        const session = event.data.object as any
-        const customerId: string | undefined = session.customer as string | undefined
-        const email: string | undefined = session.customer_details?.email || session.client_reference_id || undefined
+        const session = event.data.object as Stripe.Checkout.Session
+        const customerId: string | undefined = (session.customer as string | undefined) || undefined
+        const email: string | undefined = session.customer_details?.email || (session.client_reference_id as string | undefined) || undefined
         if (!customerId) break
 
         if (email) {
@@ -35,24 +34,24 @@ export async function POST(req: Request) {
             update: { stripeCustomerId: customerId, isActive: true },
             create: { email, stripeCustomerId: customerId, isActive: true },
           })
-        } else if (session.metadata?.userId) {
-          const userId = String(session.metadata.userId)
+        } else if (session.metadata && (session.metadata as Record<string,string | undefined>).userId) {
+          const userId = String((session.metadata as Record<string,string | undefined>).userId)
           await prisma.user.update({ where: { id: userId }, data: { stripeCustomerId: customerId, isActive: true } })
         }
         break
       }
       case "customer.subscription.created":
       case "customer.subscription.updated": {
-        const sub = event.data.object as any
-        const customerId: string = sub.customer
-        const status: string = sub.status
+        const sub = event.data.object as Stripe.Subscription
+        const customerId: string = String(sub.customer)
+        const status: string = String(sub.status)
         const active = status === "active" || status === "trialing" || status === "past_due"
         await prisma.user.updateMany({ where: { stripeCustomerId: customerId }, data: { isActive: active } })
         break
       }
       case "customer.subscription.deleted": {
-        const sub = event.data.object as any
-        const customerId: string = sub.customer
+        const sub = event.data.object as Stripe.Subscription
+        const customerId: string = String(sub.customer)
         await prisma.user.updateMany({ where: { stripeCustomerId: customerId }, data: { isActive: false } })
         break
       }

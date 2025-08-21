@@ -6,6 +6,7 @@ import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import MobileTabs from "./tabs"
 import SubscribeCTA from "./SubscribeCTA"
+import PublishedCTA from "./PublishedCTA"
 
 
 export default async function ProfileEditPage() {
@@ -17,7 +18,7 @@ export default async function ProfileEditPage() {
 
   const user = await prisma.user.findUnique({
     where: { id: userId! },
-    select: { completed_onboarding: true, isActive: true },
+    select: { completed_onboarding: true, isActive: true, profile: { select: { slug: true } } },
   })
 
   if (!user || user.completed_onboarding === false) {
@@ -27,7 +28,7 @@ export default async function ProfileEditPage() {
   return (
     <div className="min-h-screen overflow-hidden p-0 md:p-6 rounded-xl">
       {/* Assinatura/Plano */}
-      {!user?.isActive && <SubscribeCTA />}
+      {!user?.isActive ? <SubscribeCTA /> : <PublishedCTA slug={user?.profile?.slug ?? undefined} />}
       {/* Mobile: tabs to switch between Edit and Preview */}
       <div className="md:hidden">
         <MobileTabs />

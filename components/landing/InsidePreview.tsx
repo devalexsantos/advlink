@@ -1,6 +1,8 @@
 "use client"
 
 import { motion } from "framer-motion"
+import insidePreview from "@/public/por-dentro.png"
+import Image from "next/image"
 
 export function InsidePreview() {
   return (
@@ -20,11 +22,9 @@ export function InsidePreview() {
           whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.5 }}
-          className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 min-h-[360px]"
+          className="rounded-2xl border border-zinc-800 bg-zinc-900/40 p-4 overflow-hidden"
         >
-          <div className="h-full w-full grid place-items-center text-zinc-400">
-            Espaço para exemplo de print do editor/visualização
-          </div>
+          <Image src={insidePreview} alt="Como é por dentro da plataforma" className="h-full w-full object-contain rounded-2xl" />
         </motion.div>
       </div>
     </section>
