@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Camera, Pencil, Plus, Save, Trash2, Upload, WandSparkles, X, ArrowDown, ArrowUp, ExternalLink, Link as LinkIcon } from "lucide-react"
+import { Camera, Pencil, Plus, Save, Trash2, Upload, WandSparkles, X, ArrowDown, ArrowUp, ExternalLink, Paintbrush, User, MapPin, ListTree, Images, Link as LinkIcon, Search } from "lucide-react"
 import { useToast } from "@/components/toast/ToastProvider"
 import "@mdxeditor/editor/style.css"
 import {
@@ -25,6 +25,7 @@ import {
 } from "@mdxeditor/editor"
 import dynamic from "next/dynamic"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { Accordion, AccordionContent, AccordionTrigger, AccordionItem } from "@/components/ui/accordion"
 
 const MDXEditor = dynamic(() => import("@mdxeditor/editor").then(m => m.MDXEditor), { ssr: false })
 
@@ -519,10 +520,10 @@ export default function EditProfileForm() {
 
   return (
     <>
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 px-6 pb-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 rounded-xl border border-zinc-800 bg-zinc-900/50 p-1">
         {/* Sticky top bar with actions */}
-        <div className="hidden md:flex sticky top-0 -mx-6 px-6 pb-3 z-10 bg-zinc-900/70 backdrop-blur-md border-b border-zinc-800">
-          <div className="flex items-center justify-between gap-3 p-3 rounded-t-xl bg-cover mt-2 sticky top-0">
+        <div className="hidden md:flex pb-3 z-10 bg-zinc-900/70 backdrop-blur-md border-b border-zinc-800 rounded-xl">
+          <div className="flex items-center justify-between gap-3 p-3 rounded-lg">
             <h1 className="text-2xl font-semibold">Editar informações</h1>
             <div className="flex items-center gap-2">
               <Button type="button" variant="secondary" className="cursor-pointer" onClick={() => {
@@ -551,15 +552,18 @@ export default function EditProfileForm() {
         >
           <Save className="w-10 h-10" />
         </Button>
-
-        {/* Visual */}
-        <div className="mt-12">
-          <h2 className="text-xl font-bold mb-4">Visual</h2>
-        </div>
-
-        {/* Tema */}
-        <div className="mt-8">
-          <Label className="mb-2 text-2xl block font-bold">Tema</Label>
+        <Accordion type="single" defaultValue="visual" collapsible>
+          <AccordionItem value="visual">
+            <AccordionTrigger className="cursor-pointer hover:bg-zinc-900/50 rounded-xl p-2">
+              <div className="flex items-center gap-2 text-2xl font-semibold">
+                <Paintbrush className="w-4 h-4" />
+                <span>Estilo</span>
+              </div>
+              </AccordionTrigger>
+            <AccordionContent className="bg-zinc-900/50 p-2 rounded-xl mb-8 mt-2">
+{/* Tema */}
+<div>
+          <Label className="mb-2 text-lg block font-bold">Tema</Label>
           <div className="flex gap-6 items-center mb-8">
             <label className="inline-flex items-center gap-2 cursor-pointer">
               <input
@@ -636,9 +640,9 @@ export default function EditProfileForm() {
               )}
             </div>
             <div>
-              <label className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm cursor-pointer hover:bg-zinc-800">
+              <label className="inline-flex text-zinc-900 items-center gap-2 rounded-md border border-zinc-800 bg-zinc-50 px-3 py-2 text-sm cursor-pointer hover:bg-zinc-100">
                 <Upload className="w-4 h-4" />
-                <span>Enviar foto</span>
+                <span className="text-zinc-900">Enviar foto</span>
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => {
                   const f = e.target.files?.[0]
                   if (!f) return
@@ -654,8 +658,8 @@ export default function EditProfileForm() {
 
         {/* Link público */}
         <div>
-          <Label htmlFor="slug" className="mb-2 block">Link público</Label>
-          <div className="flex items-center gap-2">
+          <Label htmlFor="slug" className="mb-2 block font-bold mt-4">Link público</Label>
+          <div className="flex flex-col md:flex-row items-center gap-2">
             <div className="flex w-full max-w-xl items-center overflow-hidden rounded-md border border-zinc-800 bg-zinc-900">
               <span className="pl-3 pr-1 py-2 text-sm text-zinc-400 whitespace-nowrap select-none">https://advlink.site/adv/</span>
               <input
@@ -671,13 +675,27 @@ export default function EditProfileForm() {
             </Button>
           </div>
           {slugValid === false && (<p className="mt-1 text-sm text-red-400">Este slug já existe. Escolha outro.</p>)}
-          {slugValid === true && (<p className="mt-1 text-sm text-green-400">Slug disponível!</p>)}
+          {slugValid === true && (<p className="mt-1 text-sm text-green-400">Slug disponível! Salve para aplicar.</p>)}
         </div>
 
         {/* Capa */}
         <div className="flex flex-col gap-2 mt-4">
           <Label className="mb-2 block font-bold">Capa da página</Label>
           <div className="flex flex-col gap-4">
+            <div>
+          <label className="inline-flex text-zinc-900 items-center gap-2 rounded-md border border-zinc-800 bg-zinc-50 px-3 py-2 text-sm cursor-pointer hover:bg-zinc-100">
+                <Upload className="w-4 h-4" />
+                <span>Enviar capa</span>
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (!f) return
+                  setRemoveCover(false)
+                  setCoverFile(f)
+                  const url = URL.createObjectURL(f)
+                  setCoverPreviewUrl((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url })
+                }} />
+              </label>
+              </div>
             <div className="relative h-44 w-full overflow-hidden rounded-md ring-2 ring-zinc-800">
               {coverPreviewUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -696,38 +714,30 @@ export default function EditProfileForm() {
                 </button>
               )}
             </div>
-            <div>
-              <label className="inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-900 px-3 py-2 text-sm cursor-pointer hover:bg-zinc-800">
-                <Upload className="w-4 h-4" />
-                <span>Enviar capa</span>
-                <input type="file" accept="image/*" className="hidden" onChange={(e) => {
-                  const f = e.target.files?.[0]
-                  if (!f) return
-                  setRemoveCover(false)
-                  setCoverFile(f)
-                  const url = URL.createObjectURL(f)
-                  setCoverPreviewUrl((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url })
-                }} />
-              </label>
-            </div>
           </div>
         </div>
-
-        {/* Perfil */}
-        <div className="mt-12">
-          <h2 className="text-xl font-bold mb-4">Perfil</h2>
-        </div>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="perfil">
+            <AccordionTrigger className="cursor-pointer hover:bg-zinc-900/50 rounded-xl p-2">
+              <div className="flex items-center gap-2 text-2xl font-semibold">
+                <User className="w-4 h-4" />
+                <span>Perfil e Contato</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="bg-zinc-900/50 p-2 rounded-xl mb-8 mt-2">
+              {/* Perfil */}
         <div className="flex flex-col gap-2">
           <Label htmlFor="publicName" className="mb-2 block font-bold">Nome de exibição <span className="text-red-500" aria-hidden>*</span></Label>
           <Input id="publicName" {...register("publicName")} />
           {errors.publicName && <p className="mt-1 text-sm text-red-400">{errors.publicName.message}</p>}
         </div>
-        <div>
+        <div className="mt-4">
           <Label htmlFor="aboutDescription" className="mb-2 block font-bold">Sobre mim</Label>
           <div className="relative overflow-visible border border-zinc-800 bg-zinc-900/50 rounded-md">
             <MDXEditor
-              className="mdxeditor min-h-[300px] max-h-[65vh] overflow-visible"
-              contentEditableClassName="min-h-[310px] p-4 cursor-text !text-zinc-50 whitespace-pre-wrap"
+              className="mdxeditor min-h-[200px] max-h-[65vh] overflow-visible"
+              contentEditableClassName="min-h-[210px] p-4 cursor-text !text-zinc-50 whitespace-pre-wrap"
               markdown={aboutMarkdown}
               onChange={(md: string) => setAboutMarkdown(md)}
               plugins={[
@@ -749,7 +759,7 @@ export default function EditProfileForm() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
             <Label htmlFor="publicEmail" className="mb-2 block font-bold">E-mail para contato</Label>
             <Input id="publicEmail" type="email" {...register("publicEmail")} />
@@ -771,15 +781,23 @@ export default function EditProfileForm() {
           </div>
         </div>
 
-        <div>
+        <div className="mt-4">
           <Label htmlFor="calendlyUrl" className="mb-2 block font-bold">Calendly URL</Label>
           <Input id="calendlyUrl" placeholder="https://calendly.com/seu-usuario" {...register("calendlyUrl")} />
           {errors.calendlyUrl && <p className="mt-1 text-sm text-red-400">{errors.calendlyUrl.message}</p>}
         </div>
-
-        {/* Endereço */}
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-4 space-y-3">
-          <h3 className="text-base font-semibold">Endereço</h3>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="endereco">
+            <AccordionTrigger className="cursor-pointer hover:bg-zinc-900/50 rounded-xl p-2">
+              <div className="flex items-center gap-2 text-2xl font-semibold">
+                <MapPin className="w-4 h-4" />
+                <span>Endereço</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="bg-zinc-900/50 p-2 rounded-xl mb-8 mt-2">
+              {/* Endereço */}
+        <div className="space-y-3">
           <div className="flex items-center gap-3">
             <Label htmlFor="addressPublic" className="font-bold">Mostrar Endereço?</Label>
             <Controller
@@ -835,12 +853,20 @@ export default function EditProfileForm() {
             </div>
           </div>
         </div>
-
-        {/* Lista de áreas */}
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="areas">
+            <AccordionTrigger className="cursor-pointer hover:bg-zinc-900/50 rounded-xl p-2">
+              <div className="flex items-center gap-2 text-2xl font-semibold">
+                <ListTree className="w-4 h-4" />
+                <span>Áreas ou serviços</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="bg-zinc-900/50 p-2 rounded-xl mb-8 mt-2">
+{/* Lista de áreas */}
+<div className="space-y-2">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Áreas de atuação</h2>
-            <Button type="button" variant="secondary" className="gap-2" onClick={() => createAreaMutation.mutate()}>
+            <Button type="button" variant="secondary" className="gap-2 cursor-pointer" onClick={() => createAreaMutation.mutate()}>
               <Plus className="w-4 h-4" /> Nova área
             </Button>
           </div>
@@ -920,11 +946,19 @@ export default function EditProfileForm() {
             ))}
           </div>
         </div>
-
-        {/* Galeria */}
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="galeria">
+            <AccordionTrigger className="cursor-pointer hover:bg-zinc-900/50 rounded-xl p-2">
+              <div className="flex items-center gap-2 text-2xl font-semibold">
+                <Images className="w-4 h-4" />
+                <span>Galeria</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="bg-zinc-900/50 p-2 rounded-xl mb-8 mt-2">
+              {/* Galeria */}
+        <div className="space-y-2">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold">Galeria</h2>
             <label className={`inline-flex items-center gap-2 rounded-md border border-zinc-800 bg-zinc-50 px-3 py-2 text-sm text-zinc-900 cursor-pointer ${galleryUploading ? 'opacity-50 pointer-events-none' : 'hover:bg-zinc-100'}`}>
               <Upload className="w-4 h-4" />
               <span>Nova foto</span>
@@ -1018,11 +1052,20 @@ export default function EditProfileForm() {
             ))}
           </div>
         </div>
-        {/* Links */}
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="links">
+            <AccordionTrigger className="cursor-pointer hover:bg-zinc-900/50 rounded-xl p-2">
+              <div className="flex items-center gap-2 text-2xl font-semibold">
+                <LinkIcon className="w-4 h-4" />
+                <span>Links</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="bg-zinc-900/50 p-2 rounded-xl mb-8 mt-2">
+              {/* Links */}
+        <div className="space-y-2">
           <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-lg font-semibold flex items-center gap-2"><LinkIcon className="w-4 h-4" /> Links</h2>
-            <Button type="button" variant="secondary" className="gap-2" onClick={() => createLinkMutation.mutate()}>
+            <Button type="button" variant="secondary" className="gap-2 cursor-pointer" onClick={() => createLinkMutation.mutate()}>
               <Plus className="w-4 h-4" /> Novo link
             </Button>
           </div>
@@ -1101,11 +1144,18 @@ export default function EditProfileForm() {
             ))}
           </div>
         </div>
-
-        {/* SEO */}
-        <div className="mt-12">
-          <h2 className="text-xl font-bold mb-4">SEO</h2>
-        </div>
+            </AccordionContent>
+          </AccordionItem>
+          <AccordionItem value="seo">
+            <AccordionTrigger className="cursor-pointer hover:bg-zinc-900/50 rounded-xl p-2">
+              <div className="flex items-center gap-2 text-2xl font-semibold">
+                <Search className="w-4 h-4" />
+                <span>SEO</span>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="bg-zinc-900/50 p-2 rounded-xl mb-8 mt-2">
+{/* SEO */}
+<div className="space-y-2">
         <div>
           <Label htmlFor="metaTitle" className="mb-2 block font-bold">Meta Title</Label>
           <Input id="metaTitle" maxLength={80} placeholder="Título curto e persuasivo (até 80 caracteres)" {...register("metaTitle")} />
@@ -1119,12 +1169,11 @@ export default function EditProfileForm() {
           <Input id="keywords" placeholder="ex.: advocacia civil, direito do consumidor" {...register("keywords")} />
           <p className="mt-1 text-xs text-zinc-400">Separe por vírgulas.</p>
         </div>
-        <div>
-          <Label htmlFor="gtmContainerId" className="mb-2 block font-bold">Google Tag Manager</Label>
-          <Input id="gtmContainerId" placeholder="GTM-XXXXXXX" {...register("gtmContainerId")} />
         </div>
-
-        <div className="flex justify-end mt-12">
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+        <div className="flex justify-end">
           <Button type="submit" disabled={saveProfileMutation.isPending} className="gap-2 w-full cursor-pointer">
             <Save className="w-4 h-4" />
             {saveProfileMutation.isPending ? "Salvando..." : "Salvar"}
