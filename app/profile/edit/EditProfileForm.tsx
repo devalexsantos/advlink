@@ -28,6 +28,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Accordion, AccordionContent, AccordionTrigger, AccordionItem } from "@/components/ui/accordion"
 
 const MDXEditor = dynamic(() => import("@mdxeditor/editor").then(m => m.MDXEditor), { ssr: false })
+const Cropper = dynamic(() => import("react-easy-crop"), { ssr: false })
 
 const profileEditSchema = z.object({
   publicName: z.string().min(2, "Informe pelo menos 2 caracteres."),
@@ -248,6 +249,54 @@ export default function EditProfileForm() {
   const [removeAreaCover, setRemoveAreaCover] = useState(false)
   const [linkSaving, setLinkSaving] = useState(false)
   const [removeLinkCover, setRemoveLinkCover] = useState(false)
+  // Avatar cropper state
+  const [avatarCropOpen, setAvatarCropOpen] = useState<boolean>(false)
+  const [avatarCropSrc, setAvatarCropSrc] = useState<string | null>(null)
+  const pendingAvatarFileRef = useRef<File | null>(null)
+  const [crop, setCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState<number>(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
+  const [coverCropOpen, setCoverCropOpen] = useState<boolean>(false)
+  const [coverCropSrc, setCoverCropSrc] = useState<string | null>(null)
+  const pendingCoverFileRef = useRef<File | null>(null)
+  const [coverCrop, setCoverCrop] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+  const [coverZoom, setCoverZoom] = useState<number>(1)
+  const [coverCroppedAreaPixels, setCoverCroppedAreaPixels] = useState<{ x: number; y: number; width: number; height: number } | null>(null)
+
+
+  async function createImage(url: string): Promise<HTMLImageElement> {
+    return new Promise((resolve, reject) => {
+      const image = new Image()
+      image.addEventListener("load", () => resolve(image))
+      image.addEventListener("error", (err) => reject(err))
+      image.setAttribute("crossOrigin", "anonymous")
+      image.src = url
+    })
+  }
+
+  async function getCroppedBlob(imageSrc: string, pixelCrop: { x: number; y: number; width: number; height: number }): Promise<Blob> {
+    const image = await createImage(imageSrc)
+    const outputCanvas = document.createElement("canvas")
+    const outputCtx = outputCanvas.getContext("2d") as CanvasRenderingContext2D
+    outputCanvas.width = pixelCrop.width
+    outputCanvas.height = pixelCrop.height
+
+    outputCtx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      pixelCrop.width,
+      pixelCrop.height
+    )
+
+    return new Promise<Blob>((resolve) => {
+      outputCanvas.toBlob((b) => resolve(b as Blob), "image/jpeg", 0.92)
+    })
+  }
   const [deleteConfirm, setDeleteConfirm] = useState<Area | null>(null)
   const [deleteLinkConfirm, setDeleteLinkConfirm] = useState<LinkItem | null>(null)
   const [deleteGalleryConfirm, setDeleteGalleryConfirm] = useState<GalleryItem | null>(null)
@@ -654,9 +703,15 @@ export default function EditProfileForm() {
                   const f = e.target.files?.[0]
                   if (!f) return
                   setRemoveAvatar(false)
-                  setPhotoFile(f)
-                  const url = URL.createObjectURL(f)
-                  setPreviewUrl((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url })
+                  pendingAvatarFileRef.current = f
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    setAvatarCropSrc(reader.result as string)
+                    setZoom(1)
+                    setCrop({ x: 0, y: 0 })
+                    setAvatarCropOpen(true)
+                  }
+                  reader.readAsDataURL(f)
                 }} />
               </label>
             </div>
@@ -702,9 +757,15 @@ export default function EditProfileForm() {
                   const f = e.target.files?.[0]
                   if (!f) return
                   setRemoveCover(false)
-                  setCoverFile(f)
-                  const url = URL.createObjectURL(f)
-                  setCoverPreviewUrl((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url })
+                  pendingCoverFileRef.current = f
+                  const reader = new FileReader()
+                  reader.onload = () => {
+                    setCoverCropSrc(reader.result as string)
+                    setCoverZoom(1)
+                    setCoverCrop({ x: 0, y: 0 })
+                    setCoverCropOpen(true)
+                  }
+                  reader.readAsDataURL(f)
                 }} />
               </label>
               </div>
@@ -1194,6 +1255,140 @@ export default function EditProfileForm() {
           </Button>
         </div>
       </form>
+
+      {/* Cover Crop Dialog */}
+      <Dialog open={coverCropOpen} onOpenChange={(v) => setCoverCropOpen(v)}>
+        <DialogContent className="w-full max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-300">Ajustar capa da página</DialogTitle>
+          </DialogHeader>
+          <div className="relative w-full h-[50vh] bg-zinc-900 rounded-md overflow-hidden">
+            {coverCropSrc && (
+              // @ts-expect-error dynamic import type
+              <Cropper
+                image={coverCropSrc}
+                crop={coverCrop}
+                zoom={coverZoom}
+                aspect={16/9}
+                restrictPosition={false}
+                showGrid={false}
+                onCropChange={setCoverCrop}
+                onZoomChange={setCoverZoom}
+                onCropComplete={(_, areaPixels) => setCoverCroppedAreaPixels(areaPixels)}
+              />
+            )}
+          </div>
+          <div className="flex items-center gap-3 mt-3">
+            <div className="flex-1">
+              <Label className="text-xs text-zinc-400">Zoom</Label>
+              <input type="range" min={1} max={3} step={0.01} value={coverZoom} onChange={(e) => setCoverZoom(parseFloat(e.target.value))} className="w-full" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              className="cursor-pointer"
+              onClick={() => {
+                setCoverCropOpen(false)
+                setCoverCropSrc(null)
+                pendingCoverFileRef.current = null
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="cursor-pointer"
+              onClick={async () => {
+                if (!coverCropSrc || !coverCroppedAreaPixels) return
+                try {
+                  const blob = await getCroppedBlob(coverCropSrc, coverCroppedAreaPixels)
+                  const fileName = pendingCoverFileRef.current?.name || "cover.jpg"
+                  const croppedFile = new File([blob], fileName.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" })
+                  setCoverFile(croppedFile)
+                  const url = URL.createObjectURL(croppedFile)
+                  setCoverPreviewUrl((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url })
+                } finally {
+                  setCoverCropOpen(false)
+                  setCoverCropSrc(null)
+                  pendingCoverFileRef.current = null
+                }
+              }}
+            >
+              Salvar recorte
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Avatar Crop Dialog */}
+      <Dialog open={avatarCropOpen} onOpenChange={(v) => setAvatarCropOpen(v)}>
+        <DialogContent className="w-full max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-zinc-300">Ajustar foto de perfil</DialogTitle>
+          </DialogHeader>
+          <div className="relative w-full h-80 bg-zinc-900 rounded-md overflow-hidden">
+            {avatarCropSrc && (
+              // @ts-expect-error dynamic import type
+              <Cropper
+                image={avatarCropSrc}
+                crop={crop}
+                zoom={zoom}
+                
+                aspect={1}
+                restrictPosition={false}
+                showGrid={false}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={(_, areaPixels) => setCroppedAreaPixels(areaPixels)}
+              />
+            )}
+          </div>
+          <div className="flex items-center gap-3 mt-3">
+            <div className="flex-1">
+              <Label className="text-xs text-zinc-400">Zoom</Label>
+              <input type="range" min={1} max={3} step={0.01} value={zoom} onChange={(e) => setZoom(parseFloat(e.target.value))} className="w-full" />
+            </div>
+            
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="secondary"
+              className="cursor-pointer"
+              onClick={() => {
+                setAvatarCropOpen(false)
+                setAvatarCropSrc(null)
+                pendingAvatarFileRef.current = null
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="cursor-pointer"
+              onClick={async () => {
+                if (!avatarCropSrc || !croppedAreaPixels) return
+                try {
+                  const blob = await getCroppedBlob(avatarCropSrc, croppedAreaPixels)
+                  const fileName = pendingAvatarFileRef.current?.name || "avatar.jpg"
+                  const croppedFile = new File([blob], fileName.replace(/\.[^.]+$/, ".jpg"), { type: "image/jpeg" })
+                  setPhotoFile(croppedFile)
+                  const url = URL.createObjectURL(croppedFile)
+                  setPreviewUrl((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url })
+                } finally {
+                  setAvatarCropOpen(false)
+                  setAvatarCropSrc(null)
+                  pendingAvatarFileRef.current = null
+                }
+              }}
+            >
+              Salvar recorte
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={!!editingArea} onOpenChange={(v) => !v && (setEditingArea(null), setRemoveAreaCover(false), setAreaCoverPreview(null), setAreaCoverGenerating(false))}>
         <DialogContent className="w-full max-w-6xl h-screen overflow-auto">
