@@ -22,7 +22,7 @@ const playfair = Playfair_Display({
 
 export const metadata: Metadata = {
   title: "AdvLink",
-  description: "Criador Inteligente de LPs para Advogados e Escritórios de Advocacia",
+  description: "Criador Inteligente de Sites para Advogados e Escritórios de Advocacia",
 };
 
 export default function RootLayout({

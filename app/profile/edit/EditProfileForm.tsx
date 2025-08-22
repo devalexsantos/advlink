@@ -559,7 +559,7 @@ export default function EditProfileForm() {
         >
           <Save className="w-10 h-10" />
         </Button>
-        <Accordion type="single" defaultValue="visual" collapsible>
+        <Accordion type="single" defaultValue="visual">
           <AccordionItem value="visual">
             <AccordionTrigger className="cursor-pointer hover:bg-zinc-900/50 rounded-xl p-2">
               <div className="flex items-center gap-2 text-2xl font-semibold">
@@ -1196,7 +1196,7 @@ export default function EditProfileForm() {
       </form>
 
       <Dialog open={!!editingArea} onOpenChange={(v) => !v && (setEditingArea(null), setRemoveAreaCover(false), setAreaCoverPreview(null), setAreaCoverGenerating(false))}>
-        <DialogContent className="w-full max-w-6xl max-h-[80vh] overflow-auto">
+        <DialogContent className="w-full max-w-6xl h-screen overflow-auto">
           <DialogHeader>
             <DialogTitle className="text-zinc-300">Editar área</DialogTitle>
           </DialogHeader>
