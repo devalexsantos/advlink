@@ -1284,20 +1284,8 @@ export default function EditProfileForm() {
               <input type="range" min={1} max={3} step={0.01} value={coverZoom} onChange={(e) => setCoverZoom(parseFloat(e.target.value))} className="w-full" />
             </div>
           </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="secondary"
-              className="cursor-pointer"
-              onClick={() => {
-                setCoverCropOpen(false)
-                setCoverCropSrc(null)
-                pendingCoverFileRef.current = null
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
+          <DialogFooter className="flex flex-col md:flex-row gap-3">
+          <Button
               type="button"
               className="cursor-pointer"
               onClick={async () => {
@@ -1318,6 +1306,19 @@ export default function EditProfileForm() {
             >
               Salvar recorte
             </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="cursor-pointer"
+              onClick={() => {
+                setCoverCropOpen(false)
+                setCoverCropSrc(null)
+                pendingCoverFileRef.current = null
+              }}
+            >
+              Cancelar
+            </Button>
+            
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -1352,20 +1353,8 @@ export default function EditProfileForm() {
             </div>
             
           </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="secondary"
-              className="cursor-pointer"
-              onClick={() => {
-                setAvatarCropOpen(false)
-                setAvatarCropSrc(null)
-                pendingAvatarFileRef.current = null
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
+          <DialogFooter className="flex flex-col md:flex-row gap-3">
+          <Button
               type="button"
               className="cursor-pointer"
               onClick={async () => {
@@ -1386,6 +1375,19 @@ export default function EditProfileForm() {
             >
               Salvar recorte
             </Button>
+            <Button
+              type="button"
+              variant="secondary"
+              className="cursor-pointer"
+              onClick={() => {
+                setAvatarCropOpen(false)
+                setAvatarCropSrc(null)
+                pendingAvatarFileRef.current = null
+              }}
+            >
+              Cancelar
+            </Button>
+           
           </DialogFooter>
         </DialogContent>
       </Dialog>
