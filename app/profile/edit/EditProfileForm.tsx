@@ -114,11 +114,6 @@ async function fetchProfile() {
   if (!res.ok) throw new Error("Falha ao carregar perfil")
   return res.json() as Promise<{ profile: ProfileData | null; areas: Area[]; address?: AddressData; links: LinkItem[]; gallery: GalleryItem[] }>
 }
-async function validateSlug(slug: string) {
-  const res = await fetch("/api/profile/validate-slug", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) })
-  if (!res.ok) throw new Error("Slug inválido")
-  return res.json() as Promise<{ valid: boolean; slug: string }>
-}
 async function updateProfile(data: FormData) {
   const res = await fetch("/api/profile", { method: "PATCH", body: data })
   if (!res.ok) throw new Error("Falha ao salvar perfil")
@@ -241,10 +236,6 @@ export default function EditProfileForm() {
   const [secondaryColor, setSecondaryColor] = useState<string>("#FFFFFF")
   const [textColor, setTextColor] = useState<string>("#FFFFFF")
   const [theme, setTheme] = useState<"modern" | "classic">("modern")
-  const [slugInput, setSlugInput] = useState("")
-  const [slugValid, setSlugValid] = useState<boolean | null>(null)
-  const [slugChecking, setSlugChecking] = useState(false)
-  const [initialSlug, setInitialSlug] = useState("")
   const [areaSaving, setAreaSaving] = useState(false)
   const [removeAreaCover, setRemoveAreaCover] = useState(false)
   const [linkSaving, setLinkSaving] = useState(false)
@@ -336,9 +327,7 @@ export default function EditProfileForm() {
     setSecondaryColor((p.secondaryColor as string) ?? "#FFFFFF")
     setTextColor((p.textColor as string) ?? "#FFFFFF")
     setTheme(((p.theme as string) === "classic" ? "classic" : "modern"))
-    const currentSlug = (p.slug as string) ?? ""
-    setSlugInput(currentSlug)
-    setInitialSlug(currentSlug)
+    // slug edition moved to PublishedCTA; no local slug state here
     setAreas(data.areas ?? [])
     setLinks((data as unknown as { links?: LinkItem[] }).links ?? [])
     setGallery((data as unknown as { gallery?: GalleryItem[] }).gallery ?? [])
@@ -517,10 +506,6 @@ export default function EditProfileForm() {
   // ------------------------------------------
 
   async function onSubmit(values: ProfileEditValues) {
-    if (slugInput !== (initialSlug || "") && slugValid !== true) {
-      alert("O slug informado não é válido ou não foi verificado. Por favor, verifique o slug antes de salvar.")
-      return
-    }
     const fd = new FormData()
     fd.set("publicName", values.publicName)
     // Usa o MDX "Sobre mim" (aboutMarkdown) com preservação de quebras extras
@@ -545,7 +530,6 @@ export default function EditProfileForm() {
     fd.set("primaryColor", primaryColor)
     fd.set("secondaryColor", secondaryColor)
     fd.set("textColor", textColor)
-    if (slugInput) fd.set("slug", slugInput)
     if (removeAvatar) {
       fd.set("removeAvatar", "true")
     }
@@ -561,16 +545,7 @@ export default function EditProfileForm() {
     showToast("Salvo com sucesso!")
   }
 
-  async function onCheckSlug() {
-    setSlugChecking(true)
-    try {
-      const res = await validateSlug(slugInput)
-      setSlugValid(Boolean(res.valid))
-      if (!res.valid) alert("Slug já existe. Escolha outro.")
-    } finally {
-      setSlugChecking(false)
-    }
-  }
+  // slug edition removed; handled in PublishedCTA
 
   if (isLoading) return <div className="rounded-xl border border-zinc-800 bg-zinc-900/50 p-6">Carregando…</div>
 
@@ -583,8 +558,8 @@ export default function EditProfileForm() {
             <h1 className="text-2xl font-semibold">Editar informações</h1>
             <div className="flex items-center gap-2">
               <Button type="button" variant="secondary" className="cursor-pointer" onClick={() => {
-                const targetSlug = (slugInput || initialSlug || '').trim()
-                const url = targetSlug ? `/adv/${encodeURIComponent(targetSlug)}` : '/profile/edit'
+                const currentSlug = (data?.profile?.slug || '').trim()
+                const url = currentSlug ? `https://${encodeURIComponent(currentSlug)}.advlink.site` : '/profile/edit'
                 window.open(url, '_blank')
               }}>
                 <ExternalLink className="w-4 h-4" />
@@ -718,32 +693,7 @@ export default function EditProfileForm() {
           </div>
         </div>
 
-        {/* Link público */}
-        <div>
-          <Label htmlFor="slug" className="mb-2 block font-bold mt-4">Link público</Label>
-          <div className="flex flex-col md:flex-row items-center gap-2">
-            <div className="flex w-full max-w-xl items-center overflow-hidden rounded-md border border-zinc-800 bg-zinc-900">
-              <span className="pl-3 pr-1 py-2 text-sm text-zinc-400 whitespace-nowrap select-none">https://advlink.site/adv/</span>
-              <input
-                id="slug"
-                value={slugInput}
-                onChange={(e) => { setSlugInput(e.target.value); setSlugValid(null) }}
-                placeholder="seu-slug"
-                className="flex-1 bg-transparent text-sm text-zinc-100 outline-none px-0 py-2"
-              />
-            </div>
-            <Button 
-            type="button" 
-            variant="secondary" 
-            className="cursor-pointer"
-            onClick={onCheckSlug} 
-            disabled={slugChecking || slugInput.trim().length === 0 || slugInput === initialSlug}>
-              {slugChecking ? "Verificando..." : "Verificar"}
-            </Button>
-          </div>
-          {slugValid === false && (<p className="mt-1 text-sm text-red-400">Este slug já existe. Escolha outro.</p>)}
-          {slugValid === true && (<p className="mt-1 text-sm text-green-400">Slug disponível! Salve para aplicar.</p>)}
-        </div>
+        {/* Link público movido para PublishedCTA (edição removida aqui) */}
 
         {/* Capa */}
         <div className="flex flex-col gap-2 mt-4">
