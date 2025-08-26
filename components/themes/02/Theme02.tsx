@@ -13,9 +13,9 @@ type Area = { id: string; title: string; description: string | null; coverImageU
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
-type Profile = { publicName?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null }
+type Profile = { publicName?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
 
-export default function Theme02({ profile, areas, address, links = [], gallery = [], primary, text, secondary }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string }) {
+export default function Theme02({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean }) {
   return (
     <div
       className="min-h-screen relative overflow-hidden"
@@ -305,6 +305,33 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
           </Link>
         </span>
       </footer>
+
+      {/* Fixed contact buttons (bottom-right) */}
+      {(profile.whatsappIsFixed || profile.publicPhoneIsFixed) && (
+        <div className={`${constrainToContainer ? "absolute" : "fixed"} bottom-4 right-4 z-50 flex flex-col items-end gap-3`}>
+          {profile.whatsappIsFixed && profile.whatsapp ? (
+            <a
+              href={`https://wa.me/${profile.whatsapp.replace(/\D/g, "")}`}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="Abrir WhatsApp"
+              className="shadow-lg rounded-full overflow-hidden"
+            >
+              <img src={whatsAppIcon.src} alt="WhatsApp" className="w-[50px] h-[50px]" />
+            </a>
+          ) : null}
+          {profile.publicPhoneIsFixed && profile.publicPhone ? (
+            <a
+              href={`tel:${profile.publicPhone.replace(/\D/g, "")}`}
+              aria-label="Ligar por telefone"
+              className="grid place-items-center w-[50px] h-[50px] rounded-full shadow-lg border"
+              style={{ backgroundColor: primary, color: text, borderColor: `${text}65` }}
+            >
+              <Phone className="w-6 h-6" />
+            </a>
+          ) : null}
+        </div>
+      )}
     </div>
   )
 }

@@ -73,24 +73,26 @@ model Profile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  avatarUrl        String?
-  whatsapp         String?
-  instagramUrl     String?
-  publicName       String?
-  aboutDescription String?
-  publicEmail      String?
-  publicPhone      String?
-  slug             String? @unique
-  primaryColor     String  @default("#000e29")
-  secondaryColor   String  @default("#e8e8e8")
-  textColor        String  @default("#FFFFFF")
-  coverUrl         String? @default("https://advoga-site.s3.us-east-2.amazonaws.com/covers/covers_cmehhui1b000adp8wog0ziszn.1755786112784_tiny.png")
-  calendlyUrl      String?
-  metaDescription  String?
-  metaTitle        String?
-  keywords         String?
-  gtmContainerId   String?
-  theme            String? @default("classic")
+  avatarUrl          String?
+  whatsapp           String?
+  whatsappIsFixed    Boolean @default(true)
+  instagramUrl       String?
+  publicName         String?
+  aboutDescription   String?
+  publicEmail        String?
+  publicPhone        String?
+  publicPhoneIsFixed Boolean @default(false)
+  slug               String? @unique
+  primaryColor       String  @default("#000e29")
+  secondaryColor     String  @default("#e8e8e8")
+  textColor          String  @default("#FFFFFF")
+  coverUrl           String? @default("https://advoga-site.s3.us-east-2.amazonaws.com/covers/covers_cmehhui1b000adp8wog0ziszn.1755786112784_tiny.png")
+  calendlyUrl        String?
+  metaDescription    String?
+  metaTitle          String?
+  keywords           String?
+  gtmContainerId     String?
+  theme              String? @default("classic")
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

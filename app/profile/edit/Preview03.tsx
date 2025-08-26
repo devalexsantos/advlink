@@ -20,6 +20,8 @@ type Profile = {
   aboutDescription?: string | null
   primaryColor?: string | null
   textColor?: string | null
+  whatsappIsFixed?: boolean | null
+  publicPhoneIsFixed?: boolean | null
 }
 
 type Props = {
@@ -57,7 +59,9 @@ export default function Preview03({ profile, areas, address, links = [], gallery
       </div>
 
       <div className={`rounded-xl border border-zinc-800 bg-zinc-900/30 ${mode === "mobile" ? "[&_.min-w-0]:!basis-full [&_.shrink-0]:!basis-full" : ""}`} style={containerStyle}>
-        <Theme03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} primary={primary} text={text} secondary={secondary} />
+        <div className="relative">
+          <Theme03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} primary={primary} text={text} secondary={secondary} constrainToContainer />
+        </div>
       </div>
     </div>
   )

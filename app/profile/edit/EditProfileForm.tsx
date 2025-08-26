@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Switch } from "@/components/ui/switch"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Camera, Pencil, Plus, Save, Trash2, Upload, WandSparkles, X, ArrowDown, ArrowUp, ExternalLink, Paintbrush, User, MapPin, ListTree, Images, Link as LinkIcon, Search } from "lucide-react"
+import { Camera, Pencil, Plus, Save, Trash2, Upload, X, ArrowDown, ArrowUp, ExternalLink, Paintbrush, User, MapPin, ListTree, Images, Link as LinkIcon, Search, Info } from "lucide-react"
 import { useToast } from "@/components/toast/ToastProvider"
 import "@mdxeditor/editor/style.css"
 import {
@@ -26,6 +26,7 @@ import {
 import dynamic from "next/dynamic"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Accordion, AccordionContent, AccordionTrigger, AccordionItem } from "@/components/ui/accordion"
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 
 const MDXEditor = dynamic(() => import("@mdxeditor/editor").then(m => m.MDXEditor), { ssr: false })
 const Cropper = dynamic(() => import("react-easy-crop"), { ssr: false })
@@ -92,7 +93,9 @@ type ProfileData = {
   aboutDescription?: string | null
   publicEmail?: string | null
   publicPhone?: string | null
+  publicPhoneIsFixed?: boolean | null
   whatsapp?: string | null
+  whatsappIsFixed?: boolean | null
   instagramUrl?: string | null
   calendlyUrl?: string | null
   avatarUrl?: string | null
@@ -139,11 +142,7 @@ async function deleteArea(id: string) {
   if (!res.ok) throw new Error("Falha ao excluir área")
   return res.json() as Promise<{ ok: boolean }>
 }
-async function aiGenerateDescription(title: string) {
-  const res = await fetch("/api/activity-areas/generate-description", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title }) })
-  if (!res.ok) throw new Error("Falha ao gerar descrição")
-  return res.json() as Promise<{ description: string }>
-}
+// Removido: geração de descrição com IA
 
 // Links API
 async function createLink() {
@@ -240,6 +239,8 @@ export default function EditProfileForm() {
   const [removeAreaCover, setRemoveAreaCover] = useState(false)
   const [linkSaving, setLinkSaving] = useState(false)
   const [removeLinkCover, setRemoveLinkCover] = useState(false)
+  const [publicPhoneIsFixed, setPublicPhoneIsFixed] = useState<boolean>(false)
+  const [whatsappIsFixed, setWhatsappIsFixed] = useState<boolean>(false)
   // Avatar cropper state
   const [avatarCropOpen, setAvatarCropOpen] = useState<boolean>(false)
   const [avatarCropSrc, setAvatarCropSrc] = useState<string | null>(null)
@@ -323,6 +324,8 @@ export default function EditProfileForm() {
     setRemoveAvatar(false)
     if (p.coverUrl) setCoverPreviewUrl(p.coverUrl as string)
     setRemoveCover(false)
+    setPublicPhoneIsFixed(Boolean(p.publicPhoneIsFixed))
+    setWhatsappIsFixed(Boolean(p.whatsappIsFixed))
     setPrimaryColor((p.primaryColor as string) ?? "#8B0000")
     setSecondaryColor((p.secondaryColor as string) ?? "#FFFFFF")
     setTextColor((p.textColor as string) ?? "#FFFFFF")
@@ -399,7 +402,7 @@ export default function EditProfileForm() {
       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
     }
   })
-  const aiMutation = useMutation({ mutationFn: aiGenerateDescription })
+  // Removido: mutation de geração de descrição com IA
 
   // Links mutations
   const createLinkMutation = useMutation({
@@ -527,6 +530,8 @@ export default function EditProfileForm() {
     if (values.neighborhood) fd.set("neighborhood", values.neighborhood)
     if (values.city) fd.set("city", values.city)
     if (values.state) fd.set("state", values.state)
+    fd.set("publicPhoneIsFixed", String(publicPhoneIsFixed))
+    fd.set("whatsappIsFixed", String(whatsappIsFixed))
     fd.set("primaryColor", primaryColor)
     fd.set("secondaryColor", secondaryColor)
     fd.set("textColor", textColor)
@@ -782,20 +787,73 @@ export default function EditProfileForm() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div className="mt-4 space-y-4">
           <div>
             <Label htmlFor="publicEmail" className="mb-2 block font-bold">E-mail para contato</Label>
             <Input id="publicEmail" type="email" {...register("publicEmail")} />
             {errors.publicEmail && <p className="mt-1 text-sm text-red-400">{errors.publicEmail.message}</p>}
           </div>
-          <div>
-            <Label htmlFor="publicPhone" className="mb-2 block font-bold">Telefone</Label>
-            <Input id="publicPhone" {...register("publicPhone")} />
-          </div>
-          {/* WhatsApp & Instagram */}
-          <div>
+          <div className="flex flex-col gap-2">
             <Label htmlFor="whatsapp" className="mb-2 block">WhatsApp</Label>
-            <Input id="whatsapp" placeholder="(00) 00000-0000" {...register("whatsapp")} />
+            <div className="flex items-center gap-3">
+              <Input id="whatsapp" placeholder="(00) 00000-0000" {...register("whatsapp")} className="flex-1 max-w-50" />
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <Switch checked={whatsappIsFixed} onCheckedChange={setWhatsappIsFixed} />
+                <span className="inline-flex items-center gap-1 text-sm">
+                  Fixar WhatsApp
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          className="cursor-help"
+                          aria-label="Ajuda"
+                        >
+                          <Info className="w-4 h-4 text-zinc-400" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Ao ativar, o botão de WhatsApp ficará fixo no canto inferior direito da sua página.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </span>
+              </label>
+            </div>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="publicPhone" className="mb-2 block font-bold">Telefone</Label>
+            <div className="flex items-center gap-3">
+              <Input id="publicPhone" {...register("publicPhone")} className="flex-1 max-w-50" />
+              <label className="inline-flex items-center gap-2 cursor-pointer">
+                <Switch checked={publicPhoneIsFixed} onCheckedChange={setPublicPhoneIsFixed} />
+                <span className="inline-flex items-center gap-1 text-sm">
+                  Fixar telefone
+                  <TooltipProvider delayDuration={200}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          type="button"
+                          onClick={(e) => e.stopPropagation()}
+                          onMouseDown={(e) => e.stopPropagation()}
+                          onPointerDown={(e) => e.stopPropagation()}
+                          className="cursor-help"
+                          aria-label="Ajuda"
+                        >
+                          <Info className="w-4 h-4 text-zinc-400" />
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Ao ativar, o botão de telefone ficará fixo no canto inferior direito da sua página.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </span>
+              </label>
+            </div>
           </div>
           <div>
             <Label htmlFor="instagramUrl" className="mb-2 block">Instagram URL</Label>
@@ -1343,7 +1401,7 @@ export default function EditProfileForm() {
       </Dialog>
 
       <Dialog open={!!editingArea} onOpenChange={(v) => !v && (setEditingArea(null), setRemoveAreaCover(false), setAreaCoverPreview(null), setAreaCoverGenerating(false))}>
-        <DialogContent className="w-full max-w-6xl h-screen overflow-auto">
+        <DialogContent className="w-full max-w-6xl h-screen md:h-auto overflow-auto">
           <DialogHeader>
             <DialogTitle className="text-zinc-300">Editar área</DialogTitle>
           </DialogHeader>
@@ -1406,59 +1464,32 @@ export default function EditProfileForm() {
               </div>
 
               <div>
-                <div className="mb-2 mt-8 flex items-center justify-between">
+                <div className="mb-2 mt-8">
                   <Label className="block">Descrição</Label>
-                  <Button
-                    type="button"
-                    size="sm"
-                    disabled={!editingArea?.title || aiMutation.isPending}
-                    className="cursor-pointer"
-                    onClick={async () => {
-                      if (!editingArea) return
-                      try {
-                        const { description } = await aiMutation.mutateAsync(editingArea.title)
-                        const md = description ?? ""
-                        draftMdRef.current = md
-                        setEditorMarkdown(md)
-                      } catch {
-                        alert("Falha ao gerar descrição com IA")
-                      }
-                    }}
-                  >
-                    <WandSparkles className="w-4 h-4" />
-                    {aiMutation.isPending ? "Gerando com IA..." : "Gerar com IA"}
-                  </Button>
                 </div>
-
-                {aiMutation.isPending ? (
-                  <div className="py-16 text-center text-sm text-zinc-300">
-                    Estamos gerando sua descrição com iA…
-                  </div>
-                ) : (
-                  <div className="relative z-[1000] max-h-[150px] md:max-h-[55vh] overflow-auto">
-                    <MDXEditor
-                      className="mdxeditor min-h-[300px] max-h-[150px] md:max-h-[55vh] overflow-auto"
-                      contentEditableClassName="min-h-[300px] p-4 cursor-text !text-zinc-50 whitespace-pre-wrap"
-                      markdown={editorMarkdown}
-                      onChange={(md: string) => { draftMdRef.current = md; setEditorMarkdown(md) }}
-                      plugins={[
-                        toolbarPlugin({
-                          toolbarContents: () => (
-                            <>
-                              <UndoRedo />
-                              <Separator />
-                              <BoldItalicUnderlineToggles />
-                            </>
-                          )
-                        }),
-                        headingsPlugin(),
-                        listsPlugin(),
-                        thematicBreakPlugin(),
-                        markdownShortcutPlugin({ remarkBreaks: true })
-                      ]}
-                    />
-                  </div>
-                )}
+                <div className="relative z-[1000] max-h-[150px] md:max-h-[55vh] overflow-auto">
+                  <MDXEditor
+                    className="mdxeditor min-h-[300px] max-h-[150px] md:max-h-[55vh] overflow-auto"
+                    contentEditableClassName="min-h-[300px] p-4 cursor-text !text-zinc-50 whitespace-pre-wrap"
+                    markdown={editorMarkdown}
+                    onChange={(md: string) => { draftMdRef.current = md; setEditorMarkdown(md) }}
+                    plugins={[
+                      toolbarPlugin({
+                        toolbarContents: () => (
+                          <>
+                            <UndoRedo />
+                            <Separator />
+                            <BoldItalicUnderlineToggles />
+                          </>
+                        )
+                      }),
+                      headingsPlugin(),
+                      listsPlugin(),
+                      thematicBreakPlugin(),
+                      markdownShortcutPlugin({ remarkBreaks: true })
+                    ]}
+                  />
+                </div>
               </div>
 
               <DialogFooter>

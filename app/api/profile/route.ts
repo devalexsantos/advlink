@@ -35,6 +35,8 @@ export async function PATCH(req: Request) {
   let primaryColor: string | undefined
   let secondaryColor: string | undefined
   let textColor: string | undefined
+  let publicPhoneIsFixed: boolean | undefined
+  let whatsappIsFixed: boolean | undefined
   let avatarFile: File | undefined
   let coverFile: File | undefined
   let calendlyUrl: string | undefined
@@ -62,7 +64,9 @@ export async function PATCH(req: Request) {
     aboutDescription = body.aboutDescription
     publicEmail = body.publicEmail
     publicPhone = body.publicPhone
+    publicPhoneIsFixed = typeof body.publicPhoneIsFixed === "boolean" ? body.publicPhoneIsFixed : undefined
     whatsapp = body.whatsapp
+    whatsappIsFixed = typeof body.whatsappIsFixed === "boolean" ? body.whatsappIsFixed : undefined
     instagramUrl = body.instagramUrl
     slugInput = body.slug
     primaryColor = body.primaryColor
@@ -90,7 +94,23 @@ export async function PATCH(req: Request) {
     aboutDescription = String(form.get("aboutDescription") ?? "")
     publicEmail = String(form.get("publicEmail") ?? "")
     publicPhone = String(form.get("publicPhone") ?? "")
+    {
+      const raw = form.get("publicPhoneIsFixed")
+      if (raw !== null) {
+        const v = String(raw).trim().toLowerCase()
+        if (["true","1","on","yes"].includes(v)) publicPhoneIsFixed = true
+        else if (["false","0","off","no"].includes(v)) publicPhoneIsFixed = false
+      }
+    }
     whatsapp = String(form.get("whatsapp") ?? "")
+    {
+      const raw = form.get("whatsappIsFixed")
+      if (raw !== null) {
+        const v = String(raw).trim().toLowerCase()
+        if (["true","1","on","yes"].includes(v)) whatsappIsFixed = true
+        else if (["false","0","off","no"].includes(v)) whatsappIsFixed = false
+      }
+    }
     instagramUrl = String(form.get("instagramUrl") ?? "")
     slugInput = String(form.get("slug") ?? "") || undefined
     primaryColor = String(form.get("primaryColor") ?? "") || undefined
@@ -216,7 +236,9 @@ export async function PATCH(req: Request) {
       aboutDescription: nopt(aboutDescription),
       publicEmail: nopt(publicEmail),
       publicPhone: nopt(publicPhone),
+      publicPhoneIsFixed,
       whatsapp: nopt(whatsapp),
+      whatsappIsFixed,
       instagramUrl: validateInstagram(instagramUrl),
       avatarUrl,
       slug,
@@ -237,7 +259,9 @@ export async function PATCH(req: Request) {
       aboutDescription: nopt(aboutDescription),
       publicEmail: nopt(publicEmail),
       publicPhone: nopt(publicPhone),
+      publicPhoneIsFixed,
       whatsapp: nopt(whatsapp),
+      whatsappIsFixed,
       instagramUrl: validateInstagram(instagramUrl),
       avatarUrl,
       slug,
