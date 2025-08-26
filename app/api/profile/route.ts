@@ -29,6 +29,7 @@ export async function PATCH(req: Request) {
   let aboutDescription: string | undefined
   let publicEmail = ""
   let publicPhone: string | undefined
+  let headline: string | undefined
   let whatsapp: string | undefined
   let instagramUrl: string | undefined
   let slugInput: string | undefined
@@ -64,6 +65,7 @@ export async function PATCH(req: Request) {
     aboutDescription = body.aboutDescription
     publicEmail = body.publicEmail
     publicPhone = body.publicPhone
+    headline = body.headline
     publicPhoneIsFixed = typeof body.publicPhoneIsFixed === "boolean" ? body.publicPhoneIsFixed : undefined
     whatsapp = body.whatsapp
     whatsappIsFixed = typeof body.whatsappIsFixed === "boolean" ? body.whatsappIsFixed : undefined
@@ -94,6 +96,7 @@ export async function PATCH(req: Request) {
     aboutDescription = String(form.get("aboutDescription") ?? "")
     publicEmail = String(form.get("publicEmail") ?? "")
     publicPhone = String(form.get("publicPhone") ?? "")
+    headline = String(form.get("headline") ?? "")
     {
       const raw = form.get("publicPhoneIsFixed")
       if (raw !== null) {
@@ -236,6 +239,7 @@ export async function PATCH(req: Request) {
       aboutDescription: nopt(aboutDescription),
       publicEmail: nopt(publicEmail),
       publicPhone: nopt(publicPhone),
+      headline: nopt(headline),
       publicPhoneIsFixed,
       whatsapp: nopt(whatsapp),
       whatsappIsFixed,
@@ -259,6 +263,7 @@ export async function PATCH(req: Request) {
       aboutDescription: nopt(aboutDescription),
       publicEmail: nopt(publicEmail),
       publicPhone: nopt(publicPhone),
+      headline: nopt(headline),
       publicPhoneIsFixed,
       whatsapp: nopt(whatsapp),
       whatsappIsFixed,

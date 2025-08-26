@@ -73,6 +73,7 @@ model Profile {
   userId String @unique
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  headline           String?
   avatarUrl          String?
   whatsapp           String?
   whatsappIsFixed    Boolean @default(true)

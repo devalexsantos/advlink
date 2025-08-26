@@ -33,6 +33,7 @@ const Cropper = dynamic(() => import("react-easy-crop"), { ssr: false })
 
 const profileEditSchema = z.object({
   publicName: z.string().min(2, "Informe pelo menos 2 caracteres."),
+  headline: z.string().optional().or(z.literal("").transform(() => undefined)),
   aboutDescription: z
     .string()
     .max(1000)
@@ -90,6 +91,7 @@ type GalleryItem = { id: string; coverImageUrl?: string | null; position?: numbe
 type AddressData = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
 type ProfileData = {
   publicName?: string | null
+  headline?: string | null
   aboutDescription?: string | null
   publicEmail?: string | null
   publicPhone?: string | null
@@ -193,6 +195,7 @@ export default function EditProfileForm() {
     resolver: zodResolver(profileEditSchema),
     defaultValues: {
       publicName: "",
+      headline: "",
       aboutDescription: "",
       publicEmail: "",
       publicPhone: "",
@@ -301,6 +304,7 @@ export default function EditProfileForm() {
     const a = data.address ?? {}
     reset({
       publicName: p.publicName ?? "",
+      headline: p.headline ?? "",
       aboutDescription: p.aboutDescription ?? "",
       publicEmail: p.publicEmail ?? "",
       publicPhone: p.publicPhone ?? "",
@@ -511,6 +515,7 @@ export default function EditProfileForm() {
   async function onSubmit(values: ProfileEditValues) {
     const fd = new FormData()
     fd.set("publicName", values.publicName)
+    if (values.headline) fd.set("headline", values.headline)
     // Usa o MDX "Sobre mim" (aboutMarkdown) com preservação de quebras extras
     fd.set("aboutDescription", preserveVerticalSpace(aboutMarkdown || ""))
     if (values.publicEmail) fd.set("publicEmail", values.publicEmail)
@@ -530,8 +535,6 @@ export default function EditProfileForm() {
     if (values.neighborhood) fd.set("neighborhood", values.neighborhood)
     if (values.city) fd.set("city", values.city)
     if (values.state) fd.set("state", values.state)
-    fd.set("publicPhoneIsFixed", String(publicPhoneIsFixed))
-    fd.set("whatsappIsFixed", String(whatsappIsFixed))
     fd.set("primaryColor", primaryColor)
     fd.set("secondaryColor", secondaryColor)
     fd.set("textColor", textColor)
@@ -759,6 +762,10 @@ export default function EditProfileForm() {
           <Label htmlFor="publicName" className="mb-2 block font-bold">Nome de exibição <span className="text-red-500" aria-hidden>*</span></Label>
           <Input id="publicName" {...register("publicName")} />
           {errors.publicName && <p className="mt-1 text-sm text-red-400">{errors.publicName.message}</p>}
+        </div>
+        <div className="mt-2">
+          <Label htmlFor="headline" className="mb-2 block font-bold">Título</Label>
+          <Input id="headline" placeholder="Ex.: Advogado(a) Especialista em Direito Civil" {...register("headline")} />
         </div>
         <div className="mt-4">
           <Label htmlFor="aboutDescription" className="mb-2 block font-bold">Sobre mim</Label>

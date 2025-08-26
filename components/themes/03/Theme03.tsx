@@ -13,7 +13,7 @@ type Area = { id: string; title: string; description: string | null; coverImageU
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
-type Profile = { publicName?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
+type Profile = { publicName?: string | null; headline?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
 
 export default function Theme03({ profile, areas, address, primary, text, secondary, links = [], gallery = [], constrainToContainer = false }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean }) {
   return (
@@ -103,6 +103,9 @@ export default function Theme03({ profile, areas, address, primary, text, second
             <h1 className="mt-5 text-3xl md:text-5xl font-extrabold tracking-tight font-serif" style={{ color: text }}>
               {profile.publicName}
             </h1>
+          )}
+          {profile.headline && (
+            <p className="mt-2 text-2xl opacity-85">{profile.headline}</p>
           )}
 
           {/* Linha decorativa e ícone */}
@@ -357,7 +360,7 @@ export default function Theme03({ profile, areas, address, primary, text, second
       >
         <span className="flex flex-col md:flex-row justify-center items-center gap-2">
           © {new Date().getFullYear()} — Feito com <Heart className="w-4 h-4" /> por
-          <Link href="/" target="_blank" className="font-bold hover:underline">
+          <Link href="https://advlink.site" target="_blank" className="font-bold hover:underline">
             &nbsp;AdvLink
           </Link>
         </span>
