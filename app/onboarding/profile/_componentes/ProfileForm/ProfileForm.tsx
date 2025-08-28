@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { ArrowRight, Camera, Upload, X } from "lucide-react"
+import { ArrowLeft, ArrowRight, Camera, Upload, X, ImagePlus } from "lucide-react"
 import dynamic from "next/dynamic"
 
 // Lazy load cropper for client only
@@ -25,6 +25,11 @@ const profileSchema = z.object({
     .string()
     .min(2, { message: "Informe pelo menos 2 caracteres." })
     .max(60, { message: "Máximo de 60 caracteres." }),
+  headline: z
+    .string()
+    .max(120, { message: "Máximo de 120 caracteres." })
+    .optional()
+    .or(z.literal("").transform(() => undefined)),
   areas: z
     .array(z.string().min(1))
     .min(1, { message: "Adicione pelo menos uma área de atuação." }),
@@ -80,6 +85,10 @@ export function ProfileForm() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [areaInput, setAreaInput] = useState("")
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+  const [currentStep, setCurrentStep] = useState<number>(1)
+  const totalSteps = 5
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([])
+  const [isDragging, setIsDragging] = useState(false)
 
   // Cropper state for avatar
   const [avatarCropOpen, setAvatarCropOpen] = useState<boolean>(false)
@@ -95,6 +104,7 @@ export function ProfileForm() {
     defaultValues: {
       photo: undefined,
       displayName: "",
+      headline: "",
       areas: [],
       about: "",
       email: "",
@@ -112,6 +122,7 @@ export function ProfileForm() {
     setValue,
     watch,
     control,
+    trigger,
     formState: { errors, isSubmitting },
   } = form
   function formatPhoneBR(value: string): string {
@@ -213,11 +224,12 @@ export function ProfileForm() {
   }
 
   async function onSubmit(values: ProfileFormValues) {
-    const { photo, displayName, areas, about, email, phone, calendlyUrl, instagramUrl } = values
+    const { photo, displayName, headline, areas, about, email, phone, calendlyUrl, instagramUrl } = values
     const formData = new FormData()
     formData.set("displayName", displayName)
     formData.set("areas", JSON.stringify(areas))
     if (about) formData.set("about", about)
+    if (headline) formData.set("headline", headline)
     if (email) formData.set("email", email)
     if (phone) formData.set("phone", phone)
     if (calendlyUrl) formData.set("calendlyUrl", calendlyUrl)
@@ -235,7 +247,63 @@ export function ProfileForm() {
       alert("Falha ao salvar. Tente novamente.")
       return
     }
+    // Upload gallery files if any
+    if (galleryFiles.length > 0) {
+      await Promise.all(
+        galleryFiles.map(async (file) => {
+          const fd = new FormData()
+          fd.set("cover", file)
+          await fetch("/api/gallery", { method: "POST", body: fd })
+        })
+      )
+    }
     router.replace("/profile/edit")
+  }
+
+  
+
+  async function handleNext() {
+    if (currentStep === 1) {
+      const ok = await trigger(["displayName"])
+      if (!ok) return
+      setCurrentStep(2)
+      return
+    }
+    if (currentStep === 2) {
+      const ok = await trigger(["areas"])
+      if (!ok) return
+      setCurrentStep(3)
+      return
+    }
+    if (currentStep === 3) {
+      setCurrentStep(4)
+      return
+    }
+    if (currentStep === 4) {
+      setCurrentStep(5)
+      return
+    }
+    if (currentStep === 5) {
+      await handleSubmit(onSubmit)()
+    }
+  }
+
+  function handlePrev() {
+    if (currentStep > 1) setCurrentStep((s) => s - 1)
+  }
+
+  function handleAddGalleryFiles(files: FileList | null) {
+    if (!files || files.length === 0) return
+    const next = [...galleryFiles]
+    for (let i = 0; i < files.length; i++) {
+      const f = files.item(i)
+      if (f) next.push(f)
+    }
+    setGalleryFiles(next)
+  }
+
+  function handleRemoveGalleryIndex(index: number) {
+    setGalleryFiles((prev) => prev.filter((_, i) => i !== index))
   }
 
   return (
@@ -243,6 +311,25 @@ export function ProfileForm() {
       onSubmit={handleSubmit(onSubmit)}
       className="w-full max-w-2xl rounded-xl border border-zinc-800 bg-zinc-900/50 p-6 shadow-xl"
     >
+      {/* Steps header + progress */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between text-[11px] sm:text-xs text-zinc-300 mb-2 gap-2">
+          {[
+            "Sobre você ou seu escritório",
+            "Áreas de atuação",
+            "Informações para contato",
+            "Fotos",
+            "Social",
+          ].map((label, idx) => (
+            <div key={idx} className={`flex-1 text-center ${currentStep === idx + 1 ? "font-semibold text-zinc-100" : "opacity-70"}`}>
+              {label}
+            </div>
+          ))}
+        </div>
+        <div className="h-2 w-full rounded bg-zinc-800 overflow-hidden">
+          <div className="h-full bg-zinc-200 transition-all" style={{ width: `${(currentStep - 1) / (totalSteps - 1) * 100}%` }} />
+        </div>
+      </div>
       {/* Avatar Crop Dialog */}
       <Dialog open={avatarCropOpen} onOpenChange={(v) => setAvatarCropOpen(v)}>
         <DialogContent className="w-full max-w-lg">
@@ -308,6 +395,10 @@ export function ProfileForm() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* STEP 1: Sobre você ou seu escritório */}
+      {currentStep === 1 && (
+      <>
+      <h2 className="text-xl font-semibold mb-4">Sobre você ou seu escritório</h2>
       {/* Foto de Perfil */}
       <div className="mb-8">
         <Label className="mb-2 block text-sm font-medium text-zinc-200">
@@ -367,6 +458,15 @@ export function ProfileForm() {
         )}
       </div>
 
+      {/* Título (headline) */}
+      <div className="mb-8">
+        <Label htmlFor="headline" className="mb-2 block text-sm font-medium text-zinc-200">
+          Título
+        </Label>
+        <Input id="headline" type="text" placeholder="Ex.: Advogado (a) especialista em ..." {...register("headline")} />
+        {errors.headline && (<p className="mt-2 text-sm text-red-400">{errors.headline.message as string}</p>)}
+      </div>
+
       {/* Celular */}
       <div className="mb-8">
         <Label htmlFor="cellphone" className="mb-2 block text-sm font-medium text-zinc-200">
@@ -407,6 +507,13 @@ export function ProfileForm() {
         )}
       </div>
 
+      </>
+      )}
+
+      {/* STEP 2: Áreas de atuação */}
+      {currentStep === 2 && (
+      <>
+      <h2 className="text-xl font-semibold mb-4">Áreas de atuação</h2>
       {/* Áreas de atuação */}
       <div className="mb-8">
         <Label className="mb-2 block text-sm font-medium text-zinc-200">
@@ -466,6 +573,13 @@ export function ProfileForm() {
         )}
       </div>
 
+      </>
+      )}
+
+      {/* STEP 3: Informações para contato */}
+      {currentStep === 3 && (
+      <>
+      <h2 className="text-xl font-semibold mb-4">Informações para contato</h2>
       {/* Sobre mim */}
       <div className="mb-4">
         <Label htmlFor="about" className="mb-2 block text-sm font-medium text-zinc-200">
@@ -522,6 +636,51 @@ export function ProfileForm() {
         )}
       </div>
 
+      </>
+      )}
+
+      {/* STEP 4: Fotos */}
+      {currentStep === 4 && (
+      <>
+      <h2 className="text-xl font-semibold mb-4">Fotos</h2>
+      <div
+        className={`rounded-xl border border-dashed ${isDragging ? "border-zinc-200 bg-zinc-800/50" : "border-zinc-700 bg-zinc-900/30"} p-6 text-center`}
+        onDragOver={(e) => { e.preventDefault(); setIsDragging(true) }}
+        onDragLeave={() => setIsDragging(false)}
+        onDrop={(e) => { e.preventDefault(); setIsDragging(false); handleAddGalleryFiles(e.dataTransfer.files) }}
+      >
+        <div className="flex flex-col items-center gap-2">
+          <ImagePlus className="w-8 h-8 text-zinc-300" />
+          <p className="text-sm text-zinc-300">Arraste e solte suas fotos aqui</p>
+          <p className="text-xs text-zinc-500">ou</p>
+          <Button type="button" variant="secondary" className="cursor-pointer" onClick={() => document.getElementById("gallery-input")?.click()}>Selecionar imagens</Button>
+          <input id="gallery-input" type="file" multiple accept="image/*" className="hidden" onChange={(e) => handleAddGalleryFiles(e.target.files)} />
+        </div>
+      </div>
+      {galleryFiles.length > 0 && (
+        <div className="mt-4 grid grid-cols-3 gap-3">
+          {galleryFiles.map((file, idx) => (
+            <div key={`${file.name}-${idx}`} className="relative h-24 w-full overflow-hidden rounded-md ring-1 ring-zinc-800">
+              <img src={URL.createObjectURL(file)} alt="Prévia" className="h-full w-full object-cover" onLoad={(e) => URL.revokeObjectURL((e.target as HTMLImageElement).src)} />
+              <button
+                type="button"
+                aria-label="Remover imagem"
+                onClick={() => handleRemoveGalleryIndex(idx)}
+                className="absolute right-1 top-1 z-10 rounded-full bg-zinc-50 text-zinc-900 p-1 shadow-md border border-zinc-200 hover:bg-zinc-100"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      </>
+      )}
+
+      {/* STEP 5: Social */}
+      {currentStep === 5 && (
+      <>
+      <h2 className="text-xl font-semibold mb-4">Social</h2>
       {/* Instagram URL (opcional) */}
       <div className="mb-4">
         <Label htmlFor="instagramUrl" className="mb-2 block text-sm font-medium text-zinc-200">
@@ -543,13 +702,19 @@ export function ProfileForm() {
           <p className="mt-2 text-sm text-red-400">{errors.calendlyUrl.message as string}</p>
         )}
       </div>
+      </>
+      )}
 
-      <div className="flex items-center justify-center gap-3">
-        <Button type="submit" disabled={isSubmitting} className="w-full flex items-center gap-2 cursor-pointer">
-          {isSubmitting ? "Criando sua página, aguarde..." : "Continuar"}
-          <ArrowRight className="w-4 h-4" />
+      {/* Navigation */}
+      <div className="mt-6 flex items-center justify-between gap-3">
+        <Button type="button" variant="secondary" className="cursor-pointer" onClick={handlePrev} disabled={currentStep === 1 || isSubmitting}>
+          <ArrowLeft className="w-4 h-4" /> Voltar
         </Button>
-    </div>
+        <Button type="button" onClick={handleNext} disabled={isSubmitting} className="cursor-pointer">
+          {isSubmitting ? "Criando sua página, aguarde..." : currentStep === 5 ? "Salvar e concluir" : "Avançar"}
+          <ArrowRight className="w-4 h-4 ml-2" />
+        </Button>
+      </div>
     </form>
   )
 }

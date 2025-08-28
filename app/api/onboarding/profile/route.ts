@@ -18,6 +18,7 @@ export async function POST(req: Request) {
     let displayName = ""
     let areas: string[] = []
     let about: string | undefined
+    let headline: string | undefined
     let email = ""
     let phone: string | undefined
     let cellphone: string | undefined
@@ -30,6 +31,7 @@ export async function POST(req: Request) {
       displayName = body.displayName
       areas = body.areas ?? []
       about = body.about
+      headline = body.headline
       email = body.email
       phone = body.phone
       cellphone = body.cellphone
@@ -40,6 +42,7 @@ export async function POST(req: Request) {
       displayName = String(form.get("displayName") ?? "")
       areas = JSON.parse(String(form.get("areas") ?? "[]"))
       about = String(form.get("about") ?? "") || undefined
+      headline = String(form.get("headline") ?? "") || undefined
       email = String(form.get("email") ?? "")
       phone = String(form.get("phone") ?? "") || undefined
       cellphone = String(form.get("cellphone") ?? "") || undefined
@@ -104,6 +107,7 @@ export async function POST(req: Request) {
       update: {
         publicName: displayName,
         aboutDescription: about ?? null,
+        headline: headline ?? null,
         publicEmail: email,
         publicPhone: phone ?? null,
         whatsapp: whatsapp ?? cellphone ?? null,
@@ -117,6 +121,7 @@ export async function POST(req: Request) {
         userId,
         publicName: displayName,
         aboutDescription: about ?? null,
+        headline: headline ?? null,
         publicEmail: email,
         publicPhone: phone ?? null,
         whatsapp: whatsapp ?? cellphone ?? null,
