@@ -4,6 +4,7 @@ import logo from "@/assets/icons/logo.svg"
 import { Lock, ShieldCheck } from "lucide-react"
 import { GoogleLoginButton } from "@/app/login/_components/GoogleLoginButton"
 import { MagicLinkForm } from "@/app/login/_components/MagicLinkForm"
+import whiteLogo from "/public/images/advlink-white-logo.svg"
 
 export default async function LoginPage({
   searchParams,
@@ -40,10 +41,7 @@ export default async function LoginPage({
       {/* Content */}
       <div className="relative z-10 mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 py-16">
         <div className="mb-8 flex items-center gap-3">
-          <Image src={logo} alt="Logo" width={40} height={40} className="h-10 w-10" />
-          <span className="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-zinc-100 via-zinc-300 to-zinc-500 bg-clip-text text-transparent">
-            AdvLink
-          </span>
+          <Image src={whiteLogo} alt="Logo" width={80} height={80} className="w-20 h-20" />
         </div>
 
         <div className="w-full max-w-xl rounded-2xl border border-zinc-800/60 bg-zinc-900/60 p-6 shadow-2xl backdrop-blur-md">

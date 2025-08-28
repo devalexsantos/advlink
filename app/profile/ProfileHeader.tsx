@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Pencil, Menu, CreditCard } from "lucide-react"
 import Image from "next/image"
-import logo from "@/assets/icons/logo.svg"
+import logo from "@/assets/icons/advlink-white-icon.svg"
 export default function ProfileHeader() {
   const [open, setOpen] = useState(false)
 
@@ -16,7 +16,6 @@ export default function ProfileHeader() {
         <div className="flex items-center gap-2">
           <Link href="/profile/edit" className="flex items-center gap-2">
             <Image src={logo} alt="Logo" width={32} height={32} />
-            <span className="text-xl font-bold tracking-tight">AdvLink</span>
           </Link>
         </div>
 

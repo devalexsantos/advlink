@@ -1,6 +1,6 @@
 import Link from "next/link"
-import logo from "@/assets/icons/logo.svg"
 import Image from "next/image"
+import whiteLogo from "/public/images/advlink-white-logo.svg"
 
 export function Footer() {
   return (
@@ -9,8 +9,7 @@ export function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
           <div>
             <div className="flex items-center gap-2">
-              <Image src={logo} alt="AdvLink" width={28} height={28} />
-              <span className="text-xl font-extrabold bg-gradient-to-r from-zinc-50 via-zinc-300 to-zinc-400 bg-clip-text text-transparent">AdvLink</span>
+              <Image src={whiteLogo} alt="AdvLink" width={80} height={80} className="w-20 h-20" />
             </div>
             <p className="mt-3 text-sm text-zinc-400">
               Crie sua landing page jurídica moderna, personalizável e otimizada para conversão em poucos minutos.
