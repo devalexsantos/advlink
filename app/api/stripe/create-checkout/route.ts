@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma"
 
 export const runtime = "nodejs"
 
-export async function POST() {
+export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -29,6 +29,28 @@ export async function POST() {
   const successUrl = `${origin}/profile/edit?success=1`
   const cancelUrl = `${origin}/profile/edit?canceled=1`
 
+  // Client may optionally pass { noTrial: true } to force skipping the trial
+  let noTrial = false
+  try {
+    if (req.headers.get("content-type")?.includes("application/json")) {
+      const body = await req.json().catch(() => ({}))
+      noTrial = Boolean(body?.noTrial)
+    }
+  } catch {}
+
+  // Determine eligibility: if user has a Stripe customer and has used a trial before, skip trial
+  let trialEligible = true
+  if (!noTrial) {
+    const user = await prisma.user.findUnique({ where: { id: userId }, select: { stripeCustomerId: true } })
+    if (user?.stripeCustomerId) {
+      const subs = await stripe.subscriptions.list({ customer: user.stripeCustomerId, status: "all", limit: 100 })
+      const hasUsedTrial = subs.data.some((s) => Boolean(s.trial_start))
+      trialEligible = !hasUsedTrial
+    }
+  } else {
+    trialEligible = false
+  }
+
   const checkout = await stripe.checkout.sessions.create({
     mode: "subscription",
     customer: customerId,
@@ -36,9 +58,7 @@ export async function POST() {
     success_url: successUrl,
     cancel_url: cancelUrl,
     metadata: { userId },
-    subscription_data: {
-      trial_period_days: 7,
-    }
+    subscription_data: trialEligible ? { trial_period_days: 7 } : undefined,
   })
 
   return NextResponse.json({ url: checkout.url })

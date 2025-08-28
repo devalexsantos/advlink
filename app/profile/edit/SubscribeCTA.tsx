@@ -1,19 +1,33 @@
 "use client"
 
 import { useState } from "react"
+import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, Rocket } from "lucide-react"
 
 export default function SubscribeCTA() {
   const [loading, setLoading] = useState(false)
+  const { data } = useQuery({
+    queryKey: ["trial-eligibility"],
+    queryFn: async () => {
+      const res = await fetch("/api/stripe/trial-eligibility", { cache: "no-store" })
+      if (!res.ok) throw new Error("Falha ao verificar elegibilidade")
+      return res.json() as Promise<{ trialEligible: boolean }>
+    },
+  })
 
   async function startCheckout() {
     try {
       setLoading(true)
-      const res = await fetch("/api/stripe/create-checkout", { method: "POST" })
+      const noTrial = data && data.trialEligible === false
+      const res = await fetch("/api/stripe/create-checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(noTrial ? { noTrial: true } : {}),
+      })
       if (!res.ok) return
-      const data = await res.json()
-      if (data?.url) window.location.href = data.url
+      const payload = await res.json() as { url?: string }
+      if (payload?.url) window.location.href = payload.url
     } finally {
       setLoading(false)
     }
@@ -27,7 +41,15 @@ export default function SubscribeCTA() {
             <AlertTriangle className="w-6 h-6 text-amber-400" />
           </div>
           <p className="text-sm md:text-base text-amber-100/90">
-            <span className="font-semibold text-amber-200">Sua página ainda não está publicada,</span>  experimente por <strong className="text-zinc-50 underline text-lg">07 dias grátis!</strong>
+            {data?.trialEligible === false ? (
+              <>
+                <span className="font-semibold text-amber-200">Seu período de testes acabou,</span> conclua sua assinatura para publicar seu site!
+              </>
+            ) : (
+              <>
+                <span className="font-semibold text-amber-200">Sua página ainda não está publicada,</span> experimente por <strong className="text-zinc-50 underline text-lg">07 dias grátis!</strong>
+              </>
+            )}
           </p>
         </div>
 
