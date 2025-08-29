@@ -7,6 +7,7 @@ const links: { label: string; href: string }[] = [
   { label: "Vantagens", href: "#vantagens" },
   { label: "Como funciona", href: "#passo-a-passo" },
   { label: "Preço", href: "#preco" },
+  { label: "Entrar", href: "/login" },
 ]
 
 export function Navbar() {

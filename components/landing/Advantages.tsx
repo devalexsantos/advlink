@@ -5,7 +5,7 @@ import { CheckCircle2, Image as ImageIcon, Link2, Palette, ShieldCheck, Sparkles
 
 const items = [
   { icon: Sparkles, title: "Editor com IA", desc: "Gere textos coerentes para suas áreas de atuação com auxílio de IA." },
-  { icon: Layers, title: "Temas modernos", desc: "Escolha entre temas prontos adaptados para celulares." },
+  { icon: Layers, title: "Temas modernos", desc: "Temas pensados para a área de advocacia e adapatados para celulares." },
   { icon: Palette, title: "Cores personalizadas", desc: "Defina cores da página, dos títulos e dos textos." },
   { icon: Link2, title: "Seção de Links", desc: "Adicione links para suas postagens no Instagram, Facebook, etc." },
   { icon: ImageIcon, title: "Galeria de fotos", desc: "Publique imagens em carrossel com visualização em modal." },

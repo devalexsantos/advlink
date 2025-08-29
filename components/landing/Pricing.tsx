@@ -35,7 +35,7 @@ export function Pricing() {
           </span>
         </h3>
         <p className="mt-2 text-amber-400 text-sm font-semibold">Preço de lançamento, irá aumentar em breve</p>
-        <p className="mt-2 text-zinc-50 font-bold text-lg">Tudo o que você precisa para ter uma página profissional</p>
+        <p className="mt-2 text-zinc-50 font-bold text-lg">Garanta agora o preço com desconto <strong className="text-amber-400">vitalício</strong></p>
         <div className="mx-auto mt-6 grid max-w-md gap-2 text-left">
           {pricingBenefits.map((i) => (
             <div key={i} className="flex items-center gap-2 text-xl">

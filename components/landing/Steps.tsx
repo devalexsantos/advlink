@@ -10,7 +10,6 @@ type Step = { icon: React.ComponentType<{ className?: string }>; title: string; 
 const steps: Step[] = [
   { icon: UserCircle2, title: "Informações Iniciais", desc: "Preencha suas informações iniciais para começar.", image: "/steps/step-01.png", alt: "Criação de conta" },
   { icon: Brush, title: "Personalize seu site", desc: "Escolha tema, cores e edite seu conteúdo.", image: "/steps/step-02.png", alt: "Personalização" },
-  { icon: WandSparkles, title: "Use IA nas descrições", desc: "Gere textos para suas áreas com auxílio de IA. Adicione foto de capa e galeria.", image: "/steps/step-03.png", alt: "Editor com IA" },
   { icon: CreditCard, title: "Preview ", desc: "Veja como ficou sua página no celular e desktop antes de publicar.", image: "/steps/step-04.png", alt: "Preview" },
   { icon: Rocket, title: "Publique", desc: "Compartilhe seu link único do AdvLink.", image: "/steps/step-05.png", alt: "Publicação" },
 ]
