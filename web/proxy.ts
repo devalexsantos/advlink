@@ -8,7 +8,33 @@ export async function proxy(req: NextRequest) {
   const { nextUrl } = req
   const pathname = nextUrl.pathname
 
-  // Only run auth gate for dashboard-only routes to avoid affecting public pages
+  // Skip API and static assets from any rewrite consideration
+  const isApi = pathname.startsWith("/api")
+  const isNextInternal = pathname.startsWith("/_next")
+  const isStaticAsset = /\.[^\/]+$/.test(pathname) || pathname === "/favicon.ico"
+  if (isApi || isNextInternal || isStaticAsset) {
+    return NextResponse.next()
+  }
+
+  // Host-based routing: alex.advlink.site → rewrite to /adv/alex (URL stays on subdomain)
+  // Must run BEFORE auth gate so public profiles are never blocked
+  const host = req.headers.get("host") || ""
+  const ROOT_DOMAIN = process.env.ROOT_DOMAIN || "advlink.site"
+  const suffix = `.${ROOT_DOMAIN}`
+
+  if (host.endsWith(suffix)) {
+    const subdomain = host.slice(0, -suffix.length)
+    const isApex = subdomain.length === 0
+    if (!isApex && !RESERVED_SLUGS.has(subdomain)) {
+      if (pathname === "/") {
+        const url = nextUrl.clone()
+        url.pathname = `/adv/${subdomain}`
+        return NextResponse.rewrite(url)
+      }
+    }
+  }
+
+  // Auth gate only for dashboard routes (app.advlink.site or main domain)
   const isDashboardRoute = pathname === "/" || pathname.startsWith("/onboarding") || pathname.startsWith("/profile")
   if (isDashboardRoute) {
     const isLoginRoute = pathname.startsWith("/login")
@@ -19,33 +45,6 @@ export async function proxy(req: NextRequest) {
       return NextResponse.redirect(signInUrl)
     }
     return NextResponse.next()
-  }
-
-  // Skip API and static assets from any rewrite consideration
-  const isApi = pathname.startsWith("/api")
-  const isNextInternal = pathname.startsWith("/_next")
-  const isStaticAsset = /\.[^\/]+$/.test(pathname) || pathname === "/favicon.ico"
-  if (isApi || isNextInternal || isStaticAsset) {
-    return NextResponse.next()
-  }
-
-  // Host-based routing: alex.advlink.site → rewrite to /adv/alex (URL stays on subdomain)
-  const host = req.headers.get("host") || ""
-  const ROOT_DOMAIN = process.env.ROOT_DOMAIN || "advlink.site"
-
-  // Only handle our configured root domain
-  const suffix = `.${ROOT_DOMAIN}`
-  if (host.endsWith(suffix)) {
-    const subdomain = host.slice(0, -suffix.length)
-    const isApex = subdomain.length === 0
-    if (!isApex && !RESERVED_SLUGS.has(subdomain)) {
-      // Only rewrite root path to avoid catching asset routes
-      if (pathname === "/") {
-        const url = nextUrl.clone()
-        url.pathname = `/adv/${subdomain}`
-        return NextResponse.rewrite(url)
-      }
-    }
   }
 
   return NextResponse.next()
