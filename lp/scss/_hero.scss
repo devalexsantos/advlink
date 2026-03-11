@@ -1,0 +1,156 @@
+.hero {
+  position: relative;
+  background: $primary;
+  padding: 8rem 0 2rem;
+  overflow: hidden;
+
+  @media (min-width: $bp-md) {
+    padding: 10rem 0 6rem;
+  }
+
+  &__bg-dots {
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+    background-size: 24px 24px;
+    pointer-events: none;
+  }
+
+  &__inner {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+
+    @media (min-width: $bp-lg) {
+      flex-direction: row;
+      gap: 4rem;
+    }
+  }
+
+  &__content {
+    flex: 1;
+    text-align: center;
+
+    @media (min-width: $bp-lg) {
+      text-align: left;
+    }
+  }
+
+  &__badge {
+    display: inline-block;
+    padding: 0.375rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: $radius-full;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: rgba(255, 255, 255, 0.9);
+    margin-bottom: 1.5rem;
+  }
+
+  &__title {
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 1.15;
+    color: #fff;
+    margin-bottom: 1.25rem;
+
+    @media (min-width: $bp-md) {
+      font-size: 3rem;
+    }
+
+    @media (min-width: $bp-lg) {
+      font-size: 3.5rem;
+    }
+  }
+
+  &__subtitle {
+    font-size: 1.0625rem;
+    color: rgba(255, 255, 255, 0.75);
+    line-height: 1.7;
+    max-width: 520px;
+    margin: 0 auto 2rem;
+
+    @media (min-width: $bp-lg) {
+      margin: 0 0 2rem;
+    }
+  }
+
+  &__actions {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: center;
+
+    @media (min-width: $bp-sm) {
+      flex-direction: row;
+      justify-content: center;
+    }
+
+    @media (min-width: $bp-lg) {
+      justify-content: flex-start;
+    }
+
+    .btn--primary {
+      background: #fff;
+      color: $primary;
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.92);
+      }
+    }
+
+    .btn--outline {
+      border-color: rgba(255, 255, 255, 0.3);
+      color: #fff;
+
+      &:hover {
+        border-color: #fff;
+        background: rgba(255, 255, 255, 0.08);
+      }
+    }
+  }
+
+  &__note {
+    font-size: 0.8125rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 1rem;
+  }
+
+  &__visual {
+    position: relative;
+    flex-shrink: 0;
+    display: flex;
+    justify-content: center;
+    margin-top: -2.5rem;
+
+    @media (min-width: $bp-lg) {
+      margin-top: 0;
+    }
+  }
+
+  &__glow {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 320px;
+    height: 320px;
+    background: radial-gradient(circle, rgba($ring, 0.3) 0%, transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  &__mockup {
+    position: relative;
+    width: 300px;
+    height: auto;
+    filter: drop-shadow(0 20px 40px rgba(0, 0, 0, 0.3));
+
+    @media (min-width: $bp-md) {
+      width: 380px;
+    }
+  }
+}

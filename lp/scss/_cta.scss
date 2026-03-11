@@ -1,0 +1,42 @@
+.cta-final {
+  background: $primary;
+  padding: 6rem 0 8rem;
+
+  @media (min-width: $bp-md) {
+    padding: 8rem 0 10rem;
+  }
+
+  &__card {
+    padding: 3.5rem 2rem;
+    text-align: center;
+    max-width: 800px;
+    margin: 0 auto;
+
+    @media (min-width: $bp-md) {
+      padding: 4.5rem 3rem;
+    }
+  }
+
+  &__title {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #fff;
+    margin-bottom: 1rem;
+
+    @media (min-width: $bp-md) {
+      font-size: 2.25rem;
+    }
+  }
+
+  &__subtitle {
+    font-size: 1.0625rem;
+    color: rgba(255, 255, 255, 0.7);
+    margin-bottom: 2rem;
+  }
+
+  &__note {
+    font-size: 0.8125rem;
+    color: rgba(255, 255, 255, 0.5);
+    margin-top: 1rem;
+  }
+}

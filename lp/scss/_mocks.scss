@@ -1,0 +1,746 @@
+// ========== Browser Window Mock ==========
+.mock-browser {
+  width: 100%;
+  border-radius: $radius-lg;
+  border: 1px solid $border;
+  overflow: hidden;
+  background: #fff;
+  box-shadow: $shadow-lg;
+
+  &--lg {
+    box-shadow: $shadow-xl;
+  }
+
+  &__bar {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0.75rem 1rem;
+    background: $muted-bg;
+    border-bottom: 1px solid $border;
+  }
+
+  &__dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+
+    &--red { background: #ff5f57; }
+    &--yellow { background: #ffbd2e; }
+    &--green { background: #28c840; }
+  }
+
+  &__url {
+    margin-left: 0.75rem;
+    font-size: 0.6875rem;
+    color: $muted;
+    background: #fff;
+    padding: 0.25rem 0.75rem;
+    border-radius: $radius-sm;
+    border: 1px solid $border;
+    flex: 1;
+    max-width: 280px;
+  }
+
+  &__body {
+    padding: 1.25rem;
+    min-height: 200px;
+
+    &--img {
+      padding: 0;
+      min-height: auto;
+    }
+
+    &--flush {
+      padding: 0;
+    }
+  }
+}
+
+// ========== Editor Dashboard Mock ==========
+.mock-editor {
+  display: flex;
+  gap: 0;
+  min-height: 240px;
+
+  &__sidebar {
+    width: 56px;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    padding: 0.5rem 0;
+    background: #fff;
+    border-right: 1px solid $border;
+
+    @media (min-width: $bp-md) {
+      width: 100px;
+    }
+  }
+
+  &__sidebar-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.5rem 0.625rem;
+    color: $muted;
+    border-radius: 0;
+    transition: all $transition-fast;
+
+    svg {
+      flex-shrink: 0;
+    }
+
+    span {
+      display: none;
+      font-size: 0.5625rem;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+
+      @media (min-width: $bp-md) {
+        display: block;
+      }
+    }
+
+    &--active {
+      color: $primary;
+      background: rgba($primary, 0.06);
+      border-right: 2px solid $primary;
+    }
+  }
+
+  &__form {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.875rem;
+    overflow: hidden;
+  }
+
+  &__form-title {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: $foreground;
+    margin-bottom: 0.25rem;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.75rem;
+    }
+  }
+
+  &__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1875rem;
+  }
+
+  &__label {
+    font-size: 0.5rem;
+    font-weight: 600;
+    color: $muted;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.5625rem;
+    }
+  }
+
+  &__input {
+    height: auto;
+    padding: 0.3125rem 0.5rem;
+    border-radius: $radius-sm;
+    background: #fff;
+    border: 1px solid $border;
+    font-size: 0.5625rem;
+    color: $foreground;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.625rem;
+    }
+  }
+
+  &__textarea {
+    flex: 1;
+    min-height: 36px;
+    padding: 0.3125rem 0.5rem;
+    border-radius: $radius-sm;
+    background: #fff;
+    border: 1px solid $border;
+    font-size: 0.5rem;
+    color: $muted;
+    line-height: 1.4;
+    overflow: hidden;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.5625rem;
+      min-height: 44px;
+    }
+  }
+
+  &__btn {
+    width: auto;
+    align-self: flex-start;
+    padding: 0.25rem 0.75rem;
+    height: auto;
+    border-radius: $radius-sm;
+    background: $primary;
+    color: #fff;
+    font-size: 0.5625rem;
+    font-weight: 600;
+    text-align: center;
+  }
+
+  &__preview {
+    width: 130px;
+    flex-shrink: 0;
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 0;
+    background: $primary;
+    border-left: 1px solid $border;
+    overflow: hidden;
+    color: #fff;
+
+    @media (min-width: $bp-md) {
+      display: flex;
+      width: 150px;
+    }
+  }
+
+  &__preview-cover {
+    width: 100%;
+    height: 36px;
+    background: rgba(255, 255, 255, 0.1);
+  }
+
+  &__preview-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    margin-top: -16px;
+  }
+
+  &__preview-name {
+    font-size: 0.5625rem;
+    font-weight: 700;
+    color: #fff;
+    margin-top: 0.375rem;
+    text-align: center;
+  }
+
+  &__preview-headline {
+    font-size: 0.4375rem;
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+    margin-top: 0.125rem;
+  }
+
+  &__preview-bio {
+    font-size: 0.375rem;
+    color: rgba(255, 255, 255, 0.5);
+    text-align: center;
+    padding: 0 0.5rem;
+    margin-top: 0.375rem;
+    line-height: 1.4;
+  }
+
+  &__preview-buttons {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.5rem;
+    padding: 0 0.375rem;
+  }
+
+  &__preview-btn {
+    font-size: 0.375rem;
+    font-weight: 600;
+    padding: 0.1875rem 0.375rem;
+    border-radius: 3px;
+    background: #fff;
+    color: $primary;
+
+    &--outline {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      color: #fff;
+    }
+  }
+}
+
+// ========== Phone Frame Mocks ==========
+.mock-phones {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+
+  @media (min-width: $bp-md) {
+    gap: 1.5rem;
+  }
+}
+
+.mock-phone {
+  width: 100px;
+  border-radius: 16px;
+  border: 2px solid $foreground;
+  overflow: hidden;
+  position: relative;
+  transition: transform $transition-base;
+
+  @media (min-width: $bp-md) {
+    width: 120px;
+  }
+
+  &--2 {
+    transform: translateY(-8px);
+  }
+
+  &__notch {
+    width: 40%;
+    height: 6px;
+    background: $foreground;
+    border-radius: 0 0 4px 4px;
+    margin: 0 auto;
+  }
+
+  &__screen {
+    padding: 0 0 0.75rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    min-height: 150px;
+
+    &--blue { background: #1e3a5f; }
+    &--dark { background: #1e293b; }
+    &--gold { background: #78350f; }
+
+    @media (min-width: $bp-md) {
+      min-height: 170px;
+    }
+  }
+
+  &__cover {
+    width: 100%;
+    height: 32px;
+    margin-bottom: 0.25rem;
+
+    &--blue { background: rgba(255, 255, 255, 0.08); }
+    &--dark { background: rgba(255, 255, 255, 0.06); }
+    &--gold { background: rgba(255, 255, 255, 0.1); }
+
+    @media (min-width: $bp-md) {
+      height: 38px;
+    }
+  }
+
+  &__avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid rgba(255, 255, 255, 0.25);
+    margin-top: -14px;
+
+    @media (min-width: $bp-md) {
+      width: 32px;
+      height: 32px;
+      margin-top: -16px;
+    }
+  }
+
+  &__name {
+    font-size: 0.4375rem;
+    font-weight: 700;
+    color: #fff;
+    text-align: center;
+    white-space: nowrap;
+    margin-top: 0.25rem;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.5rem;
+    }
+  }
+
+  &__headline {
+    font-size: 0.375rem;
+    color: rgba(255, 255, 255, 0.6);
+    text-align: center;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.4375rem;
+    }
+  }
+
+  &__btn-row {
+    display: flex;
+    gap: 0.25rem;
+    margin-top: 0.375rem;
+  }
+
+  &__cta {
+    font-size: 0.3125rem;
+    font-weight: 600;
+    padding: 0.125rem 0.375rem;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.375rem;
+      padding: 0.1875rem 0.5rem;
+    }
+  }
+
+  &__line {
+    width: 70%;
+    height: 6px;
+    border-radius: 3px;
+    background: rgba(255, 255, 255, 0.15);
+
+    &--short {
+      width: 45%;
+    }
+  }
+}
+
+.mock-swatches {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.mock-swatch {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: $shadow-sm;
+
+  @media (min-width: $bp-md) {
+    width: 28px;
+    height: 28px;
+  }
+}
+
+// ========== AI Practice Area Cards Mock ==========
+.mock-ai-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.75rem;
+  width: 100%;
+
+  @media (min-width: $bp-sm) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.mock-ai-card {
+  padding: 1rem;
+  border: 1px solid $border;
+  border-radius: $radius-lg;
+  background: #fff;
+  position: relative;
+
+  @media (min-width: $bp-md) {
+    padding: 1.25rem;
+  }
+
+  &__icon {
+    width: 32px;
+    height: 32px;
+    border-radius: $radius-md;
+    background: $muted-bg;
+    margin-bottom: 0.625rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: $primary;
+  }
+
+  &__title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: $foreground;
+    margin-bottom: 0.375rem;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.8125rem;
+    }
+  }
+
+  &__desc {
+    font-size: 0.625rem;
+    color: $muted;
+    line-height: 1.5;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.6875rem;
+    }
+  }
+
+  &__lines {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  &__line {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: $muted-bg;
+
+    &--short {
+      width: 60%;
+    }
+  }
+
+  &__badge {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    font-size: 0.5625rem;
+    font-weight: 700;
+    padding: 0.125rem 0.5rem;
+    border-radius: $radius-full;
+    background: rgba($ring, 0.1);
+    color: $ring;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+}
+
+// ========== Google SERP Mock ==========
+.mock-serp {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+
+  &__search {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  &__google-icon {
+    flex-shrink: 0;
+  }
+
+  &__search-bar {
+    flex: 1;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid $border;
+    border-radius: $radius-full;
+    font-size: 0.6875rem;
+    color: $foreground;
+  }
+
+  &__results {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  &__result {
+    &-url {
+      font-size: 0.5625rem;
+      color: $muted;
+      margin-bottom: 0.125rem;
+    }
+
+    &-title {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: #1a0dab;
+      margin-bottom: 0.25rem;
+    }
+
+    &-desc {
+      font-size: 0.625rem;
+      color: $muted;
+      line-height: 1.5;
+    }
+
+    &--highlight {
+      padding: 0.75rem;
+      background: rgba($primary, 0.03);
+      border: 1px solid rgba($primary, 0.12);
+      border-radius: $radius-md;
+    }
+  }
+
+  &__line {
+    display: block;
+    width: 100%;
+    height: 5px;
+    border-radius: 3px;
+    background: $muted-bg;
+    margin-top: 0.25rem;
+
+    &--short {
+      width: 60%;
+    }
+  }
+}
+
+// ========== Analytics Dashboard Mock ==========
+.mock-analytics {
+  &__period {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0.875rem;
+    background: $muted-bg;
+    border-radius: $radius-md;
+    padding: 0.1875rem;
+  }
+
+  &__period-btn {
+    font-size: 0.5625rem;
+    font-weight: 500;
+    padding: 0.25rem 0.625rem;
+    border-radius: $radius-sm;
+    color: $muted;
+    cursor: default;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.625rem;
+    }
+
+    &--active {
+      background: #fff;
+      color: $foreground;
+      font-weight: 600;
+      box-shadow: $shadow-sm;
+    }
+  }
+
+  &__stats {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+  }
+
+  &__stat {
+    padding: 0.75rem;
+    background: $muted-bg;
+    border-radius: $radius-md;
+    display: flex;
+    align-items: center;
+    gap: 0.625rem;
+    text-align: left;
+  }
+
+  &__stat-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: $radius-md;
+    background: rgba($primary, 0.08);
+    color: $primary;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  &__stat-data {
+    min-width: 0;
+  }
+
+  &__stat-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: $foreground;
+    line-height: 1.2;
+
+    @media (min-width: $bp-md) {
+      font-size: 1.25rem;
+    }
+  }
+
+  &__stat-label {
+    font-size: 0.5625rem;
+    color: $muted;
+    margin-top: 0.125rem;
+    white-space: nowrap;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.625rem;
+    }
+  }
+
+  &__chart-wrapper {
+    background: $muted-bg;
+    border-radius: $radius-md;
+    padding: 0.75rem;
+  }
+
+  &__chart-title {
+    font-size: 0.625rem;
+    font-weight: 600;
+    color: $foreground;
+    margin-bottom: 0.625rem;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.6875rem;
+    }
+  }
+
+  &__chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 0.375rem;
+    height: 80px;
+
+    @media (min-width: $bp-md) {
+      height: 100px;
+      gap: 0.5rem;
+    }
+  }
+
+  &__bar-group {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: flex-end;
+    gap: 0.25rem;
+  }
+
+  &__bar {
+    width: 100%;
+    background: $primary;
+    border-radius: 3px 3px 0 0;
+    opacity: 0.8;
+    transition: opacity $transition-fast;
+
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  &__bar-label {
+    font-size: 0.4375rem;
+    color: $muted;
+    white-space: nowrap;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.5rem;
+    }
+  }
+}

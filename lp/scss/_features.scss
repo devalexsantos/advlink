@@ -1,0 +1,52 @@
+// Secondary features grid
+.features-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1.5rem;
+
+  @media (min-width: $bp-md) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: $bp-lg) {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+.feature-card {
+  padding: 1.75rem;
+  background: #fff;
+  border: 1px solid $border;
+  border-radius: $radius-lg;
+  transition: all $transition-base;
+
+  &:hover {
+    border-color: rgba($primary, 0.2);
+    box-shadow: $shadow-md;
+    transform: translateY(-2px);
+  }
+
+  &__icon {
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: $muted-bg;
+    border-radius: $radius-md;
+    margin-bottom: 1rem;
+    color: $primary;
+  }
+
+  &__title {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+  }
+
+  &__desc {
+    font-size: 0.875rem;
+    color: $muted;
+    line-height: 1.6;
+  }
+}

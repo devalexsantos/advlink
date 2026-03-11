@@ -1,0 +1,60 @@
+// Scroll-triggered fade-up animation
+[data-animate] {
+  opacity: 0;
+  transform: translateY(24px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+
+  &.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Stagger children
+[data-animate-stagger].is-visible > * {
+  opacity: 0;
+  transform: translateY(16px);
+  animation: stagger-fade-up 0.5s ease forwards;
+
+  @for $i from 1 through 12 {
+    &:nth-child(#{$i}) {
+      animation-delay: #{($i - 1) * 60}ms;
+    }
+  }
+}
+
+@keyframes stagger-fade-up {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Trust bar subtle entrance
+.trust-bar {
+  border-top: 1px solid $border;
+  border-bottom: 1px solid $border;
+  padding: 1.5rem 0;
+  background: $background;
+
+  &__items {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5rem 2.5rem;
+  }
+
+  &__item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    color: $muted;
+
+    svg {
+      flex-shrink: 0;
+      color: $success;
+    }
+  }
+}

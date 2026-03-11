@@ -1,0 +1,436 @@
+.steps {
+  background: $muted-bg;
+
+  &__content {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+
+    @media (min-width: $bp-lg) {
+      flex-direction: row;
+      gap: 3.5rem;
+      align-items: flex-start;
+    }
+  }
+
+  &__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1;
+  }
+
+  &__item {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: $radius-lg;
+    text-align: left;
+    transition: all $transition-base;
+    border: 1px solid transparent;
+
+    &:hover {
+      background: rgba(255, 255, 255, 0.6);
+    }
+
+    &--active {
+      background: #fff;
+      border-color: $border;
+      box-shadow: $shadow-sm;
+    }
+  }
+
+  &__number {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: $muted-bg;
+    border-radius: $radius-full;
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: $muted;
+    transition: all $transition-base;
+
+    .steps__item--active & {
+      background: $primary;
+      color: #fff;
+    }
+  }
+
+  &__info {
+    flex: 1;
+  }
+
+  &__item-title {
+    font-size: 0.9375rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  &__item-desc {
+    font-size: 0.8125rem;
+    color: $muted;
+    line-height: 1.5;
+  }
+
+  &__preview {
+    flex: 1;
+    position: relative;
+    min-height: 340px;
+
+    @media (min-width: $bp-lg) {
+      min-height: 400px;
+    }
+  }
+
+  &__mock {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity $transition-slow;
+    pointer-events: none;
+
+    &--active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .mock-browser {
+      height: 100%;
+    }
+
+    .mock-browser__body {
+      min-height: 260px;
+    }
+  }
+}
+
+// ===== Step Mock: Login screen =====
+.mock-login {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 1.25rem 2rem;
+  max-width: 240px;
+  margin: 0 auto;
+
+  &__logo {
+    width: 48px;
+    height: 48px;
+    border-radius: $radius-md;
+    background: $primary;
+    margin-bottom: 0.25rem;
+  }
+
+  &__title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: $foreground;
+    margin-bottom: 0.375rem;
+  }
+
+  &__input {
+    width: 100%;
+    height: 32px;
+    border-radius: $radius-sm;
+    background: #fff;
+    border: 1px solid $border;
+    font-size: 0.5625rem;
+    color: $muted;
+    padding: 0 0.625rem;
+    display: flex;
+    align-items: center;
+  }
+
+  &__btn {
+    width: 100%;
+    height: 32px;
+    border-radius: $radius-sm;
+    font-size: 0.5625rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.375rem;
+
+    &--primary {
+      background: $primary;
+      color: #fff;
+    }
+
+    &--google {
+      background: #fff;
+      border: 1px solid $border;
+      color: $foreground;
+    }
+  }
+
+  &__divider {
+    width: 100%;
+    height: 1px;
+    background: $border;
+    position: relative;
+    margin: 0.125rem 0;
+
+    span {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 0 0.5rem;
+      background: #fff;
+      font-size: 0.5rem;
+      color: $muted;
+    }
+  }
+}
+
+// ===== Step Mock: Theme/color picker additions =====
+.mock-editor__theme-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.5rem;
+  margin-bottom: 0;
+}
+
+.mock-editor__theme-card {
+  height: 48px;
+  border-radius: $radius-sm;
+  background: $muted-bg;
+  border: 2px solid $border;
+  transition: border-color $transition-fast;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &--selected {
+    border-color: $primary;
+    background: rgba($primary, 0.04);
+  }
+}
+
+.mock-editor__theme-name {
+  font-size: 0.5rem;
+  font-weight: 600;
+  color: $muted;
+
+  .mock-editor__theme-card--selected & {
+    color: $primary;
+  }
+
+  @media (min-width: $bp-md) {
+    font-size: 0.5625rem;
+  }
+}
+
+.mock-editor__color-row {
+  display: flex;
+  gap: 0.75rem;
+
+  .mock-swatch {
+    width: 22px;
+    height: 22px;
+  }
+}
+
+.mock-editor__color-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.mock-editor__color-name {
+  font-size: 0.4375rem;
+  color: $muted;
+  white-space: nowrap;
+
+  @media (min-width: $bp-md) {
+    font-size: 0.5rem;
+  }
+}
+
+// ===== Step Mock: AI generation =====
+.mock-ai-gen {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+
+  &__card {
+    padding: 0.875rem;
+    border: 1px solid $border;
+    border-radius: $radius-md;
+    background: #fff;
+
+    &--generating {
+      border-color: rgba($ring, 0.3);
+    }
+
+    &--empty {
+      border-style: dashed;
+    }
+  }
+
+  &__card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.5rem;
+  }
+
+  &__card-title {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    color: $foreground;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.75rem;
+    }
+  }
+
+  &__card-desc {
+    font-size: 0.5625rem;
+    color: $muted;
+    line-height: 1.5;
+
+    @media (min-width: $bp-md) {
+      font-size: 0.625rem;
+    }
+  }
+
+  &__card-lines {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  &__line {
+    width: 100%;
+    height: 6px;
+    border-radius: 3px;
+    background: $muted-bg;
+
+    &--short {
+      width: 55%;
+    }
+
+    &--shimmer {
+      background: linear-gradient(90deg, $muted-bg 25%, rgba($ring, 0.1) 50%, $muted-bg 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+    }
+  }
+
+  &__btn {
+    width: auto;
+    display: inline-block;
+    padding: 0.25rem 0.625rem;
+    border-radius: $radius-sm;
+    border: 1px dashed $border;
+    margin-top: 0.125rem;
+    font-size: 0.5625rem;
+    color: $muted;
+    font-weight: 500;
+    text-align: center;
+  }
+}
+
+.mock-ai-card__badge--pulse {
+  animation: badge-pulse 1.2s ease infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+@keyframes badge-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+// ===== Step Mock: Published profile =====
+.mock-profile {
+  &__cover {
+    height: 70px;
+    background: linear-gradient(135deg, $primary, $primary-light);
+    border-radius: 0;
+  }
+
+  &__info {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0 1.5rem 1.5rem;
+    margin-top: -24px;
+  }
+
+  &__avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: $border;
+    border: 3px solid #fff;
+  }
+
+  &__name {
+    font-size: 0.8125rem;
+    font-weight: 700;
+    color: $foreground;
+    text-align: center;
+  }
+
+  &__headline {
+    font-size: 0.625rem;
+    color: $muted;
+    text-align: center;
+  }
+
+  &__bio {
+    font-size: 0.5625rem;
+    color: $muted;
+    line-height: 1.5;
+    text-align: center;
+    margin-top: 0.25rem;
+    max-width: 260px;
+  }
+
+  &__bio-line {
+    width: 100%;
+    height: 5px;
+    border-radius: 3px;
+    background: $muted-bg;
+
+    &--short {
+      width: 60%;
+    }
+  }
+
+  &__buttons {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  &__btn {
+    padding: 0.3125rem 0.875rem;
+    border-radius: $radius-sm;
+    background: $primary;
+    font-size: 0.5625rem;
+    font-weight: 600;
+    color: #fff;
+    text-align: center;
+
+    &--outline {
+      background: transparent;
+      border: 1px solid $border;
+      color: $foreground;
+    }
+  }
+}

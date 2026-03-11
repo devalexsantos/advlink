@@ -1,0 +1,91 @@
+.pricing {
+  background: $background;
+
+  &__card {
+    max-width: 480px;
+    margin: 0 auto;
+    background: #fff;
+    border: 1px solid $border;
+    border-radius: $radius-xl;
+    padding: 2.5rem 2rem;
+    box-shadow: $shadow-lg;
+    text-align: center;
+
+    @media (min-width: $bp-md) {
+      padding: 3rem 2.5rem;
+    }
+  }
+
+  &__header {
+    margin-bottom: 2rem;
+  }
+
+  &__plan {
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: $primary;
+  }
+
+  &__price {
+    margin: 1rem 0 0.75rem;
+  }
+
+  &__original {
+    display: block;
+    font-size: 1rem;
+    color: $muted;
+    text-decoration: line-through;
+    margin-bottom: 0.25rem;
+  }
+
+  &__current {
+    font-size: 3rem;
+    font-weight: 700;
+    color: $foreground;
+    line-height: 1.1;
+  }
+
+  &__period {
+    font-size: 1rem;
+    font-weight: 400;
+    color: $muted;
+  }
+
+  &__badge {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: $primary;
+    background: rgba($primary, 0.06);
+    padding: 0.25rem 0.75rem;
+    border-radius: $radius-full;
+  }
+
+  &__features {
+    text-align: left;
+    margin-bottom: 2rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  &__feature {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.9375rem;
+    color: $foreground;
+
+    svg {
+      flex-shrink: 0;
+    }
+  }
+
+  &__note {
+    font-size: 0.8125rem;
+    color: $muted;
+    margin-top: 1rem;
+  }
+}

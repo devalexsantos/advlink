@@ -1,0 +1,148 @@
+"use client"
+
+import { Info } from "lucide-react"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
+import dynamic from "next/dynamic"
+import "@mdxeditor/editor/style.css"
+import {
+  toolbarPlugin,
+  BoldItalicUnderlineToggles,
+  UndoRedo,
+  Separator,
+  headingsPlugin,
+  listsPlugin,
+  thematicBreakPlugin,
+  markdownShortcutPlugin,
+} from "@mdxeditor/editor"
+import { useEditForm } from "../EditFormContext"
+
+const MDXEditor = dynamic(() => import("@mdxeditor/editor").then(m => m.MDXEditor), { ssr: false })
+
+export default function PerfilContatoSection() {
+  const {
+    form,
+    aboutMarkdown, setAboutMarkdown,
+    publicPhoneIsFixed, setPublicPhoneIsFixed,
+    whatsappIsFixed, setWhatsappIsFixed,
+  } = useEditForm()
+
+  const { register, formState: { errors } } = form
+
+  return (
+    <div className="space-y-4">
+      {/* Informações básicas */}
+      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+        <Label className="text-base font-bold">Informações básicas</Label>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="publicName" className="mb-1 block text-sm">Nome de exibição <span className="text-red-500" aria-hidden>*</span></Label>
+          <Input id="publicName" {...register("publicName")} />
+          {errors.publicName && <p className="mt-1 text-sm text-red-500">{errors.publicName.message}</p>}
+        </div>
+        <div>
+          <Label htmlFor="headline" className="mb-1 block text-sm">Título</Label>
+          <Input id="headline" placeholder="Ex.: Advogado(a) Especialista em Direito Civil" {...register("headline")} />
+        </div>
+      </div>
+
+      {/* Sobre mim */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <Label className="mb-3 text-base block font-bold">Sobre mim</Label>
+        <div className="relative overflow-visible border border-border bg-background rounded-md">
+          <MDXEditor
+            className="mdxeditor min-h-[200px] max-h-[65vh] overflow-visible"
+            contentEditableClassName="min-h-[210px] p-4 cursor-text whitespace-pre-wrap"
+            markdown={aboutMarkdown}
+            onChange={(md: string) => setAboutMarkdown(md)}
+            plugins={[
+              toolbarPlugin({
+                toolbarContents: () => (
+                  <>
+                    <UndoRedo />
+                    <Separator />
+                    <BoldItalicUnderlineToggles />
+                  </>
+                ),
+              }),
+              headingsPlugin(),
+              listsPlugin(),
+              thematicBreakPlugin(),
+              markdownShortcutPlugin({ remarkBreaks: true }),
+            ]}
+          />
+        </div>
+      </div>
+
+      {/* Contato */}
+      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+        <Label className="text-base font-bold">Contato</Label>
+        <div>
+          <Label htmlFor="publicEmail" className="mb-1 block text-sm">E-mail para contato</Label>
+          <Input id="publicEmail" type="email" {...register("publicEmail")} />
+          {errors.publicEmail && <p className="mt-1 text-sm text-red-500">{errors.publicEmail.message}</p>}
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="whatsapp" className="mb-1 block text-sm">WhatsApp</Label>
+          <div className="flex items-center gap-3">
+            <Input id="whatsapp" placeholder="(00) 00000-0000" {...register("whatsapp")} className="flex-1 max-w-50" />
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <Switch checked={whatsappIsFixed} onCheckedChange={setWhatsappIsFixed} />
+              <span className="inline-flex items-center gap-1 text-sm">
+                Fixar WhatsApp
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} className="cursor-help" aria-label="Ajuda">
+                        <Info className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Ao ativar, o botão de WhatsApp ficará fixo no canto inferior direito da sua página.</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="publicPhone" className="mb-1 block text-sm">Telefone</Label>
+          <div className="flex items-center gap-3">
+            <Input id="publicPhone" {...register("publicPhone")} className="flex-1 max-w-50" />
+            <label className="inline-flex items-center gap-2 cursor-pointer">
+              <Switch checked={publicPhoneIsFixed} onCheckedChange={setPublicPhoneIsFixed} />
+              <span className="inline-flex items-center gap-1 text-sm">
+                Fixar telefone
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button type="button" onClick={(e) => e.stopPropagation()} onMouseDown={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()} className="cursor-help" aria-label="Ajuda">
+                        <Info className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>Ao ativar, o botão de telefone ficará fixo no canto inferior direito da sua página.</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </span>
+            </label>
+          </div>
+        </div>
+        <div>
+          <Label htmlFor="instagramUrl" className="mb-1 block text-sm">Instagram URL</Label>
+          <Input id="instagramUrl" placeholder="https://instagram.com/seu_usuario" {...register("instagramUrl")} />
+          {errors.instagramUrl && <p className="mt-1 text-sm text-red-500">{errors.instagramUrl.message}</p>}
+        </div>
+      </div>
+
+      {/* Calendly */}
+      <div className="rounded-xl border border-border bg-card p-5">
+        <Label className="mb-3 text-base block font-bold">Agendamento</Label>
+        <div>
+          <Label htmlFor="calendlyUrl" className="mb-1 block text-sm">Calendly URL</Label>
+          <Input id="calendlyUrl" placeholder="https://calendly.com/seu-usuario" {...register("calendlyUrl")} />
+          {errors.calendlyUrl && <p className="mt-1 text-sm text-red-500">{errors.calendlyUrl.message}</p>}
+        </div>
+      </div>
+    </div>
+  )
+}
