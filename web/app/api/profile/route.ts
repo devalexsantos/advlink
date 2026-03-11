@@ -168,8 +168,14 @@ export async function PATCH(req: Request) {
     }
   }
   let slug: string | undefined
-  if (slugInput !== undefined || (publicName && String(publicName).trim().length > 0)) {
+  if (slugInput !== undefined) {
     slug = await validateOrGenerateSlug(publicName, slugInput)
+  } else {
+    // Only auto-generate slug on first profile creation (no existing profile)
+    const existing = await prisma.profile.findUnique({ where: { userId }, select: { id: true } })
+    if (!existing && publicName && String(publicName).trim().length > 0) {
+      slug = await validateOrGenerateSlug(publicName)
+    }
   }
 
   // Upload opcional do avatar
