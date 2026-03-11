@@ -4,7 +4,7 @@ import { getToken } from "next-auth/jwt"
 import { RESERVED_SLUGS } from "@/lib/reserved-slugs"
 
 // Subdomain rewrite to /adv/[slug] for *.advlink.site
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { nextUrl } = req
   const pathname = nextUrl.pathname
 

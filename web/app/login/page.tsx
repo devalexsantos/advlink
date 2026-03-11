@@ -3,7 +3,7 @@ import Image from "next/image"
 import { Lock, ShieldCheck } from "lucide-react"
 import { GoogleLoginButton } from "@/app/login/_components/GoogleLoginButton"
 import { MagicLinkForm } from "@/app/login/_components/MagicLinkForm"
-import blackLogo from "/public/images/advlink-logo-black.svg"
+import blackLogo from "@/public/images/advlink-logo-black.svg"
 
 export default async function LoginPage({
   searchParams,
