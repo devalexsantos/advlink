@@ -166,4 +166,16 @@
       }
     });
   });
+  // ========== Cookie Consent ==========
+  const banner = document.getElementById('cookieBanner');
+  const acceptBtn = document.getElementById('cookieAccept');
+  if (banner && !localStorage.getItem('cookie_consent')) {
+    banner.classList.add('cookie-banner--visible');
+  }
+  if (acceptBtn) {
+    acceptBtn.addEventListener('click', () => {
+      localStorage.setItem('cookie_consent', '1');
+      banner.classList.remove('cookie-banner--visible');
+    });
+  }
 })();
