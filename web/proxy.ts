@@ -1,7 +1,12 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
+import { jwtVerify } from "jose"
 import { RESERVED_SLUGS } from "@/lib/reserved-slugs"
+
+const ADMIN_JWT_SECRET = new TextEncoder().encode(
+  process.env.ADMIN_JWT_SECRET || "admin-secret-change-me"
+)
 
 // Subdomain rewrite to /adv/[slug] for *.advlink.site
 export async function proxy(req: NextRequest) {
@@ -14,6 +19,26 @@ export async function proxy(req: NextRequest) {
   const isStaticAsset = /\.[^\/]+$/.test(pathname) || pathname === "/favicon.ico"
   if (isApi || isNextInternal || isStaticAsset) {
     return NextResponse.next()
+  }
+
+  // Admin routes guard
+  if (pathname.startsWith("/admin")) {
+    // Allow login page
+    if (pathname === "/admin/login") {
+      return NextResponse.next()
+    }
+
+    const token = req.cookies.get("admin-token")?.value
+    if (!token) {
+      return NextResponse.redirect(new URL("/admin/login", nextUrl.origin))
+    }
+
+    try {
+      await jwtVerify(token, ADMIN_JWT_SECRET)
+      return NextResponse.next()
+    } catch {
+      return NextResponse.redirect(new URL("/admin/login", nextUrl.origin))
+    }
   }
 
   // Host-based routing: alex.advlink.site → rewrite to /adv/alex (URL stays on subdomain)

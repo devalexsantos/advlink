@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { createSignInEmailHtml, createSignInEmailText } from "@/lib/emails/authEmail"
 import nodemailer from "nodemailer"
+import { trackEvent } from "@/lib/product-events"
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -82,6 +83,11 @@ export const authOptions: NextAuthOptions = {
       allowDangerousEmailAccountLinking: true,
     }),
   ],
+  events: {
+    async createUser({ user }) {
+      trackEvent("user_signed_up", { userId: user.id, meta: { email: user.email } }).catch(() => {})
+    },
+  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {

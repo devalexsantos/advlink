@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   BarChart3,
+  MessageSquare,
 } from "lucide-react"
 import {
   Sidebar,
@@ -106,6 +107,25 @@ export function AppSidebar() {
               >
                 <BarChart3 className="h-4 w-4" />
                 <span>Analytics</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Ajuda</SidebarGroupLabel>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={pathname.startsWith("/profile/tickets")}
+                onClick={() => {
+                  router.push("/profile/tickets")
+                  setOpenMobile(false)
+                }}
+                tooltip="Suporte"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span>Suporte</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

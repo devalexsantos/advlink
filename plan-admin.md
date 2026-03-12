@@ -17,8 +17,6 @@ tickets pendentes
 
 assinaturas ativas
 
-trials ativos
-
 cancelamentos recentes
 
 Tabelas no dashboard

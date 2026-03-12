@@ -3,6 +3,7 @@ import { headers } from "next/headers"
 import { stripe } from "@/lib/stripe"
 import { prisma } from "@/lib/prisma"
 import type Stripe from "stripe"
+import { trackEvent } from "@/lib/product-events"
 
 export const runtime = "nodejs"
 
@@ -27,16 +28,30 @@ export async function POST(req: Request) {
         const email: string | undefined = session.customer_details?.email || (session.client_reference_id as string | undefined) || undefined
         if (!customerId) break
 
+        let linkedUserId: string | undefined
         if (email) {
           // Link by email if possible
-          await prisma.user.upsert({
+          const user = await prisma.user.upsert({
             where: { email },
             update: { stripeCustomerId: customerId, isActive: true },
             create: { email, stripeCustomerId: customerId, isActive: true },
           })
+          linkedUserId = user.id
         } else if (session.metadata && (session.metadata as Record<string,string | undefined>).userId) {
           const userId = String((session.metadata as Record<string,string | undefined>).userId)
           await prisma.user.update({ where: { id: userId }, data: { stripeCustomerId: customerId, isActive: true } })
+          linkedUserId = userId
+        }
+        trackEvent("subscription_started", { userId: linkedUserId, meta: { customerId } }).catch(() => {})
+        // Also track site_published if user has a profile
+        if (linkedUserId) {
+          prisma.profile.findUnique({ where: { userId: linkedUserId }, select: { slug: true } })
+            .then((profile) => {
+              if (profile?.slug) {
+                trackEvent("site_published", { userId: linkedUserId, meta: { slug: profile.slug } }).catch(() => {})
+              }
+            })
+            .catch(() => {})
         }
         break
       }

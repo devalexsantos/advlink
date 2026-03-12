@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 import { generateActivityDescriptions } from "@/lib/openai"
 import { uploadToS3 } from "@/lib/s3"
 import { isReservedSlug } from "@/lib/reserved-slugs"
+import { trackEvent } from "@/lib/product-events"
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -154,6 +155,9 @@ export async function POST(req: Request) {
       where: { id: userId },
       data: { completed_onboarding: true },
     })
+
+    // Track product event
+    trackEvent("site_created", { userId, meta: { slug } }).catch(() => {})
 
     return NextResponse.json({ ok: true })
   } catch (err: unknown) {
