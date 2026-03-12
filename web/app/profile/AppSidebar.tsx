@@ -67,7 +67,7 @@ export function AppSidebar() {
           </SidebarMenuItem>
           <SidebarMenuItem className="hidden lg:block">
             <SidebarMenuButton onClick={toggleSidebar} tooltip={state === "collapsed" ? "Expandir" : "Retrair"}>
-              {state === "collapsed" ? <PanelLeftOpen className="h-4 w-4" /> : <PanelLeftClose className="h-4 w-4" />}
+              {state === "collapsed" ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
               <span>Retrair menu</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -85,7 +85,7 @@ export function AppSidebar() {
                   onClick={() => navigateTab(item.tab)}
                   tooltip={item.label}
                 >
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className="h-5 w-5" />
                   <span>{item.label}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -105,7 +105,7 @@ export function AppSidebar() {
                 }}
                 tooltip="Analytics"
               >
-                <BarChart3 className="h-4 w-4" />
+                <BarChart3 className="h-5 w-5" />
                 <span>Analytics</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -124,7 +124,7 @@ export function AppSidebar() {
                 }}
                 tooltip="Suporte"
               >
-                <MessageSquare className="h-4 w-4" />
+                <MessageSquare className="h-5 w-5" />
                 <span>Suporte</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -143,7 +143,7 @@ export function AppSidebar() {
               }}
               tooltip="Minha Conta"
             >
-              <CreditCard className="h-4 w-4" />
+              <CreditCard className="h-5 w-5" />
               <span>Minha Conta</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -152,7 +152,7 @@ export function AppSidebar() {
               onClick={() => signOut({ callbackUrl: "/login" })}
               tooltip="Sair"
             >
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-5 w-5" />
               <span>Sair</span>
             </SidebarMenuButton>
           </SidebarMenuItem>

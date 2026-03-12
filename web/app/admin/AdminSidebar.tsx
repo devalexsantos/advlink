@@ -72,9 +72,9 @@ export function AdminSidebar() {
               tooltip={state === "collapsed" ? "Expandir" : "Retrair"}
             >
               {state === "collapsed" ? (
-                <PanelLeftOpen className="h-4 w-4" />
+                <PanelLeftOpen className="h-5 w-5" />
               ) : (
-                <PanelLeftClose className="h-4 w-4" />
+                <PanelLeftClose className="h-5 w-5" />
               )}
               <span>Retrair menu</span>
             </SidebarMenuButton>
@@ -97,7 +97,7 @@ export function AdminSidebar() {
                   onClick={() => navigate(item.href)}
                   tooltip={item.label}
                 >
-                  <item.icon className="h-4 w-4" />
+                  <item.icon className="h-5 w-5" />
                   <span>{item.label}</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -118,7 +118,7 @@ export function AdminSidebar() {
           )}
           <SidebarMenuItem>
             <SidebarMenuButton onClick={handleLogout} tooltip="Sair">
-              <LogOut className="h-4 w-4" />
+              <LogOut className="h-5 w-5" />
               <span>Sair</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
