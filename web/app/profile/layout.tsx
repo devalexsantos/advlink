@@ -10,7 +10,9 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
   return (
     <MobilePreviewProvider>
       <SidebarProvider>
-        <AppSidebar />
+        <Suspense fallback={null}>
+          <AppSidebar />
+        </Suspense>
         <SidebarInset>
           <header className="flex h-12 items-center justify-between border-b border-border px-4 lg:hidden">
             <div className="flex items-center gap-2">
