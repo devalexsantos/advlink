@@ -225,6 +225,7 @@ model TicketMessage {
   senderAdminId String?
   senderAdmin   AdminUser? @relation("AdminSender", fields: [senderAdminId], references: [id], onDelete: SetNull)
   message       String
+  imageUrls     Json?
   createdAt     DateTime   @default(now())
 
   @@index([ticketId, createdAt])

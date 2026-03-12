@@ -13,7 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Plus } from "lucide-react"
+import { Plus, Info } from "lucide-react"
 
 const statusLabels: Record<string, string> = {
   open: "Aberto",
@@ -52,7 +52,7 @@ export default function UserTicketsPage() {
   }, [])
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="mx-auto max-w-4xl space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">Meus Tickets</h1>
         <Button asChild>
@@ -60,6 +60,14 @@ export default function UserTicketsPage() {
             <Plus className="h-4 w-4 mr-2" /> Novo Ticket
           </Link>
         </Button>
+      </div>
+
+      <div className="flex gap-3 rounded-lg border bg-muted/50 p-4">
+        <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+        <p className="text-sm text-muted-foreground">
+          Tem alguma dúvida, problema ou sugestão? Abra um ticket que nossa equipe irá te responder.
+          O prazo de resposta é de até <strong className="text-foreground">24 horas úteis</strong>.
+        </p>
       </div>
 
       <Card>

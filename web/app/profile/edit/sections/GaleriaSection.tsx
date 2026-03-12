@@ -56,7 +56,7 @@ function SortableThumb({ item, onDelete }: { item: GalleryItem; onDelete: () => 
       <div
         {...attributes}
         {...listeners}
-        className="absolute inset-0 flex cursor-grab items-center justify-center bg-black/0 opacity-0 transition-opacity group-hover:bg-black/20 group-hover:opacity-100 active:cursor-grabbing"
+        className="absolute inset-0 flex cursor-grab items-center justify-center bg-black/20 opacity-100 active:cursor-grabbing"
       >
         <GripVertical className="h-6 w-6 text-white drop-shadow-md" />
       </div>
@@ -65,7 +65,7 @@ function SortableThumb({ item, onDelete }: { item: GalleryItem; onDelete: () => 
       <button
         type="button"
         onClick={onDelete}
-        className="absolute right-1.5 top-1.5 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white opacity-0 transition-opacity hover:bg-black/80 group-hover:opacity-100"
+        className="absolute right-1.5 top-1.5 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80"
         aria-label="Excluir foto"
       >
         <X className="h-3.5 w-3.5" />

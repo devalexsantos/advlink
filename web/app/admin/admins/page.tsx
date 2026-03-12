@@ -28,7 +28,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { Plus } from "lucide-react"
+import { Key, Plus } from "lucide-react"
 
 interface AdminRow {
   id: string
@@ -46,6 +46,10 @@ export default function AdminAdminsPage() {
   const [form, setForm] = useState({ email: "", name: "", password: "", role: "admin" })
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
+  const [pwDialog, setPwDialog] = useState<{ id: string; name: string | null } | null>(null)
+  const [pwForm, setPwForm] = useState({ password: "", confirm: "" })
+  const [pwError, setPwError] = useState("")
+  const [pwLoading, setPwLoading] = useState(false)
 
   function fetchAdmins() {
     fetch("/api/admin/admins")
@@ -86,6 +90,38 @@ export default function AdminAdminsPage() {
       body: JSON.stringify({ isActive: !currentActive }),
     })
     fetchAdmins()
+  }
+
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault()
+    setPwError("")
+
+    if (pwForm.password.length < 6) {
+      setPwError("A senha deve ter no mínimo 6 caracteres")
+      return
+    }
+    if (pwForm.password !== pwForm.confirm) {
+      setPwError("As senhas não coincidem")
+      return
+    }
+
+    setPwLoading(true)
+    const res = await fetch(`/api/admin/admins/${pwDialog!.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ password: pwForm.password }),
+    })
+
+    if (!res.ok) {
+      const data = await res.json()
+      setPwError(data.error || "Erro ao alterar senha")
+      setPwLoading(false)
+      return
+    }
+
+    setPwDialog(null)
+    setPwForm({ password: "", confirm: "" })
+    setPwLoading(false)
   }
 
   return (
@@ -176,7 +212,18 @@ export default function AdminAdminsPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm">{a._count.assignedTickets}</TableCell>
-                  <TableCell>
+                  <TableCell className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setPwDialog({ id: a.id, name: a.name })
+                        setPwForm({ password: "", confirm: "" })
+                        setPwError("")
+                      }}
+                    >
+                      <Key className="h-4 w-4 mr-1" /> Alterar Senha
+                    </Button>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -191,6 +238,40 @@ export default function AdminAdminsPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <Dialog open={!!pwDialog} onOpenChange={(v) => { if (!v) setPwDialog(null) }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar Senha — {pwDialog?.name || "Admin"}</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleChangePassword} className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nova senha</Label>
+              <Input
+                type="password"
+                value={pwForm.password}
+                onChange={(e) => setPwForm({ ...pwForm, password: e.target.value })}
+                required
+                minLength={6}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Confirmar senha</Label>
+              <Input
+                type="password"
+                value={pwForm.confirm}
+                onChange={(e) => setPwForm({ ...pwForm, confirm: e.target.value })}
+                required
+                minLength={6}
+              />
+            </div>
+            {pwError && <p className="text-sm text-destructive">{pwError}</p>}
+            <Button type="submit" className="w-full" disabled={pwLoading}>
+              {pwLoading ? "Salvando..." : "Salvar"}
+            </Button>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
