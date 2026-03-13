@@ -153,6 +153,7 @@ export default function GaleriaSection() {
 
         {gallery.length > 0 && (
           <DndContext
+            id="reordenar-galeria"
             sensors={sensors}
             collisionDetection={closestCenter}
             onDragStart={handleDragStart}

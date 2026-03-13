@@ -23,14 +23,10 @@ export const profileEditSchema = z.object({
     .or(z.literal("").transform(() => undefined)),
   instagramUrl: z
     .string()
-    .url("Informe uma URL válida.")
-    .regex(/^https:\/\/(www\.)?instagram\.com\//i, "A URL deve iniciar com https://instagram.com/")
     .optional()
     .or(z.literal("").transform(() => undefined)),
   calendlyUrl: z
     .string()
-    .url("Informe uma URL válida.")
-    .regex(/^https:\/\/calendly\.com\//i, "A URL deve iniciar com https://calendly.com/")
     .optional()
     .or(z.literal("").transform(() => undefined)),
   // SEO
@@ -39,7 +35,6 @@ export const profileEditSchema = z.object({
   keywords: z.string().optional().or(z.literal("").transform(() => undefined)),
   gtmContainerId: z
     .string()
-    .regex(/^GTM-[A-Z0-9]+$/i, "Informe um ID válido, ex: GTM-XXXXXXX")
     .optional()
     .or(z.literal("").transform(() => undefined)),
   // Address (all optional)
@@ -111,6 +106,8 @@ export type ProfileData = {
   keywords?: string | null
   gtmContainerId?: string | null
   theme?: string | null
+  sectionOrder?: string[] | null
+  sectionLabels?: Record<string, string> | null
 }
 
 export type FetchProfileResponse = {

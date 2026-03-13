@@ -60,6 +60,16 @@ export async function deleteLink(id: string) {
   return res.json() as Promise<{ ok: boolean }>
 }
 
+export async function updateSectionConfig(data: { sectionOrder?: string[]; sectionLabels?: Record<string, string> }) {
+  const res = await fetch("/api/profile", {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  })
+  if (!res.ok) throw new Error("Falha ao salvar configuração das seções")
+  return res.json()
+}
+
 export async function uploadGalleryPhoto(file: File) {
   const fd = new FormData()
   fd.set("cover", file)

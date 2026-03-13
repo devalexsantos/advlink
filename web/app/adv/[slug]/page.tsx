@@ -14,7 +14,7 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
   const { slug } = await params
   const profile = await prisma.profile.findFirst({
     where: { slug },
-    include: { user: { include: { Address: true } } },
+    include: { user: { include: { address: true } } },
   })
   if (!profile) {
     return (
@@ -84,7 +84,7 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
     where: { userId: profile.userId },
     orderBy: [{ position: "asc" }, { createdAt: "asc" }],
   })
-  const address = profile.user.Address?.[0]
+  const address = profile.user.address ?? undefined
 
   const primary = profile.primaryColor || "#8B0000"
   const text = profile.textColor || "#FFFFFF"
@@ -118,28 +118,32 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
       )}
       <ProfileTracker slug={slug} />
       {theme === "modern" && (
-        <Theme02  
-          profile={profile} 
-          areas={areas} 
-          address={address} 
+        <Theme02
+          profile={profile}
+          areas={areas}
+          address={address}
           links={links}
           gallery={gallery}
-          primary={primary} 
-          text={text} 
+          primary={primary}
+          text={text}
           secondary={secondary}
+          sectionOrder={profile.sectionOrder as string[] | undefined}
+          sectionLabels={profile.sectionLabels as Record<string, string> | undefined}
         />
       )}
       {theme === "classic" && (
         <Theme03
-        profile={profile}
-        areas={areas}
-        address={address}
-        links={links}
-        gallery={gallery}
-        primary={primary}
-        text={text}
-        secondary={secondary}
-      />
+          profile={profile}
+          areas={areas}
+          address={address}
+          links={links}
+          gallery={gallery}
+          primary={primary}
+          text={text}
+          secondary={secondary}
+          sectionOrder={profile.sectionOrder as string[] | undefined}
+          sectionLabels={profile.sectionLabels as Record<string, string> | undefined}
+        />
       )}
       {theme === "corporate" && (
         <Theme04
@@ -151,6 +155,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           primary={primary}
           text={text}
           secondary={secondary}
+          sectionOrder={profile.sectionOrder as string[] | undefined}
+          sectionLabels={profile.sectionLabels as Record<string, string> | undefined}
         />
       )}
     </div>

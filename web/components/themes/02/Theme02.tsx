@@ -6,7 +6,9 @@ import { GalleryCarousel } from "@/app/adv/[slug]/GalleryCarousel"
 import { marked } from "marked"
 import { Calendar, Heart, HeartHandshake, Images, Instagram, Link2, Mail, MapPin, Phone, Scale, SquareArrowOutUpRight } from "lucide-react"
 import Link from "next/link"
+import { Fragment } from "react"
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon"
+import { getSectionOrder, getSectionLabel, type SectionKey, type SectionLabels } from "@/lib/section-order"
 
 type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
@@ -14,7 +16,166 @@ type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
 type Profile = { publicName?: string | null; headline?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
 
-export default function Theme02({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean }) {
+export default function Theme02({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string> }) {
+  const order = getSectionOrder(sectionOrder as SectionKey[] | undefined)
+  const label = (key: SectionKey) => getSectionLabel(key, sectionLabels as SectionLabels)
+
+  const sectionRenderers: Record<string, () => React.ReactNode> = {
+    servicos: () => areas.length > 0 ? (
+      <motion.section
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8 }}
+        className="relative z-10 px-6 py-16 text-center"
+      >
+        <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+          <Scale className="w-10 h-10" style={{ color: secondary }} /> {label("servicos")}
+        </h2>
+        <AreasCarousel
+          areas={areas}
+          primary={primary}
+          text={text}
+          secondary={secondary}
+          whatsapp={profile.whatsapp}
+          publicPhone={profile.publicPhone}
+          publicEmail={profile.publicEmail}
+        />
+      </motion.section>
+    ) : null,
+
+    sobre: () => profile.aboutDescription ? (
+      <motion.section
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        className="relative z-10 px-6 py-16 max-w-5xl mx-auto text-center"
+      >
+        <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+          <HeartHandshake className="w-10 h-10" style={{ color: secondary }} /> {label("sobre")}
+        </h2>
+        <div className="rounded-2xl p-6 backdrop-blur-md bg-white/10 shadow-lg">
+          <div
+            className="prose prose-invert text-lg leading-relaxed"
+            dangerouslySetInnerHTML={{ __html: marked.parse(profile.aboutDescription || "") as string }}
+          />
+        </div>
+      </motion.section>
+    ) : null,
+
+    galeria: () => Array.isArray(gallery) && gallery.length > 0 ? (
+      <motion.section
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8 }}
+        className="relative z-10 px-6 py-16 text-center"
+      >
+        <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+          <Images className="w-10 h-10" style={{ color: secondary }} /> {label("galeria")}
+        </h2>
+        <GalleryCarousel items={gallery} text={text} secondary={secondary} />
+      </motion.section>
+    ) : null,
+
+    links: () => Array.isArray(links) && links.length > 0 ? (
+      <motion.section
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true }}
+        transition={{ duration: 0.8 }}
+        className="relative z-10 px-6 py-16 max-w-6xl mx-auto"
+      >
+        <h2 className="mb-8 text-5xl font-bold text-center flex items-center justify-center gap-3" style={{ color: secondary }}>
+          <Link2 className="w-10 h-10" style={{ color: secondary }} /> {label("links")}
+        </h2>
+        <div className={`grid ${forceMobile ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"} gap-6`}>
+          {links.map((l: LinkItem, idx: number) => (
+            <motion.div
+              key={l.id || idx}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: Math.min(idx * 0.05, 0.3) }}
+              className="rounded-2xl overflow-hidden backdrop-blur bg-white/10 shadow-lg border border-white/10 flex flex-col"
+              style={{ color: text }}
+            >
+              {l.coverImageUrl && (
+              <div className="aspect-video w-full bg-black/40">
+                {l.coverImageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={l.coverImageUrl} alt={l.title} className="w-full h-full object-cover" />
+                ) : (
+                    <div className="w-full h-full grid place-items-center text-sm text-white/70">Sem capa</div>
+                  )}
+                </div>
+              )}
+              <div className="p-4 flex-1 flex flex-col">
+                <h3 className="text-xl font-semibold mb-2 line-clamp-2">{l.title}</h3>
+                {l.description && (
+                  <p className="text-white/80 text-sm mb-4 line-clamp-3">{l.description}</p>
+                )}
+                <div className="mt-auto">
+                  <a
+                    href={l.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 font-medium border transition-colors"
+                    style={{ backgroundColor: primary, color: text, borderColor: `${text}65` }}
+                  >
+                    Visualizar
+                    <SquareArrowOutUpRight className="w-4 h-4" />
+                  </a>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      </motion.section>
+    ) : null,
+
+    calendly: () => profile.calendlyUrl ? (
+      <motion.section
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 1 }}
+        transition={{ duration: 0.8 }}
+        className="relative z-10 px-6 py-16 text-center"
+      >
+        <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+          <Calendar className="w-10 h-10" style={{ color: secondary }} /> {label("calendly")}
+        </h2>
+        <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-lg">
+          <iframe src={profile.calendlyUrl} width="100%" height="750" frameBorder="0" />
+        </div>
+      </motion.section>
+    ) : null,
+
+    endereco: () => address && address.public !== false ? (
+      <motion.section
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8 }}
+        className="relative z-10 px-6 py-16 text-center"
+      >
+        <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+          <MapPin className="w-10 h-10" style={{ color: secondary }} /> {label("endereco")}
+        </h2>
+        <p className="mb-6 text-lg">
+          {[address.street, address.number].filter(Boolean).join(", ")} - {address.city}, {address.state}
+        </p>
+        <div className="aspect-video w-full max-w-4xl mx-auto rounded-xl overflow-hidden shadow-xl">
+          <iframe
+            src={`https://www.google.com/maps?q=${encodeURIComponent(
+              [address.street, address.number, address.city, address.state].join(", "),
+            )}&output=embed`}
+            width="100%"
+            height="100%"
+            loading="lazy"
+          />
+        </div>
+      </motion.section>
+    ) : null,
+  }
+
   return (
     <div
       className="min-h-screen relative overflow-hidden"
@@ -141,165 +302,11 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
         </motion.div>
       </section>
 
-      {/* SERVIÇOS */}
-      {areas.length > 0 && (
-        <motion.section
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="relative z-10 px-6 py-16 text-center"
-        >
-          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-            <Scale className="w-10 h-10" style={{ color: secondary }} /> Serviços
-          </h2>
-          <AreasCarousel
-            areas={areas}
-            primary={primary}
-            text={text}
-            secondary={secondary}
-            whatsapp={profile.whatsapp}
-            publicPhone={profile.publicPhone}
-            publicEmail={profile.publicEmail}
-          />
-        </motion.section>
-      )}
-
-      {/* SOBRE */}
-      {profile.aboutDescription && (
-        <motion.section
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="relative z-10 px-6 py-16 max-w-5xl mx-auto text-center"
-        >
-          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-            <HeartHandshake className="w-10 h-10" style={{ color: secondary }} /> Sobre
-          </h2>
-          <div className="rounded-2xl p-6 backdrop-blur-md bg-white/10 shadow-lg">
-            <div
-              className="prose prose-invert text-lg leading-relaxed"
-              dangerouslySetInnerHTML={{ __html: marked.parse(profile.aboutDescription || "") as string }}
-            />
-          </div>
-        </motion.section>
-      )}
-
-      {/* GALERIA */}
-      {Array.isArray(gallery) && gallery.length > 0 && (
-        <motion.section
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="relative z-10 px-6 py-16 text-center"
-        >
-          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-            <Images className="w-10 h-10" style={{ color: secondary }} /> Galeria
-          </h2>
-          <GalleryCarousel items={gallery} text={text} secondary={secondary} />
-        </motion.section>
-      )}
-
-      {/* LINKS */}
-      {Array.isArray(links) && links.length > 0 && (
-        <motion.section
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="relative z-10 px-6 py-16 max-w-6xl mx-auto"
-        >
-          <h2 className="mb-8 text-5xl font-bold text-center flex items-center justify-center gap-3" style={{ color: secondary }}>
-            <Link2 className="w-10 h-10" style={{ color: secondary }} /> Links
-          </h2>
-          <div className={`grid ${forceMobile ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"} gap-6`}>
-            {links.map((l: LinkItem, idx: number) => (
-              <motion.div
-                key={l.id || idx}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: Math.min(idx * 0.05, 0.3) }}
-                className="rounded-2xl overflow-hidden backdrop-blur bg-white/10 shadow-lg border border-white/10 flex flex-col"
-                style={{ color: text }}
-              >
-                {l.coverImageUrl && (
-                <div className="aspect-video w-full bg-black/40">
-                  {l.coverImageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={l.coverImageUrl} alt={l.title} className="w-full h-full object-cover" />
-                  ) : (
-                      <div className="w-full h-full grid place-items-center text-sm text-white/70">Sem capa</div>
-                    )}
-                  </div>
-                )}
-                <div className="p-4 flex-1 flex flex-col">
-                  <h3 className="text-xl font-semibold mb-2 line-clamp-2">{l.title}</h3>
-                  {l.description && (
-                    <p className="text-white/80 text-sm mb-4 line-clamp-3">{l.description}</p>
-                  )}
-                  <div className="mt-auto">
-                    <a
-                      href={l.url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center justify-center gap-2 rounded-md px-4 py-2 font-medium border transition-colors"
-                      style={{ backgroundColor: primary, color: text, borderColor: `${text}65` }}
-                    >
-                      Visualizar
-                      <SquareArrowOutUpRight className="w-4 h-4" />
-                    </a>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </motion.section>
-      )}
-
-      {/* CALENDLY */}
-      {profile.calendlyUrl && (
-        <motion.section
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          transition={{ duration: 0.8 }}
-          className="relative z-10 px-6 py-16 text-center"
-        >
-          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-            <Calendar className="w-10 h-10" style={{ color: secondary }} /> Agende uma conversa
-          </h2>
-          <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-lg">
-            <iframe src={profile.calendlyUrl} width="100%" height="750" frameBorder="0" />
-          </div>
-        </motion.section>
-      )}
-
-      {/* ENDEREÇO */}
-      {address && address.public !== false && (
-        <motion.section
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8 }}
-          className="relative z-10 px-6 py-16 text-center"
-        >
-          <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-            <MapPin className="w-10 h-10" style={{ color: secondary }} /> Endereço
-          </h2>
-          <p className="mb-6 text-lg">
-            {[address.street, address.number].filter(Boolean).join(", ")} - {address.city}, {address.state}
-          </p>
-          <div className="aspect-video w-full max-w-4xl mx-auto rounded-xl overflow-hidden shadow-xl">
-            <iframe
-              src={`https://www.google.com/maps?q=${encodeURIComponent(
-                [address.street, address.number, address.city, address.state].join(", "),
-              )}&output=embed`}
-              width="100%"
-              height="100%"
-              loading="lazy"
-            />
-          </div>
-        </motion.section>
-      )}
+      {/* DYNAMIC SECTIONS */}
+      {order.map((key) => {
+        const render = sectionRenderers[key]
+        return render ? <Fragment key={key}>{render()}</Fragment> : null
+      })}
 
       {/* FOOTER */}
       <footer className="relative z-10 px-6 py-6 text-center text-sm bg-black/40 backdrop-blur-md mt-10">

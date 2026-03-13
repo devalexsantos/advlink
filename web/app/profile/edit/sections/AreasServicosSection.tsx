@@ -153,7 +153,7 @@ export default function AreasServicosSection() {
           </div>
         )}
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext id="reordenar-areas" sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <SortableContext items={areas.map((a) => a.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-2">
               {areas.map((a) => (

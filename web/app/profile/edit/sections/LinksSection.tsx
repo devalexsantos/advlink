@@ -142,7 +142,7 @@ export default function LinksSection() {
           </div>
         )}
 
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+        <DndContext id="reordenar-links" sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
           <SortableContext items={links.map((l) => l.id)} strategy={verticalListSortingStrategy}>
             <div className="space-y-2">
               {links.map((l) => (

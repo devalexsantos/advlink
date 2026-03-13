@@ -17,7 +17,7 @@ export async function GET(
       profile: true,
       activityAreas: { orderBy: { position: "asc" } },
       Links: true,
-      Address: true,
+      address: true,
       tickets: { orderBy: { updatedAt: "desc" }, take: 10 },
     },
   })

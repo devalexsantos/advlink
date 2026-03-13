@@ -13,9 +13,11 @@ import {
   type GalleryItem,
   type FetchProfileResponse,
 } from "./types"
+import { DEFAULT_SECTION_ORDER, getSectionOrder, type SectionKey, type SectionLabels } from "@/lib/section-order"
 import {
   fetchProfile,
   updateProfile,
+  updateSectionConfig,
   createArea as createAreaApi,
   patchArea as patchAreaApi,
   reorderAreas as reorderAreasApi,
@@ -126,6 +128,12 @@ type EditFormContextType = {
   setPublicPhoneIsFixed: React.Dispatch<React.SetStateAction<boolean>>
   whatsappIsFixed: boolean
   setWhatsappIsFixed: React.Dispatch<React.SetStateAction<boolean>>
+  // Section order
+  sectionOrder: SectionKey[]
+  setSectionOrder: React.Dispatch<React.SetStateAction<SectionKey[]>>
+  sectionLabels: SectionLabels
+  setSectionLabels: React.Dispatch<React.SetStateAction<SectionLabels>>
+  updateSectionConfigMutation: ReturnType<typeof useMutation<unknown, Error, { sectionOrder?: string[]; sectionLabels?: Record<string, string> }>>
   // Avatar cropper
   avatarCropOpen: boolean
   setAvatarCropOpen: React.Dispatch<React.SetStateAction<boolean>>
@@ -249,6 +257,9 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
   const [removeLinkCover, setRemoveLinkCover] = useState(false)
   const [publicPhoneIsFixed, setPublicPhoneIsFixed] = useState<boolean>(false)
   const [whatsappIsFixed, setWhatsappIsFixed] = useState<boolean>(false)
+  // Section order
+  const [sectionOrder, setSectionOrder] = useState<SectionKey[]>([...DEFAULT_SECTION_ORDER])
+  const [sectionLabels, setSectionLabels] = useState<SectionLabels>({})
   // Avatar cropper
   const [avatarCropOpen, setAvatarCropOpen] = useState<boolean>(false)
   const [avatarCropSrc, setAvatarCropSrc] = useState<string | null>(null)
@@ -273,9 +284,21 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
   const [editorMarkdown, setEditorMarkdown] = useState<string>("")
   const [aboutMarkdown, setAboutMarkdown] = useState<string>("")
 
-  // Sync form with data
+  // Sync data from server — form.reset only on initial load
+  const initialSyncDone = useRef(false)
+
   useEffect(() => {
     if (!data) return
+
+    // Lists always sync (managed by their own mutations)
+    setAreas(data.areas ?? [])
+    setLinks(data.links ?? [])
+    setGallery(data.gallery ?? [])
+
+    // Form + local state only on initial load
+    if (initialSyncDone.current) return
+    initialSyncDone.current = true
+
     const p = data.profile ?? {}
     const a = data.address ?? {}
     form.reset({
@@ -310,9 +333,8 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     setSecondaryColor((p.secondaryColor as string) ?? "#FFFFFF")
     setTextColor((p.textColor as string) ?? "#FFFFFF")
     setTheme(((p.theme as string) === "classic" ? "classic" : (p.theme as string) === "corporate" ? "corporate" : "modern"))
-    setAreas(data.areas ?? [])
-    setLinks(data.links ?? [])
-    setGallery(data.gallery ?? [])
+    setSectionOrder(getSectionOrder(p.sectionOrder as SectionKey[] | undefined))
+    setSectionLabels((p.sectionLabels as SectionLabels) || {})
     const rawAbout = p.aboutDescription ?? ""
     const initialAbout = decodeEntities(rawAbout)
     setAboutMarkdown(initialAbout)
@@ -340,10 +362,14 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     mutationFn: updateProfile,
     onSuccess: async (res: unknown) => {
       qc.setQueryData(["profile"], (old: unknown) => {
-        const next = (res as { profile?: Record<string, unknown> } | null) || null
+        const next = (res as { profile?: Record<string, unknown>; address?: Record<string, unknown> } | null) || null
         if (!old) return next
-        const oldObj = old as { profile?: Record<string, unknown> }
-        return { ...oldObj, profile: { ...(oldObj.profile || {}), ...(next?.profile || {}) } }
+        const oldObj = old as { profile?: Record<string, unknown>; address?: Record<string, unknown> }
+        return {
+          ...oldObj,
+          profile: { ...(oldObj.profile || {}), ...(next?.profile || {}) },
+          address: next?.address !== undefined ? next.address : oldObj.address,
+        }
       })
       await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
@@ -364,6 +390,14 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
       await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
       showToast("Tema atualizado!")
+    },
+  })
+
+  const updateSectionConfigMutation = useMutation({
+    mutationFn: updateSectionConfig,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
     },
   })
 
@@ -482,14 +516,14 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     if (values.metaDescription) fd.set("metaDescription", values.metaDescription)
     if (values.keywords) fd.set("keywords", values.keywords)
     if (values.gtmContainerId) fd.set("gtmContainerId", values.gtmContainerId)
-    if (values.addressPublic !== undefined) fd.set("addressPublic", String(values.addressPublic))
-    if (values.zipCode) fd.set("zipCode", values.zipCode)
-    if (values.street) fd.set("street", values.street)
-    if (values.number) fd.set("number", values.number)
-    if (values.complement) fd.set("complement", values.complement)
-    if (values.neighborhood) fd.set("neighborhood", values.neighborhood)
-    if (values.city) fd.set("city", values.city)
-    if (values.state) fd.set("state", values.state)
+    fd.set("addressPublic", String(values.addressPublic ?? true))
+    fd.set("zipCode", values.zipCode ?? "")
+    fd.set("street", values.street ?? "")
+    fd.set("number", values.number ?? "")
+    fd.set("complement", values.complement ?? "")
+    fd.set("neighborhood", values.neighborhood ?? "")
+    fd.set("city", values.city ?? "")
+    fd.set("state", values.state ?? "")
     fd.set("primaryColor", primaryColor)
     fd.set("secondaryColor", secondaryColor)
     fd.set("textColor", textColor)
@@ -500,8 +534,8 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     fd.set("publicPhoneIsFixed", String(publicPhoneIsFixed))
     fd.set("whatsappIsFixed", String(whatsappIsFixed))
     await saveProfileMutation.mutateAsync(fd)
-    await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
-    await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    // Commit current values as new defaults so RHF state stays in sync
+    form.reset(form.getValues())
     showToast("Salvo com sucesso!")
   }
 
@@ -535,6 +569,9 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     removeLinkCover, setRemoveLinkCover,
     publicPhoneIsFixed, setPublicPhoneIsFixed,
     whatsappIsFixed, setWhatsappIsFixed,
+    sectionOrder, setSectionOrder,
+    sectionLabels, setSectionLabels,
+    updateSectionConfigMutation,
     avatarCropOpen, setAvatarCropOpen,
     avatarCropSrc, setAvatarCropSrc,
     pendingAvatarFileRef,
@@ -574,7 +611,11 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
 
   return (
     <EditFormContext.Provider value={value}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
+      <form onSubmit={form.handleSubmit(onSubmit, (errors) => {
+        const first = Object.values(errors)[0]
+        const msg = first?.message ?? "Verifique os campos do formulário."
+        showToast(msg)
+      })}>
         {children}
       </form>
     </EditFormContext.Provider>

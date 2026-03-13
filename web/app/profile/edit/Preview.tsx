@@ -22,6 +22,8 @@ type Profile = {
   publicPhone?: string | null
   calendlyUrl?: string | null
   aboutDescription?: string | null
+  sectionOrder?: string[] | null
+  sectionLabels?: Record<string, string> | null
 }
 
 async function fetchProfile() {
@@ -47,13 +49,15 @@ export default function Preview() {
   if (!profile) return null
 
   const theme = profile.theme || "modern"
+  const sectionOrder = profile.sectionOrder ?? undefined
+  const sectionLabels = profile.sectionLabels ?? undefined
   if (theme === "classic") {
-    return <Preview03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} />
+    return <Preview03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} />
   }
   if (theme === "corporate") {
-    return <Preview04 profile={profile} areas={areas} address={address} links={links} gallery={gallery} />
+    return <Preview04 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} />
   }
-  return <Preview02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} />
+  return <Preview02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} />
 }
 
 

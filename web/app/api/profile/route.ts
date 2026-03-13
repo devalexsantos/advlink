@@ -13,7 +13,7 @@ export async function GET() {
   const [profile, areas, address, links, gallery] = await Promise.all([
     prisma.profile.findUnique({ where: { userId } }),
     prisma.activityAreas.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
-    prisma.address.findFirst({ where: { userId } }),
+    prisma.address.findUnique({ where: { userId } }),
     prisma.links.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     prisma.gallery.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
   ])
@@ -62,6 +62,19 @@ export async function PATCH(req: Request) {
 
   if (contentType.includes("application/json")) {
     const body = await req.json()
+
+    // Handle section config update (sectionOrder / sectionLabels only)
+    if (body.sectionOrder !== undefined || body.sectionLabels !== undefined) {
+      const updateData: Record<string, unknown> = {}
+      if (body.sectionOrder !== undefined) updateData.sectionOrder = body.sectionOrder
+      if (body.sectionLabels !== undefined) updateData.sectionLabels = body.sectionLabels
+      const updated = await prisma.profile.update({
+        where: { userId },
+        data: updateData,
+      })
+      return NextResponse.json({ profile: updated })
+    }
+
     publicName = body.publicName
     aboutDescription = body.aboutDescription
     publicEmail = body.publicEmail
@@ -292,52 +305,31 @@ export async function PATCH(req: Request) {
       theme,
     },
   })
-  // Upsert Address if any field provided (including boolean public)
-  const anyAddressFieldProvided = [addressPublic, zipCode, street, number, complement, neighborhood, city, state]
-    .some((v) => (v !== undefined && String(v).trim() !== ""))
-
-  if (anyAddressFieldProvided) {
-    const existing = await prisma.address.findFirst({ where: { userId } })
-    const toBool = (val?: string) => {
-      if (val === undefined) return undefined
-      const v = String(val).trim().toLowerCase()
-      if (v === "" ) return undefined
-      if (["true","1","on","yes"].includes(v)) return true
-      if (["false","0","off","no"].includes(v)) return false
-      return undefined
-    }
-    if (existing) {
-      await prisma.address.update({
-        where: { id: existing.id },
-        data: {
-          public: toBool(addressPublic) ?? existing.public,
-          zipCode: nopt(zipCode),
-          street: nopt(street),
-          number: nopt(number),
-          complement: nopt(complement),
-          neighborhood: nopt(neighborhood),
-          city: nopt(city),
-          state: nopt(state),
-        },
-      })
-    } else {
-      await prisma.address.create({
-        data: {
-          userId,
-          public: toBool(addressPublic) ?? true,
-          zipCode: nopt(zipCode),
-          street: nopt(street),
-          number: nopt(number),
-          complement: nopt(complement),
-          neighborhood: nopt(neighborhood),
-          city: nopt(city),
-          state: nopt(state),
-        },
-      })
-    }
+  // Always upsert address on profile save
+  const toBool = (val?: string) => {
+    if (val === undefined) return undefined
+    const v = String(val).trim().toLowerCase()
+    if (v === "") return undefined
+    if (["true","1","on","yes"].includes(v)) return true
+    if (["false","0","off","no"].includes(v)) return false
+    return undefined
   }
+  const addressData = {
+    public: toBool(addressPublic) ?? true,
+    zipCode: nopt(zipCode),
+    street: nopt(street),
+    number: nopt(number),
+    complement: nopt(complement),
+    neighborhood: nopt(neighborhood),
+    city: nopt(city),
+    state: nopt(state),
+  }
+  await prisma.address.upsert({
+    where: { userId },
+    update: addressData,
+    create: { userId, ...addressData },
+  })
 
-  return NextResponse.json({ profile: updated })
+  const address = await prisma.address.findUnique({ where: { userId } })
+  return NextResponse.json({ profile: updated, address })
 }
-
-
