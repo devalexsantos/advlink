@@ -58,6 +58,7 @@ export function AppSidebar() {
   function navigateTab(tab: string) {
     router.push(`/profile/edit?tab=${tab}`, { scroll: false })
     setOpenMobile(false)
+    window.scrollTo({ top: 0 })
   }
 
   return (
