@@ -1,8 +1,12 @@
 "use client"
 
 import { useState } from "react"
-import { GripVertical, Pencil, Check, Scale, HeartHandshake, Images, Link2, Calendar, MapPin } from "lucide-react"
+import { GripVertical, Pencil, Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { IconPicker } from "@/components/ui/icon-picker"
+import { getIconComponent } from "@/lib/icon-renderer"
+import { getSectionIcon, isBuiltInKey, isCustomKey, DEFAULT_SECTION_LABELS } from "@/lib/section-order"
+import type { SectionKey } from "@/lib/section-order"
 import {
   DndContext,
   closestCenter,
@@ -22,36 +26,27 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { useEditForm } from "../EditFormContext"
-import {
-  DEFAULT_SECTION_LABELS,
-  type SectionKey,
-} from "@/lib/section-order"
-
-const SECTION_ICONS: Record<SectionKey, React.ElementType> = {
-  servicos: Scale,
-  sobre: HeartHandshake,
-  galeria: Images,
-  links: Link2,
-  calendly: Calendar,
-  endereco: MapPin,
-}
 
 function SortableSectionItem({
   sectionKey,
   label,
+  iconName,
   editingKey,
   editValue,
   onStartEdit,
   onChangeEdit,
   onConfirmEdit,
+  onChangeIcon,
 }: {
   sectionKey: SectionKey
   label: string
+  iconName: string
   editingKey: SectionKey | null
   editValue: string
   onStartEdit: (key: SectionKey) => void
   onChangeEdit: (val: string) => void
   onConfirmEdit: () => void
+  onChangeIcon: (key: SectionKey, icon: string) => void
 }) {
   const {
     attributes,
@@ -67,7 +62,7 @@ function SortableSectionItem({
     transition,
   }
 
-  const Icon = SECTION_ICONS[sectionKey]
+  const Icon = getIconComponent(iconName)
   const isEditing = editingKey === sectionKey
 
   return (
@@ -84,7 +79,11 @@ function SortableSectionItem({
       >
         <GripVertical className="h-4 w-4" />
       </button>
-      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+      <IconPicker value={iconName} onChange={(icon) => onChangeIcon(sectionKey, icon)}>
+        <button type="button" className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0">
+          {Icon ? <Icon className="h-4 w-4" /> : <span className="h-4 w-4 block" />}
+        </button>
+      </IconPicker>
       {isEditing ? (
         <Input
           autoFocus
@@ -129,7 +128,12 @@ export default function ReordenarSection() {
     setSectionOrder,
     sectionLabels,
     setSectionLabels,
+    sectionIcons,
+    setSectionIcons,
+    customSections,
+    setCustomSections,
     updateSectionConfigMutation,
+    patchCustomSectionMutation,
     showToast,
   } = useEditForm()
 
@@ -164,9 +168,26 @@ export default function ReordenarSection() {
     }
   }
 
+  function getLabel(key: SectionKey): string {
+    if (sectionLabels[key]) return sectionLabels[key]!
+    if (isBuiltInKey(key)) return DEFAULT_SECTION_LABELS[key]
+    // For custom sections, use the section title
+    const customId = key.replace("custom_", "")
+    const cs = customSections.find((s) => s.id === customId)
+    return cs?.title ?? key
+  }
+
+  function getIcon(key: SectionKey): string {
+    if (isBuiltInKey(key)) return getSectionIcon(key, sectionIcons)
+    // Custom sections: always use section's own iconName
+    const customId = key.replace("custom_", "")
+    const cs = customSections.find((s) => s.id === customId)
+    return cs?.iconName ?? "FileText"
+  }
+
   function handleStartEdit(key: SectionKey) {
     setEditingKey(key)
-    setEditValue(sectionLabels[key] || DEFAULT_SECTION_LABELS[key])
+    setEditValue(getLabel(key))
   }
 
   async function handleConfirmEdit() {
@@ -175,13 +196,13 @@ export default function ReordenarSection() {
     const key = editingKey
     setEditingKey(null)
 
-    if (!trimmed || trimmed === DEFAULT_SECTION_LABELS[key]) {
-      // Reset to default
+    const defaultLabel = isBuiltInKey(key) ? DEFAULT_SECTION_LABELS[key] : getLabel(key)
+    if (!trimmed || trimmed === defaultLabel) {
       const updated = { ...sectionLabels }
       delete updated[key]
       setSectionLabels(updated)
       try {
-        await updateSectionConfigMutation.mutateAsync({ sectionLabels: updated })
+        await updateSectionConfigMutation.mutateAsync({ sectionLabels: updated as Record<string, string> })
         showToast("Título atualizado!")
       } catch {
         // revert silently
@@ -192,15 +213,47 @@ export default function ReordenarSection() {
     const updated = { ...sectionLabels, [key]: trimmed }
     setSectionLabels(updated)
     try {
-      await updateSectionConfigMutation.mutateAsync({ sectionLabels: updated })
+      await updateSectionConfigMutation.mutateAsync({ sectionLabels: updated as Record<string, string> })
       showToast("Título atualizado!")
     } catch {
       // revert silently
     }
   }
 
-  function getLabel(key: SectionKey) {
-    return sectionLabels[key] || DEFAULT_SECTION_LABELS[key]
+  async function handleChangeIcon(key: SectionKey, icon: string) {
+    if (isCustomKey(key)) {
+      // Custom sections: update the section's own iconName field
+      const customId = key.replace("custom_", "")
+      const cs = customSections.find((s) => s.id === customId)
+      if (!cs) return
+      // Optimistic update
+      setCustomSections((prev) => prev.map((s) => s.id === customId ? { ...s, iconName: icon } : s))
+      try {
+        const fd = new FormData()
+        fd.set("iconName", icon)
+        await patchCustomSectionMutation.mutateAsync({ id: customId, formData: fd })
+        // Clean up any stale sectionIcons entry for this custom key
+        if (sectionIcons[key]) {
+          const cleaned = { ...sectionIcons }
+          delete cleaned[key]
+          setSectionIcons(cleaned)
+          await updateSectionConfigMutation.mutateAsync({ sectionIcons: cleaned })
+        }
+        showToast("Ícone atualizado!")
+      } catch {
+        setCustomSections((prev) => prev.map((s) => s.id === customId ? { ...s, iconName: cs.iconName } : s))
+      }
+    } else {
+      // Built-in sections: update profile-level sectionIcons
+      const updated = { ...sectionIcons, [key]: icon }
+      setSectionIcons(updated)
+      try {
+        await updateSectionConfigMutation.mutateAsync({ sectionIcons: updated })
+        showToast("Ícone atualizado!")
+      } catch {
+        // revert silently
+      }
+    }
   }
 
   const activeItem = activeId ? { key: activeId, label: getLabel(activeId) } : null
@@ -208,7 +261,7 @@ export default function ReordenarSection() {
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Arraste as seções para reordenar. Clique no lápis para editar o título.
+        Arraste as seções para reordenar. Clique no ícone para alterá-lo, e no lápis para editar o título.
       </p>
 
       {/* Fixed header indicator */}
@@ -230,11 +283,13 @@ export default function ReordenarSection() {
                 key={key}
                 sectionKey={key}
                 label={getLabel(key)}
+                iconName={getIcon(key)}
                 editingKey={editingKey}
                 editValue={editValue}
                 onStartEdit={handleStartEdit}
                 onChangeEdit={setEditValue}
                 onConfirmEdit={handleConfirmEdit}
+                onChangeIcon={handleChangeIcon}
               />
             ))}
           </div>
@@ -245,8 +300,8 @@ export default function ReordenarSection() {
             <div className="flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 shadow-lg">
               <GripVertical className="h-4 w-4 text-muted-foreground" />
               {(() => {
-                const Icon = SECTION_ICONS[activeItem.key]
-                return <Icon className="h-4 w-4 text-muted-foreground" />
+                const Icon = getIconComponent(getIcon(activeItem.key))
+                return Icon ? <Icon className="h-4 w-4 text-muted-foreground" /> : null
               })()}
               <span className="flex-1 truncate text-sm">{activeItem.label}</span>
             </div>

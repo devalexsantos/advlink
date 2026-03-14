@@ -10,14 +10,15 @@ export async function GET() {
   const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const [profile, areas, address, links, gallery] = await Promise.all([
+  const [profile, areas, address, links, gallery, customSections] = await Promise.all([
     prisma.profile.findUnique({ where: { userId } }),
     prisma.activityAreas.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     prisma.address.findUnique({ where: { userId } }),
     prisma.links.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     prisma.gallery.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+    prisma.customSection.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
   ])
-  return NextResponse.json({ profile, areas, address, links, gallery })
+  return NextResponse.json({ profile, areas, address, links, gallery, customSections })
 }
 
 export async function PATCH(req: Request) {
@@ -63,11 +64,12 @@ export async function PATCH(req: Request) {
   if (contentType.includes("application/json")) {
     const body = await req.json()
 
-    // Handle section config update (sectionOrder / sectionLabels only)
-    if (body.sectionOrder !== undefined || body.sectionLabels !== undefined) {
+    // Handle section config update (sectionOrder / sectionLabels / sectionIcons)
+    if (body.sectionOrder !== undefined || body.sectionLabels !== undefined || body.sectionIcons !== undefined) {
       const updateData: Record<string, unknown> = {}
       if (body.sectionOrder !== undefined) updateData.sectionOrder = body.sectionOrder
       if (body.sectionLabels !== undefined) updateData.sectionLabels = body.sectionLabels
+      if (body.sectionIcons !== undefined) updateData.sectionIcons = body.sectionIcons
       const updated = await prisma.profile.update({
         where: { userId },
         data: updateData,

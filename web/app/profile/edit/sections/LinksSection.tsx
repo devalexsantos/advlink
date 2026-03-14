@@ -5,7 +5,7 @@ import { GripVertical, Pencil, Plus, Save, Trash2, Upload, X, Info } from "lucid
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import {
   DndContext,
@@ -183,7 +183,13 @@ export default function LinksSection() {
               </div>
               <div>
                 <Label className="mb-2 block">Descrição</Label>
-                <Textarea rows={4} value={editingLink.description ?? ""} onChange={(e) => setEditingLink({ ...editingLink, description: e.target.value })} />
+                <RichTextEditor
+                  content={editingLink.description ?? ""}
+                  onChange={(html) => setEditingLink({ ...editingLink, description: html })}
+                  placeholder="Descreva este link..."
+                  minHeight="120px"
+                  toolbarVariant="minimal"
+                />
               </div>
               <div className="flex flex-col gap-2 mt-2">
                 <Label className="mb-2 block">Capa</Label>

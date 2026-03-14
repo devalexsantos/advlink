@@ -12,6 +12,7 @@ import {
   Images,
   Link as LinkIcon,
   ArrowUpDown,
+  LayoutGrid,
   Search,
   CreditCard,
   LogOut,
@@ -40,6 +41,7 @@ const editorItems = [
   { label: "Áreas ou serviços", icon: ListTree, tab: "areas" },
   { label: "Galeria", icon: Images, tab: "galeria" },
   { label: "Links", icon: LinkIcon, tab: "links" },
+  { label: "Seções Extras", icon: LayoutGrid, tab: "secoes-extras" },
   { label: "Reordenar", icon: ArrowUpDown, tab: "reordenar" },
   { label: "SEO", icon: Search, tab: "seo" },
 ]

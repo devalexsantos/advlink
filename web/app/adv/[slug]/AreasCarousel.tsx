@@ -5,11 +5,10 @@ import useEmblaCarousel from "embla-carousel-react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import type { CSSProperties } from "react"
 import { Button } from "@/components/ui/button"
-import { marked } from "marked"
+import { renderContent } from "@/lib/render-content"
 import { Info, Mail, Phone, X } from "lucide-react"
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon"
 
-marked.setOptions({ breaks: true })
 
 type Area = {
   id: string
@@ -96,7 +95,7 @@ export function AreasCarousel({
                       <div
                         className="mt-2 text-sm"
                         style={clampStyle}
-                        dangerouslySetInnerHTML={{ __html: marked.parse(area.description) as string }}
+                        dangerouslySetInnerHTML={{ __html: renderContent(area.description) }}
                       />
                     )
                   })()}
@@ -154,7 +153,7 @@ export function AreasCarousel({
               </div>
                 )}
               {area.description && (() => {
-                const raw = marked.parse(area.description) as string
+                const raw = renderContent(area.description)
                 const spaced = raw.replace(/<p>/g, '<p style="margin: 0 0 16px 0;">')
                 return (
                   <div

@@ -1,4 +1,4 @@
-import type { Area, LinkItem, GalleryItem, FetchProfileResponse } from "./types"
+import type { Area, LinkItem, GalleryItem, CustomSectionItem, FetchProfileResponse } from "./types"
 
 export async function fetchProfile() {
   const res = await fetch("/api/profile", { cache: "no-store" })
@@ -60,7 +60,7 @@ export async function deleteLink(id: string) {
   return res.json() as Promise<{ ok: boolean }>
 }
 
-export async function updateSectionConfig(data: { sectionOrder?: string[]; sectionLabels?: Record<string, string> }) {
+export async function updateSectionConfig(data: { sectionOrder?: string[]; sectionLabels?: Record<string, string>; sectionIcons?: Record<string, string> }) {
   const res = await fetch("/api/profile", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -87,5 +87,24 @@ export async function reorderGallery(order: { id: string; position: number }[]) 
 export async function deleteGallery(id: string) {
   const res = await fetch(`/api/gallery?id=${encodeURIComponent(id)}`, { method: "DELETE" })
   if (!res.ok) throw new Error("Falha ao excluir foto da galeria")
+  return res.json() as Promise<{ ok: boolean }>
+}
+
+export async function createCustomSection(formData: FormData) {
+  const res = await fetch("/api/custom-sections", { method: "POST", body: formData })
+  if (!res.ok) throw new Error("Falha ao criar seção")
+  return res.json() as Promise<{ section: CustomSectionItem }>
+}
+
+export async function patchCustomSection(id: string, formData: FormData) {
+  formData.set("id", id)
+  const res = await fetch("/api/custom-sections", { method: "PATCH", body: formData })
+  if (!res.ok) throw new Error("Falha ao salvar seção")
+  return res.json() as Promise<{ section: CustomSectionItem }>
+}
+
+export async function deleteCustomSection(id: string) {
+  const res = await fetch(`/api/custom-sections?id=${encodeURIComponent(id)}`, { method: "DELETE" })
+  if (!res.ok) throw new Error("Falha ao excluir seção")
   return res.json() as Promise<{ ok: boolean }>
 }

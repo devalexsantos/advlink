@@ -1,7 +1,7 @@
 "use client"
 
 import { AreasCarousel } from "@/app/adv/[slug]/AreasCarousel"
-import { marked } from "marked"
+import { renderContent } from "@/lib/render-content"
 import { Calendar, Heart, HeartHandshake, Mail, MapPin, Phone, Scale } from "lucide-react"
 import Link from "next/link"
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon"
@@ -109,7 +109,7 @@ export default function Theme01({ profile, areas, address, primary, text, second
               <div
                 className="w-full prose prose-invert max-w-none text-lg leading-relaxed p-4"
                 style={{ color: text }}
-                dangerouslySetInnerHTML={{ __html: marked.parse(profile.aboutDescription || "") as string }}
+                dangerouslySetInnerHTML={{ __html: renderContent(profile.aboutDescription) }}
               />
             </div>
           </div>

@@ -6,21 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
-import dynamic from "next/dynamic"
-import "@mdxeditor/editor/style.css"
-import {
-  toolbarPlugin,
-  BoldItalicUnderlineToggles,
-  UndoRedo,
-  Separator,
-  headingsPlugin,
-  listsPlugin,
-  thematicBreakPlugin,
-  markdownShortcutPlugin,
-} from "@mdxeditor/editor"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import { useEditForm } from "../EditFormContext"
-
-const MDXEditor = dynamic(() => import("@mdxeditor/editor").then(m => m.MDXEditor), { ssr: false })
 
 export default function PerfilContatoSection() {
   const {
@@ -63,29 +50,12 @@ export default function PerfilContatoSection() {
       {/* Sobre mim */}
       <div className="rounded-xl border border-border bg-card p-5">
         <Label className="mb-3 text-base block font-bold">Sobre mim</Label>
-        <div className="relative overflow-visible border border-border bg-background rounded-md">
-          <MDXEditor
-            className="mdxeditor min-h-[200px] max-h-[65vh] overflow-visible"
-            contentEditableClassName="min-h-[210px] p-4 cursor-text whitespace-pre-wrap"
-            markdown={aboutMarkdown}
-            onChange={(md: string) => setAboutMarkdown(md)}
-            plugins={[
-              toolbarPlugin({
-                toolbarContents: () => (
-                  <>
-                    <UndoRedo />
-                    <Separator />
-                    <BoldItalicUnderlineToggles />
-                  </>
-                ),
-              }),
-              headingsPlugin(),
-              listsPlugin(),
-              thematicBreakPlugin(),
-              markdownShortcutPlugin({ remarkBreaks: true }),
-            ]}
-          />
-        </div>
+        <RichTextEditor
+          content={aboutMarkdown}
+          onChange={(html) => setAboutMarkdown(html)}
+          placeholder="Conte um pouco sobre você e sua atuação..."
+          minHeight="200px"
+        />
       </div>
 
       {/* Contato */}

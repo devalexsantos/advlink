@@ -11,6 +11,7 @@ import {
   type Area,
   type LinkItem,
   type GalleryItem,
+  type CustomSectionItem,
   type FetchProfileResponse,
 } from "./types"
 import { DEFAULT_SECTION_ORDER, getSectionOrder, type SectionKey, type SectionLabels } from "@/lib/section-order"
@@ -29,25 +30,12 @@ import {
   uploadGalleryPhoto as uploadGalleryPhotoApi,
   reorderGallery as reorderGalleryApi,
   deleteGallery as deleteGalleryApi,
+  createCustomSection as createCustomSectionApi,
+  patchCustomSection as patchCustomSectionApi,
+  deleteCustomSection as deleteCustomSectionApi,
 } from "./api"
 
 // ---- Helpers ----
-function decodeEntities(s: string) {
-  if (typeof window === "undefined") {
-    return s.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")
-  }
-  const ta = document.createElement("textarea")
-  ta.innerHTML = s
-  return ta.value
-}
-
-function preserveVerticalSpace(md: string) {
-  return md.replace(/\n{3,}/g, (block) => {
-    const extra = block.length - 2
-    return "\n\n" + Array.from({ length: extra }).map(() => "<br />").join("\n")
-  })
-}
-
 async function createImage(url: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new window.Image()
@@ -128,12 +116,17 @@ type EditFormContextType = {
   setPublicPhoneIsFixed: React.Dispatch<React.SetStateAction<boolean>>
   whatsappIsFixed: boolean
   setWhatsappIsFixed: React.Dispatch<React.SetStateAction<boolean>>
+  // Custom sections
+  customSections: CustomSectionItem[]
+  setCustomSections: React.Dispatch<React.SetStateAction<CustomSectionItem[]>>
   // Section order
   sectionOrder: SectionKey[]
   setSectionOrder: React.Dispatch<React.SetStateAction<SectionKey[]>>
   sectionLabels: SectionLabels
   setSectionLabels: React.Dispatch<React.SetStateAction<SectionLabels>>
-  updateSectionConfigMutation: ReturnType<typeof useMutation<unknown, Error, { sectionOrder?: string[]; sectionLabels?: Record<string, string> }>>
+  sectionIcons: Record<string, string>
+  setSectionIcons: React.Dispatch<React.SetStateAction<Record<string, string>>>
+  updateSectionConfigMutation: ReturnType<typeof useMutation<unknown, Error, { sectionOrder?: string[]; sectionLabels?: Record<string, string>; sectionIcons?: Record<string, string> }>>
   // Avatar cropper
   avatarCropOpen: boolean
   setAvatarCropOpen: React.Dispatch<React.SetStateAction<boolean>>
@@ -186,8 +179,10 @@ type EditFormContextType = {
   uploadGalleryMutation: ReturnType<typeof useMutation<{ item: GalleryItem }, Error, File>>
   reorderGalleryMutation: ReturnType<typeof useMutation<{ ok: boolean }, Error, { id: string; position: number }[]>>
   deleteGalleryMutation: ReturnType<typeof useMutation<{ ok: boolean }, Error, string>>
+  createCustomSectionMutation: ReturnType<typeof useMutation<{ section: CustomSectionItem }, Error, FormData>>
+  patchCustomSectionMutation: ReturnType<typeof useMutation<{ section: CustomSectionItem }, Error, { id: string; formData: FormData }>>
+  deleteCustomSectionMutation: ReturnType<typeof useMutation<{ ok: boolean }, Error, string>>
   // Utilities
-  preserveVerticalSpace: (md: string) => string
   getCroppedBlob: (imageSrc: string, pixelCrop: { x: number; y: number; width: number; height: number }) => Promise<Blob>
   showToast: (msg: string) => void
 }
@@ -257,9 +252,12 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
   const [removeLinkCover, setRemoveLinkCover] = useState(false)
   const [publicPhoneIsFixed, setPublicPhoneIsFixed] = useState<boolean>(false)
   const [whatsappIsFixed, setWhatsappIsFixed] = useState<boolean>(false)
+  // Custom sections
+  const [customSections, setCustomSections] = useState<CustomSectionItem[]>([])
   // Section order
   const [sectionOrder, setSectionOrder] = useState<SectionKey[]>([...DEFAULT_SECTION_ORDER])
   const [sectionLabels, setSectionLabels] = useState<SectionLabels>({})
+  const [sectionIcons, setSectionIcons] = useState<Record<string, string>>({})
   // Avatar cropper
   const [avatarCropOpen, setAvatarCropOpen] = useState<boolean>(false)
   const [avatarCropSrc, setAvatarCropSrc] = useState<string | null>(null)
@@ -294,6 +292,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     setAreas(data.areas ?? [])
     setLinks(data.links ?? [])
     setGallery(data.gallery ?? [])
+    setCustomSections(data.customSections ?? [])
 
     // Form + local state only on initial load
     if (initialSyncDone.current) return
@@ -335,17 +334,15 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     setTheme(((p.theme as string) === "classic" ? "classic" : (p.theme as string) === "corporate" ? "corporate" : "modern"))
     setSectionOrder(getSectionOrder(p.sectionOrder as SectionKey[] | undefined))
     setSectionLabels((p.sectionLabels as SectionLabels) || {})
-    const rawAbout = p.aboutDescription ?? ""
-    const initialAbout = decodeEntities(rawAbout)
-    setAboutMarkdown(initialAbout)
+    setSectionIcons((p.sectionIcons as Record<string, string>) || {})
+    setAboutMarkdown(p.aboutDescription ?? "")
   }, [data, form])
 
   useEffect(() => {
     if (editingArea) {
-      const raw = editingArea.description ?? ""
-      const initial = decodeEntities(raw)
-      draftMdRef.current = initial
-      setEditorMarkdown(initial)
+      const desc = editingArea.description ?? ""
+      draftMdRef.current = desc
+      setEditorMarkdown(desc)
     }
   }, [editingArea])
 
@@ -502,11 +499,40 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     },
   })
 
+  const createCustomSectionMutation = useMutation({
+    mutationFn: createCustomSectionApi,
+    onSuccess: async (res) => {
+      setCustomSections((prev) => [...prev, res.section])
+      setSectionOrder((prev) => [...prev, `custom_${res.section.id}` as SectionKey])
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    },
+  })
+
+  const patchCustomSectionMutation = useMutation({
+    mutationFn: ({ id, formData }: { id: string; formData: FormData }) => patchCustomSectionApi(id, formData),
+    onSuccess: async (res) => {
+      setCustomSections((prev) => prev.map((s) => (s.id === res.section.id ? res.section : s)))
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    },
+  })
+
+  const deleteCustomSectionMutation = useMutation({
+    mutationFn: deleteCustomSectionApi,
+    onSuccess: async (_res, id) => {
+      setCustomSections((prev) => prev.filter((s) => s.id !== id))
+      setSectionOrder((prev) => prev.filter((k) => k !== `custom_${id}`))
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    },
+  })
+
   async function onSubmit(values: ProfileEditValues) {
     const fd = new FormData()
     fd.set("publicName", values.publicName)
     if (values.headline) fd.set("headline", values.headline)
-    fd.set("aboutDescription", preserveVerticalSpace(aboutMarkdown || ""))
+    fd.set("aboutDescription", aboutMarkdown || "")
     if (values.publicEmail) fd.set("publicEmail", values.publicEmail)
     if (values.publicPhone) fd.set("publicPhone", values.publicPhone)
     if (values.whatsapp) fd.set("whatsapp", values.whatsapp)
@@ -569,8 +595,10 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     removeLinkCover, setRemoveLinkCover,
     publicPhoneIsFixed, setPublicPhoneIsFixed,
     whatsappIsFixed, setWhatsappIsFixed,
+    customSections, setCustomSections,
     sectionOrder, setSectionOrder,
     sectionLabels, setSectionLabels,
+    sectionIcons, setSectionIcons,
     updateSectionConfigMutation,
     avatarCropOpen, setAvatarCropOpen,
     avatarCropSrc, setAvatarCropSrc,
@@ -604,7 +632,9 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     uploadGalleryMutation,
     reorderGalleryMutation,
     deleteGalleryMutation,
-    preserveVerticalSpace,
+    createCustomSectionMutation,
+    patchCustomSectionMutation,
+    deleteCustomSectionMutation,
     getCroppedBlob,
     showToast,
   }

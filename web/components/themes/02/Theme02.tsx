@@ -3,22 +3,26 @@
 import { motion } from "framer-motion"
 import { AreasCarousel } from "@/app/adv/[slug]/AreasCarousel"
 import { GalleryCarousel } from "@/app/adv/[slug]/GalleryCarousel"
-import { marked } from "marked"
-import { Calendar, Heart, HeartHandshake, Images, Instagram, Link2, Mail, MapPin, Phone, Scale, SquareArrowOutUpRight } from "lucide-react"
+import { renderContent } from "@/lib/render-content"
+import { Heart, Instagram, Mail, Phone, SquareArrowOutUpRight } from "lucide-react"
 import Link from "next/link"
 import { Fragment } from "react"
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon"
-import { getSectionOrder, getSectionLabel, type SectionKey, type SectionLabels } from "@/lib/section-order"
+import { getSectionOrder, getSectionLabel, getSectionIcon, type SectionKey, type SectionLabels } from "@/lib/section-order"
+import { getIconComponent } from "@/lib/icon-renderer"
+import CustomSectionRenderer from "@/components/themes/CustomSectionRenderer"
 
 type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
+type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string }
 type Profile = { publicName?: string | null; headline?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
 
-export default function Theme02({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string> }) {
+export default function Theme02({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string> }) {
   const order = getSectionOrder(sectionOrder as SectionKey[] | undefined)
   const label = (key: SectionKey) => getSectionLabel(key, sectionLabels as SectionLabels)
+  const icon = (key: SectionKey) => getIconComponent(getSectionIcon(key, sectionIcons))
 
   const sectionRenderers: Record<string, () => React.ReactNode> = {
     servicos: () => areas.length > 0 ? (
@@ -30,7 +34,7 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
         className="relative z-10 px-6 py-16 text-center"
       >
         <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-          <Scale className="w-10 h-10" style={{ color: secondary }} /> {label("servicos")}
+          {(() => { const I = icon("servicos"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()}  {label("servicos")}
         </h2>
         <AreasCarousel
           areas={areas}
@@ -52,12 +56,12 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
         className="relative z-10 px-6 py-16 max-w-5xl mx-auto text-center"
       >
         <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-          <HeartHandshake className="w-10 h-10" style={{ color: secondary }} /> {label("sobre")}
+          {(() => { const I = icon("sobre"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("sobre")}
         </h2>
         <div className="rounded-2xl p-6 backdrop-blur-md bg-white/10 shadow-lg">
           <div
             className="prose prose-invert text-lg leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: marked.parse(profile.aboutDescription || "") as string }}
+            dangerouslySetInnerHTML={{ __html: renderContent(profile.aboutDescription) }}
           />
         </div>
       </motion.section>
@@ -72,7 +76,7 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
         className="relative z-10 px-6 py-16 text-center"
       >
         <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-          <Images className="w-10 h-10" style={{ color: secondary }} /> {label("galeria")}
+          {(() => { const I = icon("galeria"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("galeria")}
         </h2>
         <GalleryCarousel items={gallery} text={text} secondary={secondary} />
       </motion.section>
@@ -87,7 +91,7 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
         className="relative z-10 px-6 py-16 max-w-6xl mx-auto"
       >
         <h2 className="mb-8 text-5xl font-bold text-center flex items-center justify-center gap-3" style={{ color: secondary }}>
-          <Link2 className="w-10 h-10" style={{ color: secondary }} /> {label("links")}
+          {(() => { const I = icon("links"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("links")}
         </h2>
         <div className={`grid ${forceMobile ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"} gap-6`}>
           {links.map((l: LinkItem, idx: number) => (
@@ -141,7 +145,7 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
         className="relative z-10 px-6 py-16 text-center"
       >
         <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-          <Calendar className="w-10 h-10" style={{ color: secondary }} /> {label("calendly")}
+          {(() => { const I = icon("calendly"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("calendly")}
         </h2>
         <div className="max-w-6xl mx-auto rounded-2xl overflow-hidden shadow-lg">
           <iframe src={profile.calendlyUrl} width="100%" height="750" frameBorder="0" />
@@ -157,7 +161,7 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
         className="relative z-10 px-6 py-16 text-center"
       >
         <h2 className="mb-8 text-5xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-          <MapPin className="w-10 h-10" style={{ color: secondary }} /> {label("endereco")}
+          {(() => { const I = icon("endereco"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("endereco")}
         </h2>
         <p className="mb-6 text-lg">
           {[address.street, address.number].filter(Boolean).join(", ")} - {address.city}, {address.state}
@@ -174,6 +178,23 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
         </div>
       </motion.section>
     ) : null,
+  }
+
+  // Add custom section renderers
+  for (const cs of customSections) {
+    const key = `custom_${cs.id}` as SectionKey
+    sectionRenderers[key] = () => (
+      <CustomSectionRenderer
+        section={cs}
+        label={(sectionLabels as SectionLabels)?.[key] || cs.title}
+        iconName={cs.iconName}
+        primary={primary}
+        text={text}
+        secondary={secondary}
+        themeVariant="modern"
+        forceMobile={forceMobile}
+      />
+    )
   }
 
   return (

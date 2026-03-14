@@ -157,28 +157,15 @@
   scrollbar-color: #a1a1aa #f4f4f5; /* thumb track */
 }
 
-.mdxeditor-contenteditable {
-  color: #18181b !important;
+.tiptap-editor .ProseMirror {
+  outline: none;
+  color: #18181b;
 }
 
-/* Garante que o dropdown do BlockTypeSelect fique acima de qualquer coisa */
-.mdxeditor [data-radix-popper-content],
-.mdxeditor [role="menu"],
-/* wrapper que Radix usa para o portal/poppers */
-[data-radix-popper-content-wrapper],
-[data-radix-portal] {
-  z-index: 100000 !important;
-}
-
-.mdxeditor .mdxeditor-contenteditable {
-  color: #18181b !important;
-}
-
-.mdxeditor [contenteditable="true"] {
-	color: #18181b !important;
-}
-/* Ensure popovers/menus not clipped */
-.mdxeditor {
-	overflow: visible !important;
-	position: relative;
+.tiptap-editor .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: #a1a1aa;
+  pointer-events: none;
+  height: 0;
 }

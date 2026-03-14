@@ -6,18 +6,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import dynamic from "next/dynamic"
-import "@mdxeditor/editor/style.css"
-import {
-  toolbarPlugin,
-  BoldItalicUnderlineToggles,
-  UndoRedo,
-  Separator,
-  headingsPlugin,
-  listsPlugin,
-  thematicBreakPlugin,
-  markdownShortcutPlugin,
-} from "@mdxeditor/editor"
+import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import {
   DndContext,
   closestCenter,
@@ -39,8 +28,6 @@ import { CSS } from "@dnd-kit/utilities"
 import { useEditForm } from "../EditFormContext"
 import { useQueryClient } from "@tanstack/react-query"
 import type { Area } from "../types"
-
-const MDXEditor = dynamic(() => import("@mdxeditor/editor").then(m => m.MDXEditor), { ssr: false })
 
 function SortableAreaItem({ area, onEdit, onDelete }: { area: Area; onEdit: () => void; onDelete: () => void }) {
   const {
@@ -107,7 +94,6 @@ export default function AreasServicosSection() {
     patchAreaMutation,
     reorderMutation,
     deleteMutation,
-    preserveVerticalSpace,
     showToast,
   } = useEditForm()
 
@@ -222,18 +208,12 @@ export default function AreasServicosSection() {
               </div>
               <div>
                 <div className="mb-2 mt-8"><Label className="block">Descrição</Label></div>
-                <div className="relative z-[1000] max-h-[150px] md:max-h-[55vh] overflow-auto">
-                  <MDXEditor
-                    className="mdxeditor min-h-[300px] max-h-[150px] md:max-h-[55vh] overflow-auto"
-                    contentEditableClassName="min-h-[300px] p-4 cursor-text whitespace-pre-wrap"
-                    markdown={editorMarkdown}
-                    onChange={(md: string) => { draftMdRef.current = md; setEditorMarkdown(md) }}
-                    plugins={[
-                      toolbarPlugin({ toolbarContents: () => (<><UndoRedo /><Separator /><BoldItalicUnderlineToggles /></>) }),
-                      headingsPlugin(), listsPlugin(), thematicBreakPlugin(), markdownShortcutPlugin({ remarkBreaks: true }),
-                    ]}
-                  />
-                </div>
+                <RichTextEditor
+                  content={editorMarkdown}
+                  onChange={(html) => { draftMdRef.current = html; setEditorMarkdown(html) }}
+                  placeholder="Descreva esta área de atuação..."
+                  minHeight="300px"
+                />
               </div>
               <DialogFooter>
                 <Button onClick={async () => {
@@ -243,7 +223,7 @@ export default function AreasServicosSection() {
                     if (areaCoverFile) {
                       const fd = new FormData()
                       fd.set("id", editingArea.id); fd.set("title", editingArea.title)
-                      fd.set("description", preserveVerticalSpace(draftMdRef.current))
+                      fd.set("description", draftMdRef.current)
                       fd.set("cover", areaCoverFile)
                       const res = await fetch("/api/activity-areas", { method: "PATCH", body: fd })
                       if (!res.ok) { alert("Falha ao salvar área"); return }
@@ -254,7 +234,7 @@ export default function AreasServicosSection() {
                       setAreaCoverFile(null); setAreaCoverPreview(null); setRemoveAreaCover(false); setEditingArea(null)
                     } else {
                       await patchAreaMutation.mutateAsync({
-                        ...editingArea, description: preserveVerticalSpace(draftMdRef.current),
+                        ...editingArea, description: draftMdRef.current,
                         coverImageUrl: removeAreaCover ? null : editingArea.coverImageUrl,
                       })
                       await qc.invalidateQueries({ queryKey: ["profile"] })

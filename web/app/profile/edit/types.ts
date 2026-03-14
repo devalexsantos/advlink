@@ -5,7 +5,7 @@ export const profileEditSchema = z.object({
   headline: z.string().optional().or(z.literal("").transform(() => undefined)),
   aboutDescription: z
     .string()
-    .max(1000)
+    .max(5000)
     .optional()
     .or(z.literal("").transform(() => undefined)),
   publicEmail: z
@@ -84,6 +84,16 @@ export type AddressData = {
   state?: string | null
 }
 
+export type CustomSectionItem = {
+  id: string
+  title: string
+  description: string | null
+  imageUrl: string | null
+  layout: "image-left" | "image-right" | "text-only"
+  iconName: string
+  position?: number
+}
+
 export type ProfileData = {
   publicName?: string | null
   headline?: string | null
@@ -108,6 +118,7 @@ export type ProfileData = {
   theme?: string | null
   sectionOrder?: string[] | null
   sectionLabels?: Record<string, string> | null
+  sectionIcons?: Record<string, string> | null
 }
 
 export type FetchProfileResponse = {
@@ -116,4 +127,5 @@ export type FetchProfileResponse = {
   address?: AddressData
   links: LinkItem[]
   gallery: GalleryItem[]
+  customSections: CustomSectionItem[]
 }

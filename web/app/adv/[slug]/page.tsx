@@ -72,18 +72,24 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
     )
   }
 
-  const areas = await prisma.activityAreas.findMany({
-    where: { userId: profile.userId },
-    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-  })
-  const links = await prisma.links.findMany({
-    where: { userId: profile.userId },
-    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-  })
-  const gallery = await prisma.gallery.findMany({
-    where: { userId: profile.userId },
-    orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-  })
+  const [areas, links, gallery, customSections] = await Promise.all([
+    prisma.activityAreas.findMany({
+      where: { userId: profile.userId },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.links.findMany({
+      where: { userId: profile.userId },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.gallery.findMany({
+      where: { userId: profile.userId },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.customSection.findMany({
+      where: { userId: profile.userId },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    }),
+  ])
   const address = profile.user.address ?? undefined
 
   const primary = profile.primaryColor || "#8B0000"
@@ -129,6 +135,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           secondary={secondary}
           sectionOrder={profile.sectionOrder as string[] | undefined}
           sectionLabels={profile.sectionLabels as Record<string, string> | undefined}
+          customSections={customSections}
+          sectionIcons={profile.sectionIcons as Record<string, string> | undefined}
         />
       )}
       {theme === "classic" && (
@@ -143,6 +151,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           secondary={secondary}
           sectionOrder={profile.sectionOrder as string[] | undefined}
           sectionLabels={profile.sectionLabels as Record<string, string> | undefined}
+          customSections={customSections}
+          sectionIcons={profile.sectionIcons as Record<string, string> | undefined}
         />
       )}
       {theme === "corporate" && (
@@ -157,6 +167,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           secondary={secondary}
           sectionOrder={profile.sectionOrder as string[] | undefined}
           sectionLabels={profile.sectionLabels as Record<string, string> | undefined}
+          customSections={customSections}
+          sectionIcons={profile.sectionIcons as Record<string, string> | undefined}
         />
       )}
     </div>
