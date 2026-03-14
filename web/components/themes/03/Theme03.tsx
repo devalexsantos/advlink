@@ -135,7 +135,7 @@ export default function Theme03({ profile, areas, address, primary, text, second
               <div className="p-5 flex-1 flex flex-col">
                 <h3 className="text-xl font-semibold mb-2 line-clamp-2">{l.title}</h3>
                 {l.description && (
-                  <p className="opacity-90 text-sm mb-4 line-clamp-3">{l.description}</p>
+                  <div className="opacity-90 text-sm mb-4 line-clamp-3" dangerouslySetInnerHTML={{ __html: renderContent(l.description) }} />
                 )}
                 <div className="mt-auto">
                   <a

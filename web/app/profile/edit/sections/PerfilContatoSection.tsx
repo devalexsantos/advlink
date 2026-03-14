@@ -8,6 +8,7 @@ import { Switch } from "@/components/ui/switch"
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import { useEditForm } from "../EditFormContext"
+import { PublicSectionHeader } from "../SectionRenderer"
 
 export default function PerfilContatoSection() {
   const {
@@ -50,6 +51,7 @@ export default function PerfilContatoSection() {
       {/* Sobre mim */}
       <div className="rounded-xl border border-border bg-card p-5">
         <Label className="mb-3 text-base block font-bold">Sobre mim</Label>
+        <PublicSectionHeader sectionKey="sobre" inline />
         <RichTextEditor
           content={aboutMarkdown}
           onChange={(html) => setAboutMarkdown(html)}
@@ -144,6 +146,7 @@ export default function PerfilContatoSection() {
       {/* Calendly */}
       <div className="rounded-xl border border-border bg-card p-5">
         <Label className="mb-3 text-base block font-bold">Agendamento</Label>
+        <PublicSectionHeader sectionKey="calendly" inline />
         <div>
           <Label htmlFor="calendlyUrl" className="mb-1 block text-sm">Calendly URL</Label>
           <Controller

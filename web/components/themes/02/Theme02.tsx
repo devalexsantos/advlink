@@ -116,7 +116,7 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
               <div className="p-4 flex-1 flex flex-col">
                 <h3 className="text-xl font-semibold mb-2 line-clamp-2">{l.title}</h3>
                 {l.description && (
-                  <p className="text-white/80 text-sm mb-4 line-clamp-3">{l.description}</p>
+                  <div className="text-white/80 text-sm mb-4 line-clamp-3" dangerouslySetInnerHTML={{ __html: renderContent(l.description) }} />
                 )}
                 <div className="mt-auto">
                   <a

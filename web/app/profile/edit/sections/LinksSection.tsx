@@ -188,7 +188,7 @@ export default function LinksSection() {
                   onChange={(html) => setEditingLink({ ...editingLink, description: html })}
                   placeholder="Descreva este link..."
                   minHeight="120px"
-                  toolbarVariant="minimal"
+                  toolbarVariant="full"
                 />
               </div>
               <div className="flex flex-col gap-2 mt-2">
