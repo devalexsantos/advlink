@@ -57,12 +57,12 @@ export default async function LoginPage({
             <div className="mb-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-700">
               <p className="text-sm">
                 Detectamos que este e-mail já foi usado com outro método de acesso.
-                Faça login usando o <strong>Magic Link</strong> abaixo para continuar ou use o mesmo método da última vez.
+                Faça login usando o <strong>Acessar com E-mail</strong> abaixo para continuar ou use o mesmo método da última vez.
               </p>
             </div>
           )}
 
-          {/* Magic Link */}
+          {/* Acessar com E-mail */}
           <Suspense>
             <MagicLinkForm />
           </Suspense>

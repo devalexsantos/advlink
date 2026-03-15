@@ -50,7 +50,7 @@ export function MagicLinkForm() {
     <div className="rounded-xl border border-border bg-muted/50 p-4">
       <div className="mb-3 flex items-center gap-2 text-primary">
         <Link2 className="h-4 w-4" />
-        <span className="text-sm font-medium">Magic Link</span>
+        <span className="text-sm font-medium">Acessar com E-mail</span>
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div className="sm:col-span-2">
