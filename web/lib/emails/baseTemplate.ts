@@ -71,7 +71,7 @@ export function emailTemplate(options: {
                   <td style="font-size:12px;line-height:18px;color:#6b7280;text-align:center;">
                     &copy; 2026 AdvLink &mdash; Plataforma para advogados
                     <br />
-                    <a href="https://advlink.site" target="_blank" rel="noopener noreferrer" style="color:#0a2463;text-decoration:underline;">Acessar plataforma</a>
+                    <a href="https://app.advlink.site" target="_blank" rel="noopener noreferrer" style="color:#0a2463;text-decoration:underline;">Acessar plataforma</a>
                   </td>
                 </tr>
               </table>
