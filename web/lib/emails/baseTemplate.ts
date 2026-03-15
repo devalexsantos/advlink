@@ -42,7 +42,7 @@ export function emailTemplate(options: {
           <!-- Header with Logo -->
           <tr>
             <td align="center" style="padding:24px 0;background-color:#ffffff;border-radius:8px 8px 0 0;">
-              <img src="https://advlink.site/images/advlink-logo-primary.png" alt="AdvLink" width="140" style="display:block;max-width:140px;height:auto;" />
+              <img src="https://app.advlink.site/images/advlink-logo-primary.png" alt="AdvLink" width="140" style="display:block;max-width:140px;height:auto;" />
             </td>
           </tr>
           <!-- Content Card -->
