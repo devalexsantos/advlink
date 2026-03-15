@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { stripe } from "@/lib/stripe"
+import { emailTemplate } from "@/lib/emails/baseTemplate"
 import nodemailer from "nodemailer"
 
 export const runtime = "nodejs"
@@ -52,14 +53,16 @@ export async function POST(req: Request) {
 
     const subject = "Cancelamento de assinatura"
     const to = "advlinkcontato@gmail.com"
-    const html = `
-      <div style="font-family:Arial, Helvetica, sans-serif;font-size:14px;color:#111827">
-        <p><strong>Usuário (email):</strong> ${escapeHtml(userEmail)}</p>
-        <p><strong>Motivo:</strong> ${reason ? escapeHtml(reason) : "(não informado)"}</p>
-        <p><strong>Detalhes:</strong></p>
-        <p style="white-space:pre-wrap">${details ? escapeHtml(details) : "(sem detalhes)"}</p>
-      </div>
-    `
+    const html = emailTemplate({
+      title: "Cancelamento de assinatura",
+      preheader: `Cancelamento solicitado por ${escapeHtml(userEmail)}`,
+      body: `
+        <p style="margin:0 0 8px 0;"><strong>Usuário (email):</strong> ${escapeHtml(userEmail)}</p>
+        <p style="margin:0 0 8px 0;"><strong>Motivo:</strong> ${reason ? escapeHtml(reason) : "(não informado)"}</p>
+        <p style="margin:0 0 4px 0;"><strong>Detalhes:</strong></p>
+        <p style="margin:0;white-space:pre-wrap;">${details ? escapeHtml(details) : "(sem detalhes)"}</p>
+      `,
+    })
     const text = `Usuário (email): ${userEmail}\n\nMotivo: ${reason || "(não informado)"}\n\nDetalhes:\n${details || "(sem detalhes)"}`
     await transport.sendMail({
       to,
@@ -82,5 +85,3 @@ function escapeHtml(s?: string) {
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")
 }
-
-

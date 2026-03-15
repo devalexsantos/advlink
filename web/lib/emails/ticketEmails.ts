@@ -1,23 +1,6 @@
 import { getResend, EMAIL_FROM } from "@/lib/resend"
 import { prisma } from "@/lib/prisma"
-
-function baseTemplate(title: string, body: string) {
-  return `
-    <!DOCTYPE html>
-    <html lang="pt-BR">
-    <head><meta charset="UTF-8"></head>
-    <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; color: #333;">
-      <div style="border-bottom: 2px solid #000e29; padding-bottom: 16px; margin-bottom: 24px;">
-        <h2 style="margin: 0; color: #000e29;">${title}</h2>
-      </div>
-      ${body}
-      <div style="border-top: 1px solid #e5e5e5; margin-top: 24px; padding-top: 16px; color: #888; font-size: 12px;">
-        AdvLink — Plataforma para advogados
-      </div>
-    </body>
-    </html>
-  `
-}
+import { emailTemplate } from "./baseTemplate"
 
 const categoryLabels: Record<string, string> = {
   support: "Suporte",
@@ -47,19 +30,20 @@ export async function sendTicketCreatedEmail(
 
   if (admins.length === 0) return
 
-  const html = baseTemplate(
-    `Novo Ticket #${ticket.number}`,
-    `
-      <p>Um novo ticket foi criado:</p>
-      <table style="width: 100%; border-collapse: collapse;">
-        <tr><td style="padding: 8px 0; font-weight: bold;">Ticket:</td><td>#${ticket.number}</td></tr>
-        <tr><td style="padding: 8px 0; font-weight: bold;">Assunto:</td><td>${ticket.subject}</td></tr>
-        <tr><td style="padding: 8px 0; font-weight: bold;">Categoria:</td><td>${categoryLabels[ticket.category] || ticket.category}</td></tr>
-        <tr><td style="padding: 8px 0; font-weight: bold;">Usuário:</td><td>${userName}</td></tr>
+  const html = emailTemplate({
+    title: `Novo Ticket #${ticket.number}`,
+    preheader: `Novo ticket de ${userName}: ${ticket.subject}`,
+    body: `
+      <p style="margin:0 0 16px 0;">Um novo ticket foi criado:</p>
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;">
+        <tr><td style="padding:8px 0;font-weight:bold;color:#1f2937;">Ticket:</td><td style="padding:8px 0;color:#1f2937;">#${ticket.number}</td></tr>
+        <tr><td style="padding:8px 0;font-weight:bold;color:#1f2937;">Assunto:</td><td style="padding:8px 0;color:#1f2937;">${ticket.subject}</td></tr>
+        <tr><td style="padding:8px 0;font-weight:bold;color:#1f2937;">Categoria:</td><td style="padding:8px 0;color:#1f2937;">${categoryLabels[ticket.category] || ticket.category}</td></tr>
+        <tr><td style="padding:8px 0;font-weight:bold;color:#1f2937;">Usuário:</td><td style="padding:8px 0;color:#1f2937;">${userName}</td></tr>
       </table>
-      <p style="margin-top: 16px;">Acesse o painel admin para visualizar e responder.</p>
-    `
-  )
+      <p style="margin:16px 0 0 0;color:#6b7280;font-size:13px;">Acesse o painel admin para visualizar e responder.</p>
+    `,
+  })
 
   await resend.emails.send({
     from: EMAIL_FROM,
@@ -79,16 +63,17 @@ export async function sendTicketReplyEmail(
   const resend = getResend()
   if (!resend) return
 
-  const html = baseTemplate(
-    `Resposta no Ticket #${ticketNumber}: ${ticketSubject}`,
-    `
-      <p><strong>${senderName}</strong> respondeu ao ticket <strong>#${ticketNumber}</strong>:</p>
-      <div style="background: #f5f5f5; padding: 16px; border-radius: 8px; margin: 16px 0;">
+  const html = emailTemplate({
+    title: `Resposta no Ticket #${ticketNumber}`,
+    preheader: `${senderName} respondeu ao ticket #${ticketNumber}`,
+    body: `
+      <p style="margin:0 0 16px 0;"><strong>${senderName}</strong> respondeu ao ticket <strong>#${ticketNumber} &mdash; ${ticketSubject}</strong>:</p>
+      <div style="background:#f4f5f7;padding:16px;border-radius:6px;margin:0 0 16px 0;font-size:14px;line-height:22px;color:#1f2937;">
         ${message.replace(/\n/g, "<br>")}
       </div>
-      <p style="margin-top: 16px; color: #666; font-size: 13px;">Acesse a plataforma para responder.</p>
-    `
-  )
+      <p style="margin:0;color:#6b7280;font-size:13px;">Acesse a plataforma para responder.</p>
+    `,
+  })
 
   await resend.emails.send({
     from: EMAIL_FROM,
@@ -115,13 +100,14 @@ export async function sendTicketStatusChangedEmail(
     closed: "Fechado",
   }
 
-  const html = baseTemplate(
-    `Atualização no Ticket #${ticketNumber}`,
-    `
-      <p>O status do seu ticket <strong>#${ticketNumber} — ${ticketSubject}</strong> foi atualizado para:</p>
-      <p style="font-size: 18px; font-weight: bold; color: #000e29;">${statusLabels[newStatus] || newStatus}</p>
-    `
-  )
+  const html = emailTemplate({
+    title: `Atualização no Ticket #${ticketNumber}`,
+    preheader: `Status do ticket #${ticketNumber} atualizado para ${statusLabels[newStatus] || newStatus}`,
+    body: `
+      <p style="margin:0 0 16px 0;">O status do seu ticket <strong>#${ticketNumber} &mdash; ${ticketSubject}</strong> foi atualizado para:</p>
+      <p style="margin:0;font-size:18px;font-weight:bold;color:#0a2463;">${statusLabels[newStatus] || newStatus}</p>
+    `,
+  })
 
   await resend.emails.send({
     from: EMAIL_FROM,
