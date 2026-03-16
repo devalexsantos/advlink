@@ -10,7 +10,11 @@
     "prisma": "prisma",
     "db:push": "prisma db push",
     "db:studio": "prisma studio",
-    "build:deploy": "prisma generate && prisma migrate deploy && next build"
+    "build:deploy": "prisma generate && prisma migrate deploy && next build",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:ui": "vitest --ui"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
@@ -62,6 +66,9 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@testing-library/user-event": "^14.6.1",
     "@types/geoip-lite": "^1.4.4",
     "@types/node": "^20",
     "@types/nodemailer": "^7.0.11",
@@ -69,11 +76,17 @@
     "@types/react-dom": "^19.2.3",
     "@types/react-input-mask": "^3.0.6",
     "@types/turndown": "^5.0.5",
+    "@vitejs/plugin-react": "^6.0.1",
+    "@vitest/coverage-v8": "^4.1.0",
+    "@vitest/ui": "^4.1.0",
     "eslint": "^9",
     "eslint-config-next": "^16.1.6",
+    "jsdom": "^29.0.0",
+    "msw": "^2.12.11",
     "prisma": "^6.14.0",
     "tailwindcss": "^4",
     "tw-animate-css": "^1.3.6",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.1.0"
   }
 }
