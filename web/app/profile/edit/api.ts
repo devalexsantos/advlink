@@ -60,7 +60,7 @@ export async function deleteLink(id: string) {
   return res.json() as Promise<{ ok: boolean }>
 }
 
-export async function updateSectionConfig(data: { sectionOrder?: string[]; sectionLabels?: Record<string, string>; sectionIcons?: Record<string, string> }) {
+export async function updateSectionConfig(data: { sectionOrder?: string[]; sectionLabels?: Record<string, string>; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean> }) {
   const res = await fetch("/api/profile", {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
@@ -92,19 +92,28 @@ export async function deleteGallery(id: string) {
 
 export async function createCustomSection(formData: FormData) {
   const res = await fetch("/api/custom-sections", { method: "POST", body: formData })
-  if (!res.ok) throw new Error("Falha ao criar seção")
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.error || "Falha ao criar seção")
+  }
   return res.json() as Promise<{ section: CustomSectionItem }>
 }
 
 export async function patchCustomSection(id: string, formData: FormData) {
   formData.set("id", id)
   const res = await fetch("/api/custom-sections", { method: "PATCH", body: formData })
-  if (!res.ok) throw new Error("Falha ao salvar seção")
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.error || "Falha ao salvar seção")
+  }
   return res.json() as Promise<{ section: CustomSectionItem }>
 }
 
 export async function deleteCustomSection(id: string) {
   const res = await fetch(`/api/custom-sections?id=${encodeURIComponent(id)}`, { method: "DELETE" })
-  if (!res.ok) throw new Error("Falha ao excluir seção")
+  if (!res.ok) {
+    const data = await res.json().catch(() => null)
+    throw new Error(data?.error || "Falha ao excluir seção")
+  }
   return res.json() as Promise<{ ok: boolean }>
 }

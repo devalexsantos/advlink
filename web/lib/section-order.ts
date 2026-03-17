@@ -67,7 +67,14 @@ export function getSectionIcon(
   key: SectionKey,
   iconOverrides?: Record<string, string> | null,
 ): string {
-  if (iconOverrides?.[key]) return iconOverrides[key]!
+  if (iconOverrides && key in iconOverrides) return iconOverrides[key]!
   if (isBuiltInKey(key)) return DEFAULT_SECTION_ICONS[key]
   return "FileText"
+}
+
+export function isSectionTitleHidden(
+  key: SectionKey,
+  titleHidden?: Record<string, boolean> | null,
+): boolean {
+  return titleHidden?.[key] === true
 }

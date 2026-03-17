@@ -22,6 +22,13 @@ vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
 vi.mock("next-auth", () => ({ getServerSession: getServerSessionMock }))
 vi.mock("@/auth", () => ({ authOptions: {} }))
 vi.mock("@/lib/s3", () => ({ uploadToS3: uploadToS3Mock }))
+vi.mock("@/lib/video-embed", () => ({
+  getVideoEmbedUrl: (url: string) => {
+    if (url.includes("youtube.com") || url.includes("youtu.be")) return { provider: "youtube", embedUrl: `https://www.youtube.com/embed/abc` }
+    if (url.includes("vimeo.com")) return { provider: "vimeo", embedUrl: `https://player.vimeo.com/video/123` }
+    return null
+  },
+}))
 
 import { POST, PATCH, DELETE } from "@/app/api/custom-sections/route"
 
@@ -61,12 +68,28 @@ describe("POST /api/custom-sections", () => {
     )
   })
 
-  it("returns 400 for missing title", async () => {
+  it("returns 400 for missing title on non-button layout", async () => {
     const form = new FormData()
     form.append("title", "")
     const req = new Request("http://localhost/api/custom-sections", { method: "POST", body: form })
     const res = await POST(req)
     expect(res.status).toBe(400)
+  })
+
+  it("allows empty title for button layout", async () => {
+    const form = new FormData()
+    form.append("title", "")
+    form.append("layout", "button")
+    form.append("buttonConfig", JSON.stringify({
+      url: "https://example.com",
+      label: "Clique aqui",
+      bgColor: "#000000",
+      textColor: "#FFFFFF",
+      borderRadius: 8,
+    }))
+    const req = new Request("http://localhost/api/custom-sections", { method: "POST", body: form })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
   })
 
   it("returns 400 for invalid layout", async () => {
@@ -76,6 +99,84 @@ describe("POST /api/custom-sections", () => {
     const req = new Request("http://localhost/api/custom-sections", { method: "POST", body: form })
     const res = await POST(req)
     expect(res.status).toBe(400)
+  })
+
+  it("creates video section with valid YouTube URL", async () => {
+    const form = new FormData()
+    form.append("title", "Meu Vídeo")
+    form.append("layout", "video")
+    form.append("videoUrl", "https://www.youtube.com/watch?v=abc123")
+    const req = new Request("http://localhost/api/custom-sections", { method: "POST", body: form })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    expect(prismaMock.customSection.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ layout: "video", videoUrl: "https://www.youtube.com/watch?v=abc123" }),
+      })
+    )
+  })
+
+  it("creates video section with valid Vimeo URL", async () => {
+    const form = new FormData()
+    form.append("title", "Meu Vídeo")
+    form.append("layout", "video")
+    form.append("videoUrl", "https://vimeo.com/123456")
+    const req = new Request("http://localhost/api/custom-sections", { method: "POST", body: form })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+  })
+
+  it("returns 400 for video layout without valid URL", async () => {
+    const form = new FormData()
+    form.append("title", "Meu Vídeo")
+    form.append("layout", "video")
+    form.append("videoUrl", "https://example.com/random")
+    const req = new Request("http://localhost/api/custom-sections", { method: "POST", body: form })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+  })
+
+  it("creates button section with valid buttonConfig", async () => {
+    const form = new FormData()
+    form.append("title", "Meu Botão")
+    form.append("layout", "button")
+    form.append("buttonConfig", JSON.stringify({
+      url: "https://example.com",
+      label: "Clique aqui",
+      bgColor: "#000000",
+      textColor: "#FFFFFF",
+      borderRadius: 8,
+    }))
+    const req = new Request("http://localhost/api/custom-sections", { method: "POST", body: form })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    expect(prismaMock.customSection.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ layout: "button" }),
+      })
+    )
+  })
+
+  it("returns 400 for button layout without buttonConfig", async () => {
+    const form = new FormData()
+    form.append("title", "Meu Botão")
+    form.append("layout", "button")
+    const req = new Request("http://localhost/api/custom-sections", { method: "POST", body: form })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+  })
+
+  it("accepts video and button as valid layouts", async () => {
+    for (const layoutVal of ["video", "button"]) {
+      const form = new FormData()
+      form.append("title", "Test")
+      form.append("layout", layoutVal)
+      if (layoutVal === "video") form.append("videoUrl", "https://www.youtube.com/watch?v=abc")
+      if (layoutVal === "button") form.append("buttonConfig", JSON.stringify({ url: "https://test.com", label: "Go" }))
+      const req = new Request("http://localhost/api/custom-sections", { method: "POST", body: form })
+      const res = await POST(req)
+      expect(res.status).not.toBe(400)
+    }
   })
 })
 

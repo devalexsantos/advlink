@@ -3,6 +3,16 @@
 import { motion } from "framer-motion"
 import { renderContent } from "@/lib/render-content"
 import { getIconComponent } from "@/lib/icon-renderer"
+import { getVideoEmbedUrl } from "@/lib/video-embed"
+
+type ButtonConfig = {
+  url: string
+  label: string
+  bgColor: string
+  textColor: string
+  borderRadius: number
+  iconName?: string
+}
 
 type CustomSection = {
   id: string
@@ -11,6 +21,8 @@ type CustomSection = {
   imageUrl: string | null
   layout: string
   iconName: string
+  videoUrl?: string | null
+  buttonConfig?: ButtonConfig | null
 }
 
 type Props = {
@@ -22,9 +34,10 @@ type Props = {
   secondary: string
   themeVariant: "modern" | "classic" | "corporate"
   forceMobile?: boolean
+  hideTitle?: boolean
 }
 
-export default function CustomSectionRenderer({ section, label, iconName, primary, text, secondary, themeVariant, forceMobile = false }: Props) {
+export default function CustomSectionRenderer({ section, label, iconName, primary, text, secondary, themeVariant, forceMobile = false, hideTitle = false }: Props) {
   const Icon = getIconComponent(iconName)
   const html = renderContent(section.description)
 
@@ -40,6 +53,53 @@ export default function CustomSectionRenderer({ section, label, iconName, primar
   const iconSize = isCorporate ? "w-8 h-8" : "w-10 h-10"
 
   const renderBody = () => {
+    // Video layout
+    if (section.layout === "video" && section.videoUrl) {
+      const embed = getVideoEmbedUrl(section.videoUrl)
+      if (embed) {
+        return (
+          <div className="max-w-4xl mx-auto">
+            <div className="relative w-full" style={{ paddingBottom: "56.25%" }}>
+              <iframe
+                src={embed.embedUrl}
+                className="absolute inset-0 w-full h-full rounded-2xl"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                title={section.title}
+              />
+            </div>
+          </div>
+        )
+      }
+    }
+
+    // Button layout
+    if (section.layout === "button" && section.buttonConfig) {
+      const bc = section.buttonConfig
+      const BtnIcon = bc.iconName ? getIconComponent(bc.iconName) : null
+      return (
+        <div className="max-w-5xl mx-auto flex justify-center">
+          <a
+            href={bc.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              backgroundColor: bc.bgColor,
+              color: bc.textColor,
+              borderRadius: `${bc.borderRadius}px`,
+              padding: "16px 48px",
+              fontSize: "1.125rem",
+              fontWeight: 600,
+            }}
+            className="hover:opacity-90 inline-flex items-center gap-2 no-underline transition-opacity"
+          >
+            {BtnIcon && <BtnIcon className="w-5 h-5" />}
+            {bc.label || "Clique aqui"}
+          </a>
+        </div>
+      )
+    }
+
     if (section.layout === "text-only" || !section.imageUrl) {
       return (
         <div className="max-w-5xl mx-auto">
@@ -101,15 +161,19 @@ export default function CustomSectionRenderer({ section, label, iconName, primar
       transition={{ duration: isClassic ? 0.6 : isCorporate ? 0.6 : 0.8 }}
       className="relative z-10 px-6 py-16 text-center"
     >
-      {isClassic && (
-        <div
-          className="mx-auto mb-8 h-[2px] w-24 rounded"
-          style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
-        />
+      {!hideTitle && (
+        <>
+          {isClassic && (
+            <div
+              className="mx-auto mb-8 h-[2px] w-24 rounded"
+              style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
+            />
+          )}
+          <h2 className={headingClass} style={{ color: secondary }}>
+            {Icon && <Icon className={iconSize} style={{ color: secondary }} />} {label}
+          </h2>
+        </>
       )}
-      <h2 className={headingClass} style={{ color: secondary }}>
-        {Icon && <Icon className={iconSize} style={{ color: secondary }} />} {label}
-      </h2>
       {renderBody()}
       {isCorporate && (
         <div className="mt-14 mx-auto max-w-6xl border-t" style={{ borderColor: `${text}25` }} />

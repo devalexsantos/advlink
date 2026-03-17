@@ -126,7 +126,9 @@ type EditFormContextType = {
   setSectionLabels: React.Dispatch<React.SetStateAction<SectionLabels>>
   sectionIcons: Record<string, string>
   setSectionIcons: React.Dispatch<React.SetStateAction<Record<string, string>>>
-  updateSectionConfigMutation: ReturnType<typeof useMutation<unknown, Error, { sectionOrder?: string[]; sectionLabels?: Record<string, string>; sectionIcons?: Record<string, string> }>>
+  sectionTitleHidden: Record<string, boolean>
+  setSectionTitleHidden: React.Dispatch<React.SetStateAction<Record<string, boolean>>>
+  updateSectionConfigMutation: ReturnType<typeof useMutation<unknown, Error, { sectionOrder?: string[]; sectionLabels?: Record<string, string>; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean> }>>
   // Avatar cropper
   avatarCropOpen: boolean
   setAvatarCropOpen: React.Dispatch<React.SetStateAction<boolean>>
@@ -258,6 +260,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
   const [sectionOrder, setSectionOrder] = useState<SectionKey[]>([...DEFAULT_SECTION_ORDER])
   const [sectionLabels, setSectionLabels] = useState<SectionLabels>({})
   const [sectionIcons, setSectionIcons] = useState<Record<string, string>>({})
+  const [sectionTitleHidden, setSectionTitleHidden] = useState<Record<string, boolean>>({})
   // Avatar cropper
   const [avatarCropOpen, setAvatarCropOpen] = useState<boolean>(false)
   const [avatarCropSrc, setAvatarCropSrc] = useState<string | null>(null)
@@ -335,6 +338,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     setSectionOrder(getSectionOrder(p.sectionOrder as SectionKey[] | undefined))
     setSectionLabels((p.sectionLabels as SectionLabels) || {})
     setSectionIcons((p.sectionIcons as Record<string, string>) || {})
+    setSectionTitleHidden((p.sectionTitleHidden as Record<string, boolean>) || {})
     setAboutMarkdown(p.aboutDescription ?? "")
   }, [data, form])
 
@@ -599,6 +603,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     sectionOrder, setSectionOrder,
     sectionLabels, setSectionLabels,
     sectionIcons, setSectionIcons,
+    sectionTitleHidden, setSectionTitleHidden,
     updateSectionConfigMutation,
     avatarCropOpen, setAvatarCropOpen,
     avatarCropSrc, setAvatarCropSrc,

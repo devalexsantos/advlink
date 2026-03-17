@@ -84,14 +84,25 @@ export type AddressData = {
   state?: string | null
 }
 
+export type ButtonConfig = {
+  url: string
+  label: string
+  bgColor: string
+  textColor: string
+  borderRadius: number
+  iconName?: string
+}
+
 export type CustomSectionItem = {
   id: string
   title: string
   description: string | null
   imageUrl: string | null
-  layout: "image-left" | "image-right" | "text-only"
+  layout: "image-left" | "image-right" | "text-only" | "video" | "button"
   iconName: string
   position?: number
+  videoUrl?: string | null
+  buttonConfig?: ButtonConfig | null
 }
 
 export type ProfileData = {
@@ -119,6 +130,7 @@ export type ProfileData = {
   sectionOrder?: string[] | null
   sectionLabels?: Record<string, string> | null
   sectionIcons?: Record<string, string> | null
+  sectionTitleHidden?: Record<string, boolean> | null
 }
 
 export type FetchProfileResponse = {

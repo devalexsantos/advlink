@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useMemo } from "react"
-import { icons } from "lucide-react"
+import { icons, Ban } from "lucide-react"
 import { CURATED_ICONS } from "@/lib/curated-icons"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
@@ -24,7 +24,8 @@ export function IconPicker({ value, onChange, children }: IconPickerProps) {
     )
   }, [search])
 
-  const CurrentIcon = (icons as Record<string, React.ElementType>)[value]
+  const CurrentIcon = value ? (icons as Record<string, React.ElementType>)[value] : null
+  const showNone = !search || "nenhum".includes(search.toLowerCase())
 
   return (
     <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setSearch("") }}>
@@ -42,6 +43,16 @@ export function IconPicker({ value, onChange, children }: IconPickerProps) {
           autoFocus
         />
         <div className="grid grid-cols-6 gap-2 max-h-[300px] overflow-y-auto py-2">
+          {showNone && (
+            <button
+              type="button"
+              className={`flex items-center justify-center rounded-md p-2 hover:bg-accent transition-colors cursor-pointer ${value === "" ? "bg-accent ring-2 ring-primary" : ""}`}
+              onClick={() => { onChange(""); setOpen(false); setSearch("") }}
+              title="Nenhum"
+            >
+              <Ban className="h-5 w-5 text-muted-foreground" />
+            </button>
+          )}
           {filtered.map((name) => {
             const Icon = (icons as Record<string, React.ElementType>)[name]
             if (!Icon) return null
@@ -57,17 +68,19 @@ export function IconPicker({ value, onChange, children }: IconPickerProps) {
               </button>
             )
           })}
-          {filtered.length === 0 && (
+          {filtered.length === 0 && !showNone && (
             <p className="col-span-6 text-sm text-muted-foreground text-center py-4">
               Nenhum ícone encontrado
             </p>
           )}
         </div>
-        {CurrentIcon && (
-          <div className="flex items-center gap-2 border-t pt-3 text-sm text-muted-foreground">
-            <CurrentIcon className="h-4 w-4" /> Atual: {value}
-          </div>
-        )}
+        <div className="flex items-center gap-2 border-t pt-3 text-sm text-muted-foreground">
+          {CurrentIcon ? (
+            <><CurrentIcon className="h-4 w-4" /> Atual: {value}</>
+          ) : (
+            <><Ban className="h-4 w-4" /> Atual: Nenhum</>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   )

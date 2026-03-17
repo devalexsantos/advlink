@@ -135,8 +135,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           secondary={secondary}
           sectionOrder={profile.sectionOrder as string[] | undefined}
           sectionLabels={profile.sectionLabels as Record<string, string> | undefined}
-          customSections={customSections}
+          customSections={customSections as any}
           sectionIcons={profile.sectionIcons as Record<string, string> | undefined}
+          sectionTitleHidden={profile.sectionTitleHidden as Record<string, boolean> | undefined}
         />
       )}
       {theme === "classic" && (
@@ -151,8 +152,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           secondary={secondary}
           sectionOrder={profile.sectionOrder as string[] | undefined}
           sectionLabels={profile.sectionLabels as Record<string, string> | undefined}
-          customSections={customSections}
+          customSections={customSections as any}
           sectionIcons={profile.sectionIcons as Record<string, string> | undefined}
+          sectionTitleHidden={profile.sectionTitleHidden as Record<string, boolean> | undefined}
         />
       )}
       {theme === "corporate" && (
@@ -167,8 +169,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           secondary={secondary}
           sectionOrder={profile.sectionOrder as string[] | undefined}
           sectionLabels={profile.sectionLabels as Record<string, string> | undefined}
-          customSections={customSections}
+          customSections={customSections as any}
           sectionIcons={profile.sectionIcons as Record<string, string> | undefined}
+          sectionTitleHidden={profile.sectionTitleHidden as Record<string, boolean> | undefined}
         />
       )}
     </div>

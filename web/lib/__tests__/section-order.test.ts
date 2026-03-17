@@ -9,6 +9,7 @@ import {
   getSectionOrder,
   getSectionLabel,
   getSectionIcon,
+  isSectionTitleHidden,
 } from "@/lib/section-order"
 
 describe("DEFAULT_SECTION_ORDER", () => {
@@ -120,5 +121,32 @@ describe("getSectionIcon()", () => {
 
   it("returns 'FileText' for custom key without override", () => {
     expect(getSectionIcon("custom_123" as never)).toBe("FileText")
+  })
+})
+
+describe("isSectionTitleHidden()", () => {
+  it("returns false for undefined", () => {
+    expect(isSectionTitleHidden("servicos", undefined)).toBe(false)
+  })
+
+  it("returns false for null", () => {
+    expect(isSectionTitleHidden("servicos", null)).toBe(false)
+  })
+
+  it("returns false when key is not in the record", () => {
+    expect(isSectionTitleHidden("servicos", { sobre: true })).toBe(false)
+  })
+
+  it("returns true when key is true", () => {
+    expect(isSectionTitleHidden("servicos", { servicos: true })).toBe(true)
+  })
+
+  it("returns false when key is false", () => {
+    expect(isSectionTitleHidden("servicos", { servicos: false })).toBe(false)
+  })
+
+  it("works with custom section keys", () => {
+    expect(isSectionTitleHidden("custom_abc" as never, { custom_abc: true })).toBe(true)
+    expect(isSectionTitleHidden("custom_abc" as never, { custom_abc: false })).toBe(false)
   })
 })

@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from "react"
 import { useSearchParams } from "next/navigation"
-import { Paintbrush, User, MapPin, ListTree, Images, Link as LinkIcon, LayoutGrid, ArrowUpDown, Search, Pencil, Check } from "lucide-react"
+import { Paintbrush, User, MapPin, ListTree, Images, Link as LinkIcon, LayoutGrid, ArrowUpDown, Search, Pencil, Check, Eye, EyeOff, Ban } from "lucide-react"
 import EstiloSection from "./sections/EstiloSection"
 import PerfilContatoSection from "./sections/PerfilContatoSection"
 import EnderecoSection from "./sections/EnderecoSection"
@@ -18,6 +18,7 @@ import { getIconComponent } from "@/lib/icon-renderer"
 import { IconPicker } from "@/components/ui/icon-picker"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 
 const sections: Record<string, {
   title: string
@@ -37,7 +38,7 @@ const sections: Record<string, {
 }
 
 export function PublicSectionHeader({ sectionKey, inline }: { sectionKey: BuiltInSectionKey; inline?: boolean }) {
-  const { sectionLabels, setSectionLabels, sectionIcons, setSectionIcons, updateSectionConfigMutation } = useEditForm()
+  const { sectionLabels, setSectionLabels, sectionIcons, setSectionIcons, sectionTitleHidden, setSectionTitleHidden, updateSectionConfigMutation } = useEditForm()
   const [editing, setEditing] = useState(false)
   const [draft, setDraft] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
@@ -74,6 +75,15 @@ export function PublicSectionHeader({ sectionKey, inline }: { sectionKey: BuiltI
     setEditing(false)
   }
 
+  const isTitleHidden = sectionTitleHidden[sectionKey] === true
+
+  function handleToggleTitle() {
+    const updated = { ...sectionTitleHidden, [sectionKey]: !isTitleHidden }
+    if (!updated[sectionKey]) delete updated[sectionKey]
+    setSectionTitleHidden(updated)
+    updateSectionConfigMutation.mutate({ sectionTitleHidden: updated })
+  }
+
   function handleIconChange(iconName: string) {
     const newIcons = { ...sectionIcons }
     if (iconName === DEFAULT_SECTION_ICONS[sectionKey]) {
@@ -87,58 +97,89 @@ export function PublicSectionHeader({ sectionKey, inline }: { sectionKey: BuiltI
   }
 
   return (
-    <div className={inline ? "mb-4 rounded-lg bg-muted/30 p-3" : "mb-6 rounded-lg border border-border bg-muted/30 p-3"}>
-      <p className="text-xs text-muted-foreground mb-2">Título na página pública</p>
-      <div className="flex items-center gap-2">
-        <IconPicker value={currentIconName} onChange={handleIconChange}>
-          <button
-            type="button"
-            className="flex items-center justify-center w-8 h-8 rounded-md border border-border bg-background hover:bg-accent transition-colors"
-          >
-            {IconComp ? <IconComp className="w-4 h-4 text-muted-foreground" /> : null}
-          </button>
-        </IconPicker>
+    <TooltipProvider>
+      <div className={inline ? "mb-4 rounded-lg bg-muted/30 p-3" : "mb-6 rounded-lg border border-border bg-muted/30 p-3"}>
+        <p className="text-xs text-muted-foreground mb-2">Título na página pública</p>
+        <div className="flex items-center gap-2">
+          <Tooltip>
+            <IconPicker value={currentIconName} onChange={handleIconChange}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="flex items-center justify-center w-8 h-8 rounded-md border border-border bg-background hover:bg-accent transition-colors"
+                >
+                  {IconComp ? <IconComp className="w-4 h-4 text-muted-foreground" /> : <Ban className="w-4 h-4 text-muted-foreground opacity-40" />}
+                </button>
+              </TooltipTrigger>
+            </IconPicker>
+            <TooltipContent side="top">Alterar ícone</TooltipContent>
+          </Tooltip>
 
-        {editing ? (
-          <>
-            <Input
-              ref={inputRef}
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") save()
-                if (e.key === "Escape") setEditing(false)
-              }}
-              onBlur={save}
-              className="h-8 text-sm flex-1"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0"
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={save}
-            >
-              <Check className="w-4 h-4" />
-            </Button>
-          </>
-        ) : (
-          <>
-            <span className="text-sm font-medium flex-1">{currentLabel}</span>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8 shrink-0"
-              onClick={startEditing}
-            >
-              <Pencil className="w-4 h-4" />
-            </Button>
-          </>
-        )}
+          {editing ? (
+            <>
+              <Input
+                ref={inputRef}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") save()
+                  if (e.key === "Escape") setEditing(false)
+                }}
+                onBlur={save}
+                className="h-8 text-sm flex-1"
+              />
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={save}
+                  >
+                    <Check className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Confirmar</TooltipContent>
+              </Tooltip>
+            </>
+          ) : (
+            <>
+              <span className={`text-sm font-medium flex-1 ${isTitleHidden ? "opacity-40 line-through" : ""}`}>{currentLabel}</span>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={handleToggleTitle}
+                  >
+                    {isTitleHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">{isTitleHidden ? "Mostrar título" : "Ocultar título"}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={startEditing}
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="top">Editar título</TooltipContent>
+              </Tooltip>
+            </>
+          )}
+        </div>
       </div>
-    </div>
+    </TooltipProvider>
   )
 }
 

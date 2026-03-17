@@ -65,11 +65,12 @@ export async function PATCH(req: Request) {
     const body = await req.json()
 
     // Handle section config update (sectionOrder / sectionLabels / sectionIcons)
-    if (body.sectionOrder !== undefined || body.sectionLabels !== undefined || body.sectionIcons !== undefined) {
+    if (body.sectionOrder !== undefined || body.sectionLabels !== undefined || body.sectionIcons !== undefined || body.sectionTitleHidden !== undefined) {
       const updateData: Record<string, unknown> = {}
       if (body.sectionOrder !== undefined) updateData.sectionOrder = body.sectionOrder
       if (body.sectionLabels !== undefined) updateData.sectionLabels = body.sectionLabels
       if (body.sectionIcons !== undefined) updateData.sectionIcons = body.sectionIcons
+      if (body.sectionTitleHidden !== undefined) updateData.sectionTitleHidden = body.sectionTitleHidden
       const updated = await prisma.profile.update({
         where: { userId },
         data: updateData,

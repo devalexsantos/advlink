@@ -1,8 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { GripVertical, Pencil, Check } from "lucide-react"
+import { useRouter } from "next/navigation"
+import { GripVertical, Pencil, Check, Eye, EyeOff, Ban } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from "@/components/ui/tooltip"
 import { IconPicker } from "@/components/ui/icon-picker"
 import { getIconComponent } from "@/lib/icon-renderer"
 import { getSectionIcon, isBuiltInKey, isCustomKey, DEFAULT_SECTION_LABELS } from "@/lib/section-order"
@@ -37,6 +40,9 @@ function SortableSectionItem({
   onChangeEdit,
   onConfirmEdit,
   onChangeIcon,
+  titleHidden,
+  onToggleTitle,
+  isCustom,
 }: {
   sectionKey: SectionKey
   label: string
@@ -47,6 +53,9 @@ function SortableSectionItem({
   onChangeEdit: (val: string) => void
   onConfirmEdit: () => void
   onChangeIcon: (key: SectionKey, icon: string) => void
+  titleHidden: boolean
+  onToggleTitle: (key: SectionKey) => void
+  isCustom: boolean
 }) {
   const {
     attributes,
@@ -66,63 +75,96 @@ function SortableSectionItem({
   const isEditing = editingKey === sectionKey
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 ${isDragging ? "opacity-30" : ""}`}
-    >
-      <button
-        type="button"
-        className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
-        {...attributes}
-        {...listeners}
+    <TooltipProvider>
+      <div
+        ref={setNodeRef}
+        style={style}
+        className={`flex items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 ${isDragging ? "opacity-30" : ""}`}
       >
-        <GripVertical className="h-4 w-4" />
-      </button>
-      <IconPicker value={iconName} onChange={(icon) => onChangeIcon(sectionKey, icon)}>
-        <button type="button" className="text-muted-foreground hover:text-foreground cursor-pointer shrink-0">
-          {Icon ? <Icon className="h-4 w-4" /> : <span className="h-4 w-4 block" />}
-        </button>
-      </IconPicker>
-      {isEditing ? (
-        <Input
-          autoFocus
-          value={editValue}
-          onChange={(e) => onChangeEdit(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault()
-              onConfirmEdit()
-            }
-          }}
-          onBlur={onConfirmEdit}
-          className="h-8 flex-1"
-        />
-      ) : (
-        <span className="flex-1 truncate text-sm">{label}</span>
-      )}
-      <button
-        type="button"
-        className="text-muted-foreground hover:text-foreground cursor-pointer"
-        onClick={() => {
-          if (isEditing) {
-            onConfirmEdit()
-          } else {
-            onStartEdit(sectionKey)
-          }
-        }}
-      >
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="cursor-grab touch-none text-muted-foreground hover:text-foreground active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+            >
+              <GripVertical className="h-4 w-4" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">Arrastar</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <IconPicker value={iconName} onChange={(icon) => onChangeIcon(sectionKey, icon)}>
+            <TooltipTrigger asChild>
+              <button type="button" className={`text-muted-foreground hover:text-foreground cursor-pointer shrink-0 ${titleHidden ? "opacity-40" : ""}`}>
+                {Icon ? <Icon className="h-4 w-4" /> : <Ban className="h-4 w-4 opacity-40" />}
+              </button>
+            </TooltipTrigger>
+          </IconPicker>
+          <TooltipContent side="top">Alterar ícone</TooltipContent>
+        </Tooltip>
         {isEditing ? (
-          <Check className="h-4 w-4" />
+          <Input
+            autoFocus
+            value={editValue}
+            onChange={(e) => onChangeEdit(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault()
+                onConfirmEdit()
+              }
+            }}
+            onBlur={onConfirmEdit}
+            className="h-8 flex-1"
+          />
         ) : (
-          <Pencil className="h-4 w-4" />
+          <span className={`flex-1 truncate text-sm flex items-center gap-1.5 ${titleHidden ? "opacity-40 line-through" : ""}`}>
+            {label}
+            {isCustom && <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">extra</Badge>}
+          </span>
         )}
-      </button>
-    </div>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground cursor-pointer"
+              onClick={() => onToggleTitle(sectionKey)}
+            >
+              {titleHidden ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">{titleHidden ? "Mostrar título" : "Ocultar título"}</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground cursor-pointer"
+              onClick={() => {
+                if (isEditing) {
+                  onConfirmEdit()
+                } else {
+                  onStartEdit(sectionKey)
+                }
+              }}
+            >
+              {isEditing ? (
+                <Check className="h-4 w-4" />
+              ) : (
+                <Pencil className="h-4 w-4" />
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">{isEditing ? "Confirmar" : "Editar título"}</TooltipContent>
+        </Tooltip>
+      </div>
+    </TooltipProvider>
   )
 }
 
 export default function ReordenarSection() {
+  const router = useRouter()
   const {
     sectionOrder,
     setSectionOrder,
@@ -130,6 +172,8 @@ export default function ReordenarSection() {
     setSectionLabels,
     sectionIcons,
     setSectionIcons,
+    sectionTitleHidden,
+    setSectionTitleHidden,
     customSections,
     setCustomSections,
     updateSectionConfigMutation,
@@ -256,12 +300,26 @@ export default function ReordenarSection() {
     }
   }
 
+  async function handleToggleTitle(key: SectionKey) {
+    const current = sectionTitleHidden[key] === true
+    const updated = { ...sectionTitleHidden, [key]: !current }
+    // Clean up false values
+    if (!updated[key]) delete updated[key]
+    setSectionTitleHidden(updated)
+    try {
+      await updateSectionConfigMutation.mutateAsync({ sectionTitleHidden: updated })
+      showToast(current ? "Título visível!" : "Título oculto!")
+    } catch {
+      setSectionTitleHidden(sectionTitleHidden)
+    }
+  }
+
   const activeItem = activeId ? { key: activeId, label: getLabel(activeId) } : null
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Arraste as seções para reordenar. Clique no ícone para alterá-lo, e no lápis para editar o título.
+        Arraste as seções para reordenar. Clique no ícone para alterá-lo, no olho para ocultar/mostrar o título, e no lápis para editá-lo.
       </p>
 
       {/* Fixed header indicator */}
@@ -290,6 +348,9 @@ export default function ReordenarSection() {
                 onChangeEdit={setEditValue}
                 onConfirmEdit={handleConfirmEdit}
                 onChangeIcon={handleChangeIcon}
+                titleHidden={sectionTitleHidden[key] === true}
+                onToggleTitle={handleToggleTitle}
+                isCustom={isCustomKey(key)}
               />
             ))}
           </div>
@@ -313,6 +374,20 @@ export default function ReordenarSection() {
       <div className="flex items-center gap-3 rounded-lg border border-dashed border-border bg-muted/40 px-3 py-3 opacity-60">
         <span className="text-sm font-medium">Rodapé (fixo)</span>
       </div>
+
+      {/* Cross-link to Seções Extras */}
+      <p className="text-xs text-muted-foreground">
+        Itens marcados com{" "}
+        <Badge variant="outline" className="text-[10px] px-1.5 py-0 font-normal">extra</Badge>{" "}
+        são seções personalizadas editáveis em{" "}
+        <button
+          type="button"
+          className="underline hover:text-foreground cursor-pointer transition-colors"
+          onClick={() => router.push("/profile/edit?tab=secoes-extras")}
+        >
+          Seções Extras
+        </button>.
+      </p>
     </div>
   )
 }

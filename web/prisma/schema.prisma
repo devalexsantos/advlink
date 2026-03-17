@@ -101,6 +101,7 @@ model Profile {
   sectionOrder       Json?
   sectionLabels      Json?
   sectionIcons       Json?
+  sectionTitleHidden Json?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -270,9 +271,11 @@ model CustomSection {
   title       String
   description String?
   imageUrl    String?
-  layout      String   // "image-left" | "image-right" | "text-only"
-  iconName    String   @default("FileText")
-  position    Int
+  layout       String   // "image-left" | "image-right" | "text-only" | "video" | "button"
+  iconName     String   @default("FileText")
+  position     Int
+  videoUrl     String?
+  buttonConfig Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 

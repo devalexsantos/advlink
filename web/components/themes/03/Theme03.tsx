@@ -16,13 +16,14 @@ type Area = { id: string; title: string; description: string | null; coverImageU
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
-type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string }
+type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string; videoUrl?: string | null; buttonConfig?: { url: string; label: string; bgColor: string; textColor: string; borderRadius: number; iconName?: string } | null }
 type Profile = { publicName?: string | null; headline?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
 
-export default function Theme03({ profile, areas, address, primary, text, secondary, links = [], gallery = [], constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string> }) {
+export default function Theme03({ profile, areas, address, primary, text, secondary, links = [], gallery = [], constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean> }) {
   const order = getSectionOrder(sectionOrder as SectionKey[] | undefined)
   const label = (key: SectionKey) => getSectionLabel(key, sectionLabels as SectionLabels)
   const icon = (key: SectionKey) => getIconComponent(getSectionIcon(key, sectionIcons))
+  const hidden = (key: SectionKey) => sectionTitleHidden?.[key] === true
 
   const sectionRenderers: Record<string, () => React.ReactNode> = {
     servicos: () => areas.length > 0 ? (
@@ -33,13 +34,17 @@ export default function Theme03({ profile, areas, address, primary, text, second
         transition={{ duration: 0.6 }}
         className="relative z-10 px-6 py-16 text-center"
       >
-        <div
-          className="mx-auto mb-8 h-[2px] w-24 rounded"
-          style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
-        />
-        <h2 className="mb-8 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif" style={{ color: secondary }}>
-          {(() => { const I = icon("servicos"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("servicos")}
-        </h2>
+        {!hidden("servicos") && (
+          <>
+            <div
+              className="mx-auto mb-8 h-[2px] w-24 rounded"
+              style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
+            />
+            <h2 className="mb-8 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif" style={{ color: secondary }}>
+              {(() => { const I = icon("servicos"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("servicos")}
+            </h2>
+          </>
+        )}
         <AreasCarousel
           areas={areas}
           primary={primary}
@@ -60,9 +65,11 @@ export default function Theme03({ profile, areas, address, primary, text, second
         transition={{ duration: 0.6 }}
         className="relative z-10 px-6 py-16 max-w-5xl mx-auto text-center"
       >
-        <h2 className="mb-6 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif" style={{ color: secondary }}>
-          {(() => { const I = icon("sobre"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("sobre")}
-        </h2>
+        {!hidden("sobre") && (
+          <h2 className="mb-6 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif" style={{ color: secondary }}>
+            {(() => { const I = icon("sobre"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("sobre")}
+          </h2>
+        )}
         <div
           className="rounded-2xl p-6 md:p-8 backdrop-blur-sm shadow-[0_20px_60px_rgba(0,0,0,0.35)] border"
           style={{ background: `linear-gradient(180deg, ${text}0f, ${text}08)`, borderColor: `${text}22` }}
@@ -83,13 +90,17 @@ export default function Theme03({ profile, areas, address, primary, text, second
         transition={{ duration: 0.6 }}
         className="relative z-10 px-6 py-16 text-center"
       >
-        <div
-          className="mx-auto mb-8 h-[2px] w-24 rounded"
-          style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
-        />
-        <h2 className="mb-8 text-4xl md:text-5xl font-bold text-center font-serif flex items-center justify-center gap-3" style={{ color: secondary }}>
-          {(() => { const I = icon("galeria"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("galeria")}
-        </h2>
+        {!hidden("galeria") && (
+          <>
+            <div
+              className="mx-auto mb-8 h-[2px] w-24 rounded"
+              style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
+            />
+            <h2 className="mb-8 text-4xl md:text-5xl font-bold text-center font-serif flex items-center justify-center gap-3" style={{ color: secondary }}>
+              {(() => { const I = icon("galeria"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("galeria")}
+            </h2>
+          </>
+        )}
         <div className="max-w-6xl mx-auto">
           <GalleryCarousel items={gallery} text={text} secondary={secondary} />
         </div>
@@ -104,14 +115,18 @@ export default function Theme03({ profile, areas, address, primary, text, second
         transition={{ duration: 0.6 }}
         className="relative z-10 px-6 py-16 mx-auto max-w-6xl"
       >
-        <div
-          className="mx-auto mb-8 h-[2px] w-24 rounded"
-          style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
-        />
-        <h2 className="mb-8 text-4xl md:text-5xl font-bold text-center font-serif flex items-center justify-center gap-3" style={{ color: secondary }}>
-          {(() => { const I = icon("links"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()}
-          {label("links")}
-        </h2>
+        {!hidden("links") && (
+          <>
+            <div
+              className="mx-auto mb-8 h-[2px] w-24 rounded"
+              style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
+            />
+            <h2 className="mb-8 text-4xl md:text-5xl font-bold text-center font-serif flex items-center justify-center gap-3" style={{ color: secondary }}>
+              {(() => { const I = icon("links"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()}
+              {label("links")}
+            </h2>
+          </>
+        )}
         <div className={`grid ${forceMobile ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"} gap-6`}>
           {links.map((l: LinkItem, idx: number) => (
             <motion.div
@@ -164,9 +179,11 @@ export default function Theme03({ profile, areas, address, primary, text, second
         transition={{ duration: 0.6 }}
         className="relative z-10 px-6 py-16 text-center"
       >
-        <h2 className="mb-6 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif" style={{ color: secondary }}>
-          {(() => { const I = icon("calendly"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("calendly")}
-        </h2>
+        {!hidden("calendly") && (
+          <h2 className="mb-6 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif" style={{ color: secondary }}>
+            {(() => { const I = icon("calendly"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("calendly")}
+          </h2>
+        )}
         <div
           className="max-w-6xl mx-auto rounded-2xl overflow-hidden border shadow-[0_20px_60px_rgba(0,0,0,0.35)]"
           style={{ borderColor: `${text}22`, background: `${text}07` }}
@@ -184,10 +201,12 @@ export default function Theme03({ profile, areas, address, primary, text, second
         transition={{ duration: 0.6 }}
         className="relative z-10 px-6 pb-16 py-10 text-center"
       >
-        <h2 className="mb-4 text-3xl md:text-4xl font-bold flex items-center justify-center gap-2 font-serif" style={{ color: secondary }}>
-          {(() => { const I = icon("endereco"); return I ? <I className="w-9 h-9" style={{ color: secondary }} /> : null })()}
-          {label("endereco")}
-        </h2>
+        {!hidden("endereco") && (
+          <h2 className="mb-4 text-3xl md:text-4xl font-bold flex items-center justify-center gap-2 font-serif" style={{ color: secondary }}>
+            {(() => { const I = icon("endereco"); return I ? <I className="w-9 h-9" style={{ color: secondary }} /> : null })()}
+            {label("endereco")}
+          </h2>
+        )}
         <p className="mb-6 text-lg opacity-90">
           {[address.street, address.number].filter(Boolean).join(", ")} - {address.city}, {address.state}
         </p>
@@ -221,6 +240,7 @@ export default function Theme03({ profile, areas, address, primary, text, second
         secondary={secondary}
         themeVariant="classic"
         forceMobile={forceMobile}
+        hideTitle={hidden(key)}
       />
     )
   }

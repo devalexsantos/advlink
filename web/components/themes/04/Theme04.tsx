@@ -16,23 +16,26 @@ type Area = { id: string; title: string; description: string | null; coverImageU
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
-type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string }
+type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string; videoUrl?: string | null; buttonConfig?: { url: string; label: string; bgColor: string; textColor: string; borderRadius: number; iconName?: string } | null }
 type Profile = { publicName?: string | null; headline?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
 
 const fade = { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.6 } }
 const fadeInView = { initial: { opacity: 0 }, whileInView: { opacity: 1 }, viewport: { once: true }, transition: { duration: 0.6 } }
 
-export default function Theme04({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string> }) {
+export default function Theme04({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean> }) {
   const order = getSectionOrder(sectionOrder as SectionKey[] | undefined)
   const label = (key: SectionKey) => getSectionLabel(key, sectionLabels as SectionLabels)
   const icon = (key: SectionKey) => getIconComponent(getSectionIcon(key, sectionIcons))
+  const hidden = (key: SectionKey) => sectionTitleHidden?.[key] === true
 
   const sectionRenderers: Record<string, () => React.ReactNode> = {
     servicos: () => areas.length > 0 ? (
       <motion.section {...fadeInView} className="relative z-10 px-6 py-14 text-center">
-        <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-          {(() => { const I = icon("servicos"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("servicos")}
-        </h2>
+        {!hidden("servicos") && (
+          <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            {(() => { const I = icon("servicos"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("servicos")}
+          </h2>
+        )}
         <AreasCarousel
           areas={areas}
           primary={primary}
@@ -48,9 +51,11 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
 
     sobre: () => profile.aboutDescription ? (
       <motion.section {...fadeInView} className="relative z-10 px-6 py-14 max-w-5xl mx-auto text-center">
-        <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-          {(() => { const I = icon("sobre"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("sobre")}
-        </h2>
+        {!hidden("sobre") && (
+          <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            {(() => { const I = icon("sobre"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("sobre")}
+          </h2>
+        )}
         <div className="rounded-none p-6 border-2 bg-white/5" style={{ borderColor: `${text}20` }}>
           <div
             className="prose prose-invert text-lg leading-relaxed"
@@ -63,9 +68,11 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
 
     galeria: () => Array.isArray(gallery) && gallery.length > 0 ? (
       <motion.section {...fadeInView} className="relative z-10 px-6 py-14 text-center">
-        <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-          {(() => { const I = icon("galeria"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("galeria")}
-        </h2>
+        {!hidden("galeria") && (
+          <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            {(() => { const I = icon("galeria"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("galeria")}
+          </h2>
+        )}
         <GalleryCarousel items={gallery} text={text} secondary={secondary} />
         <div className="mt-14 mx-auto max-w-6xl border-t" style={{ borderColor: `${text}25` }} />
       </motion.section>
@@ -73,9 +80,11 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
 
     links: () => Array.isArray(links) && links.length > 0 ? (
       <motion.section {...fadeInView} className="relative z-10 px-6 py-14 max-w-6xl mx-auto">
-        <h2 className="mb-8 text-3xl md:text-4xl font-bold text-center flex items-center justify-center gap-3" style={{ color: secondary }}>
-          {(() => { const I = icon("links"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("links")}
-        </h2>
+        {!hidden("links") && (
+          <h2 className="mb-8 text-3xl md:text-4xl font-bold text-center flex items-center justify-center gap-3" style={{ color: secondary }}>
+            {(() => { const I = icon("links"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("links")}
+          </h2>
+        )}
         <div className={`grid ${forceMobile ? "grid-cols-1" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"} gap-6`}>
           {links.map((l: LinkItem, idx: number) => (
             <motion.div
@@ -119,9 +128,11 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
 
     calendly: () => profile.calendlyUrl ? (
       <motion.section {...fadeInView} className="relative z-10 px-6 py-14 text-center">
-        <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-          {(() => { const I = icon("calendly"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("calendly")}
-        </h2>
+        {!hidden("calendly") && (
+          <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            {(() => { const I = icon("calendly"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("calendly")}
+          </h2>
+        )}
         <div className="max-w-6xl mx-auto rounded-none overflow-hidden border-2" style={{ borderColor: `${text}20` }}>
           <iframe src={profile.calendlyUrl} width="100%" height="750" frameBorder="0" />
         </div>
@@ -131,9 +142,11 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
 
     endereco: () => address && address.public !== false ? (
       <motion.section {...fadeInView} className="relative z-10 px-6 py-14 text-center">
-        <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
-          {(() => { const I = icon("endereco"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("endereco")}
-        </h2>
+        {!hidden("endereco") && (
+          <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            {(() => { const I = icon("endereco"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("endereco")}
+          </h2>
+        )}
         <p className="mb-6 text-lg">
           {[address.street, address.number].filter(Boolean).join(", ")} - {address.city}, {address.state}
         </p>
@@ -164,6 +177,7 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
         secondary={secondary}
         themeVariant="corporate"
         forceMobile={forceMobile}
+        hideTitle={hidden(key)}
       />
     )
   }

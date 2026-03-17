@@ -24,7 +24,7 @@ type Profile = {
   publicPhoneIsFixed?: boolean | null
 }
 
-type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string }
+type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string; videoUrl?: string | null; buttonConfig?: { url: string; label: string; bgColor: string; textColor: string; borderRadius: number; iconName?: string } | null }
 type Props = {
   profile: Profile
   areas: Area[]
@@ -35,9 +35,10 @@ type Props = {
   sectionLabels?: Record<string, string> | null
   customSections?: CustomSection[]
   sectionIcons?: Record<string, string> | null
+  sectionTitleHidden?: Record<string, boolean> | null
 }
 
-export default function Preview02({ profile, areas, address, links = [], gallery = [], sectionOrder, sectionLabels, customSections = [], sectionIcons }: Props) {
+export default function Preview02({ profile, areas, address, links = [], gallery = [], sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden }: Props) {
   const [mode, setMode] = useState<"desktop" | "mobile">("desktop")
   const containerStyle = useMemo(
     () => ({
@@ -65,7 +66,7 @@ export default function Preview02({ profile, areas, address, links = [], gallery
 
       <div className={`rounded-xl border border-zinc-800 bg-zinc-900/30 ${mode === "mobile" ? "[&_.min-w-0]:!basis-full [&_.shrink-0]:!basis-full" : ""}`} style={containerStyle}>
         <div className="relative">
-          <Theme02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} primary={primary} text={text} secondary={secondary} constrainToContainer forceMobile={mode === "mobile"} sectionOrder={sectionOrder ?? undefined} sectionLabels={sectionLabels ?? undefined} customSections={customSections} sectionIcons={sectionIcons ?? undefined} />
+          <Theme02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} primary={primary} text={text} secondary={secondary} constrainToContainer forceMobile={mode === "mobile"} sectionOrder={sectionOrder ?? undefined} sectionLabels={sectionLabels ?? undefined} customSections={customSections} sectionIcons={sectionIcons ?? undefined} sectionTitleHidden={sectionTitleHidden ?? undefined} />
         </div>
       </div>
     </div>

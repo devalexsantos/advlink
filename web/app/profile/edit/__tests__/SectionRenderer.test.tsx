@@ -17,6 +17,8 @@ vi.mock("../EditFormContext", () => ({
     setSectionLabels: vi.fn(),
     sectionIcons: {},
     setSectionIcons: vi.fn(),
+    sectionTitleHidden: {},
+    setSectionTitleHidden: vi.fn(),
     updateSectionConfigMutation: { mutate: vi.fn() },
   }),
 }))

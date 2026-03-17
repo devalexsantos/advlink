@@ -9,7 +9,7 @@ type Area = { id: string; title: string; description: string | null; coverImageU
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
-type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string }
+type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string; videoUrl?: string | null; buttonConfig?: { url: string; label: string; bgColor: string; textColor: string; borderRadius: number; iconName?: string } | null }
 type Profile = {
   theme?: string | null
   primaryColor?: string | null
@@ -26,6 +26,7 @@ type Profile = {
   sectionOrder?: string[] | null
   sectionLabels?: Record<string, string> | null
   sectionIcons?: Record<string, string> | null
+  sectionTitleHidden?: Record<string, boolean> | null
 }
 
 async function fetchProfile() {
@@ -54,14 +55,15 @@ export default function Preview() {
   const sectionOrder = profile.sectionOrder ?? undefined
   const sectionLabels = profile.sectionLabels ?? undefined
   const sectionIcons = profile.sectionIcons ?? undefined
+  const sectionTitleHidden = profile.sectionTitleHidden ?? undefined
   const customSections = data?.customSections ?? []
   if (theme === "classic") {
-    return <Preview03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} />
+    return <Preview03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} />
   }
   if (theme === "corporate") {
-    return <Preview04 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} />
+    return <Preview04 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} />
   }
-  return <Preview02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} />
+  return <Preview02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} />
 }
 
 
