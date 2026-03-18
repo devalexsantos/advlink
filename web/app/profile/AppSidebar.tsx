@@ -33,6 +33,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { SiteSwitcher } from "./SiteSwitcher"
 
 const editorItems = [
   { label: "Estilo", icon: Paintbrush, tab: "estilo" },
@@ -66,8 +67,8 @@ export function AppSidebar() {
       <SidebarHeader>
         <SidebarMenu>
           <SidebarMenuItem>
-            <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center px-2 py-2">
-              <Image src={logo} alt="AdvLink" width={120} height={34} className="h-9 w-auto group-data-[collapsible=icon]:hidden" />
+            <div className="flex items-center justify-between group-data-[collapsible=icon]:justify-center px-2 py-1">
+              <Image src={logo} alt="AdvLink" width={120} height={34} className="h-8 w-auto group-data-[collapsible=icon]:hidden" />
             </div>
           </SidebarMenuItem>
           <SidebarMenuItem className="hidden lg:block">
@@ -75,6 +76,9 @@ export function AppSidebar() {
               {state === "collapsed" ? <PanelLeftOpen className="h-5 w-5" /> : <PanelLeftClose className="h-5 w-5" />}
               <span>Retrair menu</span>
             </SidebarMenuButton>
+          </SidebarMenuItem>
+          <SidebarMenuItem>
+            <SiteSwitcher />
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>

@@ -30,18 +30,12 @@ export async function PATCH(
   if (!admin) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
 
   const { id } = await params
-  const site = await prisma.profile.findUnique({
-    where: { id },
-    select: { userId: true },
-  })
-
-  if (!site) return NextResponse.json({ error: "Site não encontrado" }, { status: 404 })
-
   const { isActive } = await req.json()
 
-  const before = await prisma.user.findUnique({ where: { id: site.userId }, select: { isActive: true } })
-  const user = await prisma.user.update({
-    where: { id: site.userId },
+  const before = await prisma.profile.findUnique({ where: { id }, select: { isActive: true } })
+
+  const profile = await prisma.profile.update({
+    where: { id },
     data: { isActive },
     select: { id: true, isActive: true },
   })
@@ -55,5 +49,5 @@ export async function PATCH(
     after: { isActive },
   })
 
-  return NextResponse.json(user)
+  return NextResponse.json(profile)
 }

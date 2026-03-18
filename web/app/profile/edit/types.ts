@@ -140,4 +140,5 @@ export type FetchProfileResponse = {
   links: LinkItem[]
   gallery: GalleryItem[]
   customSections: CustomSectionItem[]
+  profileId?: string
 }

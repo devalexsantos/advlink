@@ -14,7 +14,7 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
   const { slug } = await params
   const profile = await prisma.profile.findFirst({
     where: { slug },
-    include: { user: { include: { address: true } } },
+    include: { address: true },
   })
   if (!profile) {
     return (
@@ -27,8 +27,8 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
     )
   }
 
-  // If the owner's account is not active, show inactive notice instead of the page
-  if (!profile.user?.isActive) {
+  // If the site is not active, show inactive notice
+  if (!profile.isActive) {
     return (
       <div className="relative isolate overflow-hidden min-h-screen text-zinc-100">
         {/* Geometric background (same style as landing header) */}
@@ -74,23 +74,23 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
 
   const [areas, links, gallery, customSections] = await Promise.all([
     prisma.activityAreas.findMany({
-      where: { userId: profile.userId },
+      where: { profileId: profile.id },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     }),
     prisma.links.findMany({
-      where: { userId: profile.userId },
+      where: { profileId: profile.id },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     }),
     prisma.gallery.findMany({
-      where: { userId: profile.userId },
+      where: { profileId: profile.id },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     }),
     prisma.customSection.findMany({
-      where: { userId: profile.userId },
+      where: { profileId: profile.id },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     }),
   ])
-  const address = profile.user.address ?? undefined
+  const address = profile.address ?? undefined
 
   const primary = profile.primaryColor || "#8B0000"
   const text = profile.textColor || "#FFFFFF"

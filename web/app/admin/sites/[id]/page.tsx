@@ -11,6 +11,8 @@ interface SiteDetail {
   id: string
   slug: string | null
   publicName: string | null
+  name: string | null
+  isActive: boolean
   headline: string | null
   avatarUrl: string | null
   coverUrl: string | null
@@ -52,7 +54,7 @@ export default function AdminSiteDetailPage() {
     await fetch(`/api/admin/sites/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !site.user.isActive }),
+      body: JSON.stringify({ isActive: !site.isActive }),
     })
     fetchSite()
     setToggling(false)
@@ -68,11 +70,11 @@ export default function AdminSiteDetailPage() {
           <p className="text-muted-foreground">{site.slug}.advlink.site</p>
         </div>
         <Button
-          variant={site.user.isActive ? "destructive" : "default"}
+          variant={site.isActive ? "destructive" : "default"}
           onClick={toggleSuspend}
           disabled={toggling}
         >
-          {site.user.isActive ? "Suspender" : "Reativar"}
+          {site.isActive ? "Suspender" : "Reativar"}
         </Button>
       </div>
 
@@ -97,9 +99,9 @@ export default function AdminSiteDetailPage() {
             <p><strong>Nome:</strong> {site.user.name || "—"}</p>
             <p><strong>Email:</strong> {site.user.email || "—"}</p>
             <p>
-              <strong>Status:</strong>{" "}
+              <strong>Conta:</strong>{" "}
               <Badge variant={site.user.isActive ? "default" : "secondary"}>
-                {site.user.isActive ? "Ativo" : "Inativo"}
+                {site.user.isActive ? "Ativa" : "Bloqueada"}
               </Badge>
             </p>
             <p><strong>Stripe:</strong> {site.user.stripeCustomerId ? "Sim" : "Não"}</p>

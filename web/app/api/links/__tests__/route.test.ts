@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
-const { prismaMock, getServerSessionMock, uploadToS3Mock } = vi.hoisted(() => ({
+const { prismaMock, getServerSessionMock, uploadToS3Mock, getActiveSiteIdMock } = vi.hoisted(() => ({
   prismaMock: {
     links: {
       findFirst: vi.fn(),
@@ -14,12 +14,14 @@ const { prismaMock, getServerSessionMock, uploadToS3Mock } = vi.hoisted(() => ({
   },
   getServerSessionMock: vi.fn(),
   uploadToS3Mock: vi.fn().mockResolvedValue({ url: "https://s3.test/cover.jpg" }),
+  getActiveSiteIdMock: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
 vi.mock("next-auth", () => ({ getServerSession: getServerSessionMock }))
 vi.mock("@/auth", () => ({ authOptions: {} }))
 vi.mock("@/lib/s3", () => ({ uploadToS3: uploadToS3Mock }))
+vi.mock("@/lib/active-site", () => ({ getActiveSiteId: getActiveSiteIdMock }))
 
 import { POST, PATCH, DELETE } from "@/app/api/links/route"
 
@@ -29,6 +31,7 @@ describe("POST /api/links", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
     prismaMock.links.findFirst.mockResolvedValue({ position: 2 })
     prismaMock.links.create.mockResolvedValue({ id: "l1", title: "Link", position: 3 })
   })
@@ -74,10 +77,11 @@ describe("PATCH /api/links", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
   })
 
   it("updates a single link", async () => {
-    prismaMock.links.findFirst.mockResolvedValue({ id: "l1", userId: "user-1", position: 1 })
+    prismaMock.links.findFirst.mockResolvedValue({ id: "l1", profileId: "profile-1", position: 1 })
     prismaMock.links.update.mockResolvedValue({ id: "l1", title: "Updated" })
     const req = new Request("http://localhost/api/links", {
       method: "PATCH",
@@ -105,6 +109,7 @@ describe("DELETE /api/links", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
   })
 
   it("returns 400 without id", async () => {
@@ -121,7 +126,7 @@ describe("DELETE /api/links", () => {
   })
 
   it("deletes and reindexes", async () => {
-    prismaMock.links.findFirst.mockResolvedValue({ id: "l1", userId: "user-1" })
+    prismaMock.links.findFirst.mockResolvedValue({ id: "l1", profileId: "profile-1" })
     prismaMock.links.delete.mockResolvedValue({})
     prismaMock.links.findMany.mockResolvedValue([{ id: "l2" }])
     prismaMock.links.update.mockResolvedValue({})

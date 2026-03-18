@@ -49,6 +49,7 @@ export async function sendTicketCreatedEmail(
     from: EMAIL_FROM,
     to: admins.map((a) => a.email),
     subject: `[Ticket #${ticket.number}] ${ticket.subject}`,
+    replyTo: "no-reply@advlink.site",
     html,
   })
 }
@@ -79,6 +80,7 @@ export async function sendTicketReplyEmail(
     from: EMAIL_FROM,
     to: recipientEmail,
     subject: `[Ticket #${ticketNumber}] ${ticketSubject} — Nova resposta`,
+    replyTo: "no-reply@advlink.site",
     html,
   })
 }
@@ -113,6 +115,7 @@ export async function sendTicketStatusChangedEmail(
     from: EMAIL_FROM,
     to: recipientEmail,
     subject: `[Ticket #${ticketNumber}] ${ticketSubject} — Status atualizado`,
+    replyTo: "no-reply@advlink.site",
     html,
   })
 }

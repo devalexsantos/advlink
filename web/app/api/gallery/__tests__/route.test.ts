@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
-const { prismaMock, getServerSessionMock, uploadToS3Mock } = vi.hoisted(() => ({
+const { prismaMock, getServerSessionMock, uploadToS3Mock, getActiveSiteIdMock } = vi.hoisted(() => ({
   prismaMock: {
     gallery: {
       findFirst: vi.fn(),
@@ -14,12 +14,14 @@ const { prismaMock, getServerSessionMock, uploadToS3Mock } = vi.hoisted(() => ({
   },
   getServerSessionMock: vi.fn(),
   uploadToS3Mock: vi.fn().mockResolvedValue({ url: "https://s3.test/gallery.jpg" }),
+  getActiveSiteIdMock: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
 vi.mock("next-auth", () => ({ getServerSession: getServerSessionMock }))
 vi.mock("@/auth", () => ({ authOptions: {} }))
 vi.mock("@/lib/s3", () => ({ uploadToS3: uploadToS3Mock }))
+vi.mock("@/lib/active-site", () => ({ getActiveSiteId: getActiveSiteIdMock }))
 
 import { POST, PATCH, DELETE } from "@/app/api/gallery/route"
 
@@ -29,6 +31,7 @@ describe("POST /api/gallery", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
     prismaMock.gallery.findFirst.mockResolvedValue({ position: 1 })
     prismaMock.gallery.create.mockResolvedValue({ id: "g1", position: 2 })
   })
@@ -57,6 +60,7 @@ describe("PATCH /api/gallery", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
   })
 
   it("reorders gallery items", async () => {
@@ -87,6 +91,7 @@ describe("DELETE /api/gallery", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
   })
 
   it("returns 400 without id", async () => {

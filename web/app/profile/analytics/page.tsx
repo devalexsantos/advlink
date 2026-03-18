@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { getActiveSiteId } from "@/lib/active-site"
 import AnalyticsDashboard from "./AnalyticsDashboard"
 
 export default async function AnalyticsPage() {
@@ -11,12 +12,22 @@ export default async function AnalyticsPage() {
     redirect("/login")
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId },
-    select: { completed_onboarding: true },
+  const profileCount = await prisma.profile.count({ where: { userId } })
+  if (profileCount === 0) {
+    redirect("/onboarding/new-site")
+  }
+
+  const profileId = await getActiveSiteId(userId)
+  if (!profileId) {
+    redirect("/onboarding/new-site")
+  }
+
+  const profile = await prisma.profile.findUnique({
+    where: { id: profileId },
+    select: { setupComplete: true },
   })
 
-  if (!user || !user.completed_onboarding) {
+  if (!profile || !profile.setupComplete) {
     redirect("/onboarding/profile")
   }
 

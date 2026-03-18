@@ -4,27 +4,36 @@ import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { uploadToS3 } from "@/lib/s3"
 import { isReservedSlug } from "@/lib/reserved-slugs"
+import { getActiveSiteId } from "@/lib/active-site"
 
 export async function GET() {
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
+  const resolvedProfileId = await getActiveSiteId(userId)
+  if (!resolvedProfileId) return NextResponse.json({ error: "No site found" }, { status: 404 })
+  const profileId: string = resolvedProfileId
+
   const [profile, areas, address, links, gallery, customSections] = await Promise.all([
-    prisma.profile.findUnique({ where: { userId } }),
-    prisma.activityAreas.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
-    prisma.address.findUnique({ where: { userId } }),
-    prisma.links.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
-    prisma.gallery.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
-    prisma.customSection.findMany({ where: { userId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+    prisma.profile.findUnique({ where: { id: profileId } }),
+    prisma.activityAreas.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+    prisma.address.findUnique({ where: { profileId } }),
+    prisma.links.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+    prisma.gallery.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+    prisma.customSection.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
   ])
-  return NextResponse.json({ profile, areas, address, links, gallery, customSections })
+  return NextResponse.json({ profile, areas, address, links, gallery, customSections, profileId })
 }
 
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const resolvedProfileId = await getActiveSiteId(userId)
+  if (!resolvedProfileId) return NextResponse.json({ error: "No site found" }, { status: 404 })
+  const profileId: string = resolvedProfileId
 
   const contentType = req.headers.get("content-type") || ""
   let publicName = ""
@@ -72,7 +81,7 @@ export async function PATCH(req: Request) {
       if (body.sectionIcons !== undefined) updateData.sectionIcons = body.sectionIcons
       if (body.sectionTitleHidden !== undefined) updateData.sectionTitleHidden = body.sectionTitleHidden
       const updated = await prisma.profile.update({
-        where: { userId },
+        where: { id: profileId },
         data: updateData,
       })
       return NextResponse.json({ profile: updated })
@@ -158,7 +167,7 @@ export async function PATCH(req: Request) {
     if (c && c instanceof File) coverFile = c
   }
 
-  // Validação de slug (opcional): se vier slugInput, checa unicidade
+  // Slug validation: check uniqueness excluding current profile
   async function validateOrGenerateSlug(name: string, input?: string) {
     function baseFrom(text: string) {
       return text
@@ -176,7 +185,7 @@ export async function PATCH(req: Request) {
     let slug = desired
     let attempts = 0
     while (true) {
-      const exists = await prisma.profile.findFirst({ where: { slug, NOT: { userId } }, select: { id: true } })
+      const exists = await prisma.profile.findFirst({ where: { slug, NOT: { id: profileId } }, select: { id: true } })
       if (!exists) return slug
       attempts++
       const rand = Math.random().toString(36).slice(2, 6)
@@ -186,20 +195,14 @@ export async function PATCH(req: Request) {
   let slug: string | undefined
   if (slugInput !== undefined) {
     slug = await validateOrGenerateSlug(publicName, slugInput)
-  } else {
-    // Only auto-generate slug on first profile creation (no existing profile)
-    const existing = await prisma.profile.findUnique({ where: { userId }, select: { id: true } })
-    if (!existing && publicName && String(publicName).trim().length > 0) {
-      slug = await validateOrGenerateSlug(publicName)
-    }
   }
 
-  // Upload opcional do avatar
+  // Upload avatar
   let avatarUrl: string | null | undefined
   if (avatarFile) {
     const arrayBuffer = await avatarFile.arrayBuffer()
     const ext = avatarFile.type.split("/")[1] || "jpg"
-    const key = `avatars/${userId}.${Date.now()}.${ext}`
+    const key = `avatars/${profileId}.${Date.now()}.${ext}`
     const uploaded = await uploadToS3({
       key,
       contentType: avatarFile.type || "image/jpeg",
@@ -212,12 +215,12 @@ export async function PATCH(req: Request) {
     avatarUrl = null
   }
 
-  // Upload opcional da capa
+  // Upload cover
   let coverUrl: string | null | undefined
   if (coverFile) {
     const arrayBuffer = await coverFile.arrayBuffer()
     const ext = coverFile.type.split("/")[1] || "jpg"
-    const key = `covers/${userId}.${Date.now()}.${ext}`
+    const key = `covers/${profileId}.${Date.now()}.${ext}`
     const uploaded = await uploadToS3({
       key,
       contentType: coverFile.type || "image/jpeg",
@@ -258,33 +261,9 @@ export async function PATCH(req: Request) {
     return v
   }
 
-  const updated = await prisma.profile.upsert({
-    where: { userId },
-    update: {
-      publicName,
-      aboutDescription: nopt(aboutDescription),
-      publicEmail: nopt(publicEmail),
-      publicPhone: nopt(publicPhone),
-      headline: nopt(headline),
-      publicPhoneIsFixed,
-      whatsapp: nopt(whatsapp),
-      whatsappIsFixed,
-      instagramUrl: validateInstagram(instagramUrl),
-      avatarUrl,
-      slug,
-      primaryColor,
-      secondaryColor,
-      textColor,
-      coverUrl,
-      calendlyUrl: validateCalendly(calendlyUrl),
-      metaTitle: nopt(metaTitle),
-      metaDescription: nopt(metaDescription),
-      keywords: nopt(keywords),
-      gtmContainerId: nopt(gtmContainerId),
-      theme,
-    },
-    create: {
-      userId,
+  const updated = await prisma.profile.update({
+    where: { id: profileId },
+    data: {
       publicName,
       aboutDescription: nopt(aboutDescription),
       publicEmail: nopt(publicEmail),
@@ -308,7 +287,8 @@ export async function PATCH(req: Request) {
       theme,
     },
   })
-  // Always upsert address on profile save
+
+  // Upsert address
   const toBool = (val?: string) => {
     if (val === undefined) return undefined
     const v = String(val).trim().toLowerCase()
@@ -328,11 +308,11 @@ export async function PATCH(req: Request) {
     state: nopt(state),
   }
   await prisma.address.upsert({
-    where: { userId },
+    where: { profileId },
     update: addressData,
-    create: { userId, ...addressData },
+    create: { profileId, ...addressData },
   })
 
-  const address = await prisma.address.findUnique({ where: { userId } })
+  const address = await prisma.address.findUnique({ where: { profileId } })
   return NextResponse.json({ profile: updated, address })
 }

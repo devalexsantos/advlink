@@ -15,6 +15,18 @@ import {
   TableRow,
 } from "@/components/ui/table"
 
+interface ProfileSummary {
+  id: string
+  name: string | null
+  slug: string | null
+  publicName: string | null
+  isActive: boolean
+  theme: string | null
+  createdAt: string
+  activityAreas: { id: string; title: string }[]
+  links: { id: string; title: string; url: string }[]
+}
+
 interface UserDetail {
   id: string
   name: string | null
@@ -22,15 +34,7 @@ interface UserDetail {
   isActive: boolean
   stripeCustomerId: string | null
   createdAt: string
-  profile: {
-    id: string
-    slug: string | null
-    publicName: string | null
-    theme: string | null
-    createdAt: string
-  } | null
-  activityAreas: { id: string; title: string }[]
-  Links: { id: string; title: string; url: string }[]
+  profiles: ProfileSummary[]
   tickets: { id: string; subject: string; status: string; createdAt: string }[]
 }
 
@@ -79,10 +83,10 @@ export default function AdminUserDetailPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Status</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">Conta</CardTitle></CardHeader>
           <CardContent>
             <Badge variant={user.isActive ? "default" : "secondary"}>
-              {user.isActive ? "Ativo" : "Inativo"}
+              {user.isActive ? "Ativa" : "Bloqueada"}
             </Badge>
           </CardContent>
         </Card>
@@ -100,32 +104,44 @@ export default function AdminUserDetailPage() {
         </Card>
       </div>
 
-      {user.profile && (
+      {user.profiles.length > 0 && (
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Site</CardTitle>
+            <CardTitle className="text-base">Sites ({user.profiles.length})</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm space-y-1">
-            <p><strong>Slug:</strong> {user.profile.slug || "—"}</p>
-            <p><strong>Nome público:</strong> {user.profile.publicName || "—"}</p>
-            <p><strong>Tema:</strong> {user.profile.theme || "—"}</p>
-            <p><strong>Criado em:</strong> {new Date(user.profile.createdAt).toLocaleDateString("pt-BR")}</p>
-            <Link href={`/admin/sites/${user.profile.id}`} className="text-primary hover:underline text-sm">
-              Ver detalhes do site
-            </Link>
-          </CardContent>
-        </Card>
-      )}
-
-      {user.activityAreas.length > 0 && (
-        <Card>
-          <CardHeader><CardTitle className="text-base">Áreas de atuação</CardTitle></CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {user.activityAreas.map((a) => (
-                <Badge key={a.id} variant="outline">{a.title}</Badge>
-              ))}
-            </div>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Slug</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Criado em</TableHead>
+                  <TableHead></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {user.profiles.map((p) => (
+                  <TableRow key={p.id}>
+                    <TableCell className="font-medium">{p.name || p.publicName || "—"}</TableCell>
+                    <TableCell className="text-sm">{p.slug || "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant={p.isActive ? "default" : "secondary"}>
+                        {p.isActive ? "Ativo" : "Inativo"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {new Date(p.createdAt).toLocaleDateString("pt-BR")}
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/admin/sites/${p.id}`} className="text-primary hover:underline text-sm">
+                        Ver site
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </CardContent>
         </Card>
       )}

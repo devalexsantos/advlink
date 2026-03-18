@@ -38,13 +38,13 @@ export async function GET(req: NextRequest) {
     // Temporal (with date filter)
     prisma.user.count({ where: { createdAt: dateRange } }),
     prisma.profile.count(),
-    prisma.profile.count({ where: { user: { isActive: true } } }),
+    prisma.profile.count({ where: { isActive: true } }),
     prisma.ticket.count({ where: { status: { in: ["open", "in_progress"] } } }),
-    prisma.user.count({ where: { isActive: true, stripeCustomerId: { not: null } } }),
-    prisma.user.count({
+    prisma.profile.count({ where: { isActive: true, stripeSubscriptionId: { not: null } } }),
+    prisma.profile.count({
       where: {
         isActive: false,
-        stripeCustomerId: { not: null },
+        stripeSubscriptionId: { not: null },
         updatedAt: dateRange,
       },
     }),

@@ -18,12 +18,40 @@ describe("authEmail", () => {
       expect(html).toContain("link de acesso")
       expect(html).toContain("24 horas")
     })
+
+    it("includes footerNote with URL fallback", () => {
+      const html = createSignInEmailHtml({ url: "https://example.com/login" })
+      expect(html).toContain("copie e cole")
+      expect(html).toContain("https://example.com/login")
+    })
   })
 
   describe("createSignInEmailText", () => {
     it("includes the URL in plain text", () => {
       const text = createSignInEmailText({ url: "https://example.com/login" })
       expect(text).toContain("https://example.com/login")
+    })
+
+    it("includes subject and explanation", () => {
+      const text = createSignInEmailText({ url: "https://example.com" })
+      expect(text).toContain("Seu acesso")
+      expect(text).toContain("link de acesso")
+    })
+
+    it("includes expiration info", () => {
+      const text = createSignInEmailText({ url: "https://example.com" })
+      expect(text).toContain("24 horas")
+    })
+
+    it("includes disclaimer", () => {
+      const text = createSignInEmailText({ url: "https://example.com" })
+      expect(text).toContain("ignore")
+    })
+
+    it("includes AdvLink signature", () => {
+      const text = createSignInEmailText({ url: "https://example.com" })
+      expect(text).toContain("AdvLink")
+      expect(text).toContain("app.advlink.site")
     })
   })
 })

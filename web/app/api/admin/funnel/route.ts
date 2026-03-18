@@ -13,51 +13,53 @@ export async function GET(req: Request) {
 
   // Count each stage
   const [signupOnly, siteCreated, published] = await Promise.all([
-    // Cadastro feito, mas sem site (sem profile ou onboarding incompleto)
+    // Users with no profiles at all
     prisma.user.count({
-      where: { profile: null },
+      where: { profiles: { none: {} } },
     }),
-    // Site criado mas não publicado (tem profile, isActive = false)
+    // Users that have at least one profile but none active
     prisma.user.count({
       where: {
-        profile: { isNot: null },
-        isActive: false,
+        profiles: { some: {} },
+        NOT: { profiles: { some: { isActive: true } } },
       },
     }),
-    // Site publicado (tem profile, isActive = true)
+    // Users that have at least one active profile
     prisma.user.count({
       where: {
-        profile: { isNot: null },
-        isActive: true,
+        profiles: { some: { isActive: true } },
       },
     }),
   ])
 
   // Fetch users for selected stage
-  let users: Array<{
+  type UserResult = {
     id: string
     name: string | null
     email: string | null
     createdAt: Date
     isActive: boolean
     completed_onboarding: boolean
-    profile: { slug: string | null } | null
-  }> = []
+    profiles: { slug: string | null }[]
+  }
+  let users: UserResult[] = []
   let total = 0
+
+  const userSelect = {
+    id: true,
+    name: true,
+    email: true,
+    createdAt: true,
+    isActive: true,
+    completed_onboarding: true,
+    profiles: { select: { slug: true } },
+  } as const
 
   if (stage === "signup_only") {
     total = signupOnly
     users = await prisma.user.findMany({
-      where: { profile: null },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true,
-        isActive: true,
-        completed_onboarding: true,
-        profile: { select: { slug: true } },
-      },
+      where: { profiles: { none: {} } },
+      select: userSelect,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * perPage,
       take: perPage,
@@ -66,18 +68,10 @@ export async function GET(req: Request) {
     total = siteCreated
     users = await prisma.user.findMany({
       where: {
-        profile: { isNot: null },
-        isActive: false,
+        profiles: { some: {} },
+        NOT: { profiles: { some: { isActive: true } } },
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true,
-        isActive: true,
-        completed_onboarding: true,
-        profile: { select: { slug: true } },
-      },
+      select: userSelect,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * perPage,
       take: perPage,
@@ -86,18 +80,9 @@ export async function GET(req: Request) {
     total = published
     users = await prisma.user.findMany({
       where: {
-        profile: { isNot: null },
-        isActive: true,
+        profiles: { some: { isActive: true } },
       },
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        createdAt: true,
-        isActive: true,
-        completed_onboarding: true,
-        profile: { select: { slug: true } },
-      },
+      select: userSelect,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * perPage,
       take: perPage,

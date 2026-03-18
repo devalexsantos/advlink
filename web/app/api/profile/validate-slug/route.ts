@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { isReservedSlug } from "@/lib/reserved-slugs"
+import { getActiveSiteId } from "@/lib/active-site"
 
 export const runtime = "nodejs"
 
@@ -10,6 +11,8 @@ export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ valid: false, message: "Unauthorized" }, { status: 401 })
+
+  const profileId = await getActiveSiteId(userId)
 
   const { slug } = await req.json()
   const normalized = String(slug ?? "")
@@ -26,8 +29,9 @@ export async function POST(req: Request) {
     return NextResponse.json({ valid: false, slug: normalized, error: "reserved" })
   }
 
-  const exists = await prisma.profile.findFirst({ where: { slug: normalized, NOT: { userId } }, select: { id: true } })
+  const exists = await prisma.profile.findFirst({
+    where: { slug: normalized, ...(profileId ? { NOT: { id: profileId } } : {}) },
+    select: { id: true },
+  })
   return NextResponse.json({ valid: !exists, slug: normalized })
 }
-
-

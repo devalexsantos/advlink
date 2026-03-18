@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { stripe } from "@/lib/stripe"
+import { getActiveSiteId } from "@/lib/active-site"
 import CancelSubscriptionButton from "./CancelSubscriptionButton"
 import ActivateSubscriptionButton from "./ActivateSubscriptionButton"
 import ReactivateSubscriptionButton from "./ReactivateSubscriptionButton"
@@ -17,20 +18,36 @@ export default async function AccountPage() {
   const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return null
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { isActive: true, stripeCustomerId: true, email: true } })
+  const profileId = await getActiveSiteId(userId)
+  const [user, profile] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { stripeCustomerId: true, email: true } }),
+    profileId ? prisma.profile.findUnique({ where: { id: profileId }, select: { isActive: true, stripeSubscriptionId: true } }) : null,
+  ])
 
   let subscriptionStatus: string | null = null
   let currentPeriodEnd: number | null = null
   let cancelAtPeriodEnd = false
   let invoices: { id: string; total: number; status: string; created: number; hosted_invoice_url?: string | null }[] = []
 
-  if (user?.stripeCustomerId) {
-    const subs = await stripe.subscriptions.list({ customer: user.stripeCustomerId, status: "all", limit: 10 })
-    const sub = subs.data[0]
-    if (sub) {
+  // Try to get subscription from profile's stripeSubscriptionId first
+  if (profile?.stripeSubscriptionId) {
+    try {
+      const sub = await stripe.subscriptions.retrieve(profile.stripeSubscriptionId)
       subscriptionStatus = sub.status
       currentPeriodEnd = sub.current_period_end
       cancelAtPeriodEnd = sub.cancel_at_period_end || false
+    } catch { /* ignore */ }
+  }
+
+  if (user?.stripeCustomerId) {
+    if (!subscriptionStatus) {
+      const subs = await stripe.subscriptions.list({ customer: user.stripeCustomerId, status: "all", limit: 10 })
+      const sub = subs.data[0]
+      if (sub) {
+        subscriptionStatus = sub.status
+        currentPeriodEnd = sub.current_period_end
+        cancelAtPeriodEnd = sub.cancel_at_period_end || false
+      }
     }
     const inv = await stripe.invoices.list({ customer: user.stripeCustomerId, limit: 10 })
     invoices = inv.data.map((i) => ({ id: i.id, total: (i.total ?? (i.amount_due ?? 0)), status: i.status || "", created: i.created, hosted_invoice_url: i.hosted_invoice_url }))
@@ -64,7 +81,7 @@ export default async function AccountPage() {
         <h2 className="text-lg font-semibold mb-3">Assinatura</h2>
         <div className="grid gap-2 text-sm">
           <p><span className="text-muted-foreground">E-mail:</span> {user?.email || "-"}</p>
-          <p><span className="text-muted-foreground">Status:</span> {statusBadge(subscriptionStatus || (user?.isActive ? "active" : "canceled"))}</p>
+          <p><span className="text-muted-foreground">Status:</span> {statusBadge(subscriptionStatus || (profile?.isActive ? "active" : "canceled"))}</p>
           <p><span className="text-muted-foreground">Expira em:</span> {formatDate(currentPeriodEnd)}</p>
           {cancelAtPeriodEnd && <p className="text-amber-400">Cancelamento ao final do período atual</p>}
         </div>

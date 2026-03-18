@@ -2,6 +2,7 @@ import { redirect } from "next/navigation"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { getActiveSiteId } from "@/lib/active-site"
 import EditDashboard from "./EditDashboard"
 
 export default async function ProfileEditPage() {
@@ -11,14 +12,26 @@ export default async function ProfileEditPage() {
     redirect("/login")
   }
 
-  const user = await prisma.user.findUnique({
-    where: { id: userId! },
-    select: { completed_onboarding: true, isActive: true, profile: { select: { slug: true } } },
+  // Check if user has any profiles
+  const profileCount = await prisma.profile.count({ where: { userId } })
+  if (profileCount === 0) {
+    redirect("/onboarding/new-site")
+  }
+
+  // Resolve active site
+  const profileId = await getActiveSiteId(userId)
+  if (!profileId) {
+    redirect("/onboarding/new-site")
+  }
+
+  const profile = await prisma.profile.findUnique({
+    where: { id: profileId },
+    select: { setupComplete: true, isActive: true, slug: true },
   })
 
-  if (!user || user.completed_onboarding === false) {
+  if (!profile || !profile.setupComplete) {
     redirect("/onboarding/profile")
   }
 
-  return <EditDashboard isActive={!!user?.isActive} slug={user?.profile?.slug ?? undefined} />
+  return <EditDashboard isActive={!!profile.isActive} slug={profile.slug ?? undefined} />
 }

@@ -18,6 +18,8 @@ interface SiteRow {
   id: string
   slug: string | null
   publicName: string | null
+  name: string | null
+  isActive: boolean
   theme: string | null
   createdAt: string
   updatedAt: string
@@ -89,8 +91,8 @@ export default function AdminSitesPage() {
                     </Link>
                   </TableCell>
                   <TableCell>
-                    <Badge variant={s.user.isActive ? "default" : "secondary"}>
-                      {s.user.isActive ? "Ativo" : "Suspenso"}
+                    <Badge variant={s.isActive ? "default" : "secondary"}>
+                      {s.isActive ? "Ativo" : "Inativo"}
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm">{s.theme || "—"}</TableCell>

@@ -33,7 +33,7 @@ export async function GET(req: Request) {
         stripeCustomerId: true,
         createdAt: true,
         _count: { select: { tickets: true } },
-        profile: { select: { slug: true } },
+        profiles: { select: { id: true, name: true, slug: true, isActive: true } },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * perPage,

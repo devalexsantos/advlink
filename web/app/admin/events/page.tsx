@@ -78,7 +78,7 @@ interface FunnelUser {
   createdAt: string
   isActive: boolean
   completed_onboarding: boolean
-  profile: { slug: string | null } | null
+  profiles: { slug: string | null }[]
 }
 
 // ─── Stages config ───────────────────────────────────────────────────────────
@@ -250,8 +250,8 @@ export default function AdminEventsPage() {
                         {u.email}
                       </TableCell>
                       <TableCell className="text-sm">
-                        {u.profile?.slug ? (
-                          <span className="text-foreground">{u.profile.slug}</span>
+                        {u.profiles?.[0]?.slug ? (
+                          <span className="text-foreground">{u.profiles[0].slug}</span>
                         ) : (
                           <span className="text-muted-foreground">—</span>
                         )}

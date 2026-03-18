@@ -7,6 +7,7 @@ import { generateActivityDescriptions } from "@/lib/openai"
 import { uploadToS3 } from "@/lib/s3"
 import { isReservedSlug } from "@/lib/reserved-slugs"
 import { trackEvent } from "@/lib/product-events"
+import { getActiveSiteId } from "@/lib/active-site"
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -16,6 +17,10 @@ export async function POST(req: Request) {
   }
 
   try {
+    const resolvedProfileId = await getActiveSiteId(userId)
+    if (!resolvedProfileId) return NextResponse.json({ error: "No site found" }, { status: 404 })
+    const profileId: string = resolvedProfileId
+
     const contentType = req.headers.get("content-type") || ""
     let displayName = ""
     let areas: string[] = []
@@ -54,26 +59,17 @@ export async function POST(req: Request) {
       if (f && f instanceof File) avatarFile = f
     }
 
-    // userId garantido acima
-    // Garante que o usuário exista para evitar violação de FK no Profile
-    const userExists = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } })
-    if (!userExists) {
-      await prisma.user.create({ data: { id: userId } })
-    }
-
-    // 1) Gera descrições com OpenAI
+    // 1) Generate area descriptions with OpenAI
     const titles = Array.from(new Set(areas ?? [])).filter(Boolean)
     const openaiKey = process.env.OPENAI_API_KEY ?? ""
     const descriptions = titles.length ? await generateActivityDescriptions(titles, openaiKey) : []
-    // Removido: geração de capas via IA neste fluxo
 
-    // 2) Upsert do Profile (sem avatarUrl)
-    // Upload opcional de avatar
+    // 2) Upload avatar if provided
     let avatarUrl: string | null = null
     if (avatarFile) {
       const arrayBuffer = await avatarFile.arrayBuffer()
       const ext = avatarFile.type.split("/")[1] || "jpg"
-      const key = `avatars/${userId}.${Date.now()}.${ext}`
+      const key = `avatars/${profileId}.${Date.now()}.${ext}`
       const uploaded = await uploadToS3({
         key,
         contentType: avatarFile.type || "image/jpeg",
@@ -83,7 +79,7 @@ export async function POST(req: Request) {
       avatarUrl = uploaded.url
     }
 
-    // 2b) Gera slug único baseado no displayName
+    // 2b) Generate unique slug from displayName
     async function slugifyUnique(name: string): Promise<string> {
       const base = name
         .toLowerCase()
@@ -98,7 +94,7 @@ export async function POST(req: Request) {
       }
       let suffix = 0
       while (true) {
-        const exists = await prisma.profile.findFirst({ where: { slug, NOT: { userId } }, select: { id: true } })
+        const exists = await prisma.profile.findFirst({ where: { slug, NOT: { id: profileId } }, select: { id: true } })
         if (!exists) return slug
         suffix++
         const rand = Math.random().toString(36).slice(2, 5)
@@ -107,9 +103,10 @@ export async function POST(req: Request) {
     }
     const slug = await slugifyUnique(displayName)
 
-    await prisma.profile.upsert({
-      where: { userId },
-      update: {
+    // 3) Update the existing Profile (created when user chose site name)
+    await prisma.profile.update({
+      where: { id: profileId },
+      data: {
         publicName: displayName,
         aboutDescription: about ?? null,
         headline: headline ?? null,
@@ -121,28 +118,15 @@ export async function POST(req: Request) {
         slug,
         metaTitle: displayName,
         metaDescription: about ?? null,
-      },
-      create: {
-        userId,
-        publicName: displayName,
-        aboutDescription: about ?? null,
-        headline: headline ?? null,
-        publicEmail: email,
-        publicPhone: phone ?? null,
-        whatsapp: whatsapp ?? cellphone ?? null,
-        instagramUrl: instagramUrl ?? null,
-        avatarUrl: avatarUrl ?? undefined,
-        slug,
-        metaTitle: displayName,
-        metaDescription: about ?? null,
+        setupComplete: true,
       },
     })
 
-    // 3) Sincroniza ActivityAreas (simples: deleta e recria)
-    await prisma.activityAreas.deleteMany({ where: { userId } })
+    // 4) Sync ActivityAreas (delete and recreate for this profile)
+    await prisma.activityAreas.deleteMany({ where: { profileId } })
     if (titles.length) {
       const data = titles.map((title, i) => ({
-        userId,
+        profileId,
         title,
         description: descriptions[i] ? descriptions[i].slice(0, 2000) : null,
         position: i + 1,
@@ -150,14 +134,14 @@ export async function POST(req: Request) {
       await prisma.activityAreas.createMany({ data })
     }
 
-    // 4) Marca onboarding como concluído
+    // 5) Also mark user onboarding as complete (backwards compat)
     await prisma.user.update({
       where: { id: userId },
       data: { completed_onboarding: true },
     })
 
     // Track product event
-    trackEvent("site_created", { userId, meta: { slug } }).catch(() => {})
+    trackEvent("site_created", { userId, meta: { slug, profileId } }).catch(() => {})
 
     return NextResponse.json({ ok: true })
   } catch (err: unknown) {
@@ -165,5 +149,3 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
-
-

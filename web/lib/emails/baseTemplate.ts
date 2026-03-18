@@ -3,16 +3,24 @@ export function emailTemplate(options: {
   body: string
   cta?: { label: string; url: string }
   preheader?: string
+  footerNote?: string
 }): string {
-  const { title, body, cta, preheader } = options
+  const { title, body, cta, preheader, footerNote } = options
 
   const preheaderHtml = preheader
-    ? `<span style="display:none;font-size:1px;color:#f4f5f7;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${preheader}</span>`
+    ? `<div style="display:none;font-size:1px;color:#f4f5f7;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">${preheader}${"&zwnj;&nbsp;".repeat(90)}</div>`
     : ""
 
   const ctaHtml = cta
     ? `<tr>
         <td style="padding:24px 0 0 0;">
+          <!--[if mso]>
+          <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word" href="${cta.url}" style="height:42px;v-text-anchor:middle;width:200px;" arcsize="14%" strokecolor="#0a2463" fillcolor="#0a2463">
+            <w:anchorlock/>
+            <center style="color:#ffffff;font-family:Arial,Helvetica,sans-serif;font-size:15px;font-weight:600;">${cta.label}</center>
+          </v:roundrect>
+          <![endif]-->
+          <!--[if !mso]><!-->
           <table role="presentation" cellspacing="0" cellpadding="0" border="0">
             <tr>
               <td style="border-radius:6px;background:#0a2463;">
@@ -22,16 +30,37 @@ export function emailTemplate(options: {
               </td>
             </tr>
           </table>
+          <!--<![endif]-->
+        </td>
+      </tr>`
+    : ""
+
+  const footerNoteHtml = footerNote
+    ? `<tr>
+        <td style="padding:16px 0 0 0;font-size:13px;line-height:20px;color:#6b7280;">
+          ${footerNote}
         </td>
       </tr>`
     : ""
 
   return `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" xmlns:v="urn:schemas-microsoft-com:vml" xmlns:o="urn:schemas-microsoft-com:office:office">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="x-apple-disable-message-reformatting">
+  <meta name="format-detection" content="telephone=no,address=no,email=no,date=no,url=no">
   <title>${title}</title>
+  <!--[if mso]>
+  <noscript>
+    <xml>
+      <o:OfficeDocumentSettings>
+        <o:AllowPNG/>
+        <o:PixelsPerInch>96</o:PixelsPerInch>
+      </o:OfficeDocumentSettings>
+    </xml>
+  </noscript>
+  <![endif]-->
 </head>
 <body style="margin:0;padding:0;background-color:#f4f5f7;font-family:Arial,Helvetica,sans-serif;">
   ${preheaderHtml}
@@ -42,7 +71,7 @@ export function emailTemplate(options: {
           <!-- Header with Logo -->
           <tr>
             <td align="center" style="padding:24px 0;background-color:#ffffff;border-radius:8px 8px 0 0;">
-              <img src="https://app.advlink.site/images/advlink-logo-primary.png" alt="AdvLink" width="140" style="display:block;max-width:140px;height:auto;" />
+              <img src="https://app.advlink.site/images/advlink-logo-primary.png" alt="AdvLink" width="50" height="50" style="display:block;width:50px;height:50px;" />
             </td>
           </tr>
           <!-- Content Card -->
@@ -60,6 +89,7 @@ export function emailTemplate(options: {
                   </td>
                 </tr>
                 ${ctaHtml}
+                ${footerNoteHtml}
               </table>
             </td>
           </tr>
@@ -69,9 +99,11 @@ export function emailTemplate(options: {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
                 <tr>
                   <td style="font-size:12px;line-height:18px;color:#6b7280;text-align:center;">
+                    <a href="https://app.advlink.site" target="_blank" rel="noopener noreferrer" style="color:#0a2463;text-decoration:underline;">Acessar plataforma</a>
+                    <br />
                     &copy; 2026 AdvLink &mdash; Plataforma para advogados
                     <br />
-                    <a href="https://app.advlink.site" target="_blank" rel="noopener noreferrer" style="color:#0a2463;text-decoration:underline;">Acessar plataforma</a>
+                    <span style="font-size:11px;color:#9ca3af;">Este e-mail foi enviado por AdvLink. Caso n&atilde;o tenha solicitado, ignore esta mensagem.</span>
                   </td>
                 </tr>
               </table>

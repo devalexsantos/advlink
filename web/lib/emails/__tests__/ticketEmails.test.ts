@@ -41,12 +41,13 @@ describe("ticketEmails", () => {
       expect(mockSend).not.toHaveBeenCalled()
     })
 
-    it("sends email to all active admins", async () => {
+    it("sends email to all active admins with reply_to", async () => {
       prismaMock.adminUser.findMany.mockResolvedValue([{ email: "a1@test.com" }, { email: "a2@test.com" }])
       await sendTicketCreatedEmail(ticket, "John")
       expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
         to: ["a1@test.com", "a2@test.com"],
         subject: expect.stringContaining("#42"),
+        replyTo: "no-reply@advlink.site",
       }))
     })
   })
@@ -58,11 +59,12 @@ describe("ticketEmails", () => {
       expect(mockSend).not.toHaveBeenCalled()
     })
 
-    it("sends reply notification email", async () => {
+    it("sends reply notification email with reply_to", async () => {
       await sendTicketReplyEmail(10, "Bug Report", "I fixed it", "admin@test.com", "Dev User")
       expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
         to: "admin@test.com",
         subject: expect.stringContaining("#10"),
+        replyTo: "no-reply@advlink.site",
       }))
     })
   })
@@ -74,11 +76,12 @@ describe("ticketEmails", () => {
       expect(mockSend).not.toHaveBeenCalled()
     })
 
-    it("sends status change notification", async () => {
+    it("sends status change notification with reply_to", async () => {
       await sendTicketStatusChangedEmail(5, "Issue", "user@test.com", "resolved")
       expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
         to: "user@test.com",
         subject: expect.stringContaining("Status atualizado"),
+        replyTo: "no-reply@advlink.site",
       }))
     })
   })

@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
-const { prismaMock, getServerSessionMock, uploadToS3Mock } = vi.hoisted(() => ({
+const { prismaMock, getServerSessionMock, uploadToS3Mock, getActiveSiteIdMock } = vi.hoisted(() => ({
   prismaMock: {
     profile: { findUnique: vi.fn(), findFirst: vi.fn(), upsert: vi.fn(), update: vi.fn() },
     activityAreas: { findMany: vi.fn() },
@@ -12,6 +12,7 @@ const { prismaMock, getServerSessionMock, uploadToS3Mock } = vi.hoisted(() => ({
   },
   getServerSessionMock: vi.fn(),
   uploadToS3Mock: vi.fn().mockResolvedValue({ url: "https://s3.test/photo.jpg" }),
+  getActiveSiteIdMock: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
@@ -19,6 +20,7 @@ vi.mock("next-auth", () => ({ getServerSession: getServerSessionMock }))
 vi.mock("@/auth", () => ({ authOptions: {} }))
 vi.mock("@/lib/s3", () => ({ uploadToS3: uploadToS3Mock }))
 vi.mock("@/lib/reserved-slugs", async (importOriginal) => importOriginal())
+vi.mock("@/lib/active-site", () => ({ getActiveSiteId: getActiveSiteIdMock }))
 
 import { GET, PATCH } from "@/app/api/profile/route"
 
@@ -27,6 +29,7 @@ const session = { user: { id: "user-1" } }
 describe("GET /api/profile", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
     prismaMock.profile.findUnique.mockResolvedValue(null)
     prismaMock.activityAreas.findMany.mockResolvedValue([])
     prismaMock.address.findUnique.mockResolvedValue(null)
@@ -66,8 +69,9 @@ describe("PATCH /api/profile", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
     prismaMock.profile.findUnique.mockResolvedValue({ id: "p1", slug: "existing" })
-    prismaMock.profile.upsert.mockResolvedValue({ id: "p1", publicName: "Updated" })
+    prismaMock.profile.update.mockResolvedValue({ id: "p1", publicName: "Updated" })
     prismaMock.address.upsert.mockResolvedValue({})
     prismaMock.address.findUnique.mockResolvedValue(null)
   })
@@ -91,7 +95,7 @@ describe("PATCH /api/profile", () => {
     })
     const res = await PATCH(req)
     expect(res.status).toBe(200)
-    expect(prismaMock.profile.upsert).toHaveBeenCalled()
+    expect(prismaMock.profile.update).toHaveBeenCalled()
   })
 
   it("handles sectionOrder update", async () => {
@@ -106,21 +110,19 @@ describe("PATCH /api/profile", () => {
     expect(prismaMock.profile.update).toHaveBeenCalled()
   })
 
-  it("auto-generates slug on first profile creation", async () => {
-    prismaMock.profile.findUnique.mockResolvedValue(null) // no existing profile
+  it("validates and sets slug when provided", async () => {
     prismaMock.profile.findFirst.mockResolvedValue(null) // slug not taken
     const req = new Request("http://localhost/api/profile", {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ publicName: "João Silva" }),
+      body: JSON.stringify({ publicName: "João Silva", slug: "joao-silva" }),
     })
     await PATCH(req)
-    const upsertCall = prismaMock.profile.upsert.mock.calls[0][0]
-    expect(upsertCall.create.slug).toBeDefined()
+    const updateCall = prismaMock.profile.update.mock.calls[0][0]
+    expect(updateCall.data.slug).toBe("joao-silva")
   })
 
   it("appends -adv to reserved slugs", async () => {
-    prismaMock.profile.findUnique.mockResolvedValue(null)
     prismaMock.profile.findFirst.mockResolvedValue(null)
     const req = new Request("http://localhost/api/profile", {
       method: "PATCH",
@@ -128,7 +130,7 @@ describe("PATCH /api/profile", () => {
       body: JSON.stringify({ publicName: "Admin", slug: "admin" }),
     })
     await PATCH(req)
-    const upsertCall = prismaMock.profile.upsert.mock.calls[0][0]
-    expect(upsertCall.update.slug).toContain("admin-adv")
+    const updateCall = prismaMock.profile.update.mock.calls[0][0]
+    expect(updateCall.data.slug).toContain("admin-adv")
   })
 })

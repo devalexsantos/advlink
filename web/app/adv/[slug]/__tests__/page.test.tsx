@@ -36,12 +36,13 @@ describe("Public Profile Page (/adv/[slug])", () => {
     expect(rendered).toContain("Perfil não encontrado")
   })
 
-  it("shows 'Esta página está inativa' when user is not active", async () => {
+  it("shows 'Esta página está inativa' when profile is not active", async () => {
     prismaMock.profile.findFirst.mockResolvedValue({
       id: "p1",
       slug: "teste",
       userId: "u1",
-      user: { id: "u1", isActive: false, address: null },
+      isActive: false,
+      address: null,
     })
 
     const result = await PublicProfilePage({ params: Promise.resolve({ slug: "teste" }) })
@@ -50,11 +51,12 @@ describe("Public Profile Page (/adv/[slug])", () => {
     expect(rendered).toContain("publique sua página")
   })
 
-  it("renders the profile theme when user IS active", async () => {
+  it("renders the profile theme when profile IS active", async () => {
     prismaMock.profile.findFirst.mockResolvedValue({
       id: "p1",
       slug: "ativo",
       userId: "u1",
+      isActive: true,
       theme: "classic",
       primaryColor: "#000",
       textColor: "#FFF",
@@ -62,8 +64,9 @@ describe("Public Profile Page (/adv/[slug])", () => {
       sectionOrder: null,
       sectionLabels: null,
       sectionIcons: null,
+      sectionTitleHidden: null,
       gtmContainerId: null,
-      user: { id: "u1", isActive: true, address: null },
+      address: null,
     })
 
     const result = await PublicProfilePage({ params: Promise.resolve({ slug: "ativo" }) })
@@ -74,13 +77,14 @@ describe("Public Profile Page (/adv/[slug])", () => {
     expect(rendered).not.toContain("Perfil não encontrado")
   })
 
-  it("does not render theme content for inactive user", async () => {
+  it("does not render theme content for inactive profile", async () => {
     prismaMock.profile.findFirst.mockResolvedValue({
       id: "p1",
       slug: "inativo",
       userId: "u1",
+      isActive: false,
       theme: "modern",
-      user: { id: "u1", isActive: false, address: null },
+      address: null,
     })
 
     const result = await PublicProfilePage({ params: Promise.resolve({ slug: "inativo" }) })

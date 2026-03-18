@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
-const { prismaMock, stripeMock, getServerSessionMock } = vi.hoisted(() => ({
+const { prismaMock, stripeMock, getServerSessionMock, getActiveSiteIdMock } = vi.hoisted(() => ({
   prismaMock: {
     user: { findUnique: vi.fn(), update: vi.fn() },
   },
@@ -14,12 +14,14 @@ const { prismaMock, stripeMock, getServerSessionMock } = vi.hoisted(() => ({
     },
   },
   getServerSessionMock: vi.fn(),
+  getActiveSiteIdMock: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
 vi.mock("@/lib/stripe", () => ({ stripe: stripeMock }))
 vi.mock("next-auth", () => ({ getServerSession: getServerSessionMock }))
 vi.mock("@/auth", () => ({ authOptions: {} }))
+vi.mock("@/lib/active-site", () => ({ getActiveSiteId: getActiveSiteIdMock }))
 
 import { POST } from "@/app/api/stripe/create-checkout/route"
 
@@ -27,6 +29,7 @@ describe("POST /api/stripe/create-checkout", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     process.env.STRIPE_PRICE_ID = "price_test"
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
   })
 
   it("returns 401 without session", async () => {

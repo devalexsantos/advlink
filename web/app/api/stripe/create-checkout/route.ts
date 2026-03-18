@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { stripe } from "@/lib/stripe"
 import { prisma } from "@/lib/prisma"
+import { getActiveSiteId } from "@/lib/active-site"
 
 export const runtime = "nodejs"
 
@@ -10,6 +11,9 @@ export async function POST() {
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const profileId = await getActiveSiteId(userId)
+  if (!profileId) return NextResponse.json({ error: "No site found" }, { status: 404 })
 
   const priceId = process.env.STRIPE_PRICE_ID || ""
   if (!priceId) return NextResponse.json({ error: "Missing STRIPE_PRICE_ID" }, { status: 500 })
@@ -35,7 +39,7 @@ export async function POST() {
     line_items: [{ price: priceId, quantity: 1 }],
     success_url: successUrl,
     cancel_url: cancelUrl,
-    metadata: { userId },
+    metadata: { userId, profileId },
   })
 
   return NextResponse.json({ url: checkout.url })

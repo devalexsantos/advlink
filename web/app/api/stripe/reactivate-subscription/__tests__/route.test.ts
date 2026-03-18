@@ -1,28 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
-const { sessionMock, prismaMock, stripeMock } = vi.hoisted(() => ({
+const { sessionMock, prismaMock, stripeMock, getActiveSiteIdMock } = vi.hoisted(() => ({
   sessionMock: vi.fn(),
   prismaMock: {
     user: { findUnique: vi.fn() },
+    profile: { findUnique: vi.fn() },
   },
   stripeMock: {
     subscriptions: {
       list: vi.fn(),
       update: vi.fn(),
+      retrieve: vi.fn(),
     },
   },
+  getActiveSiteIdMock: vi.fn(),
 }))
 
 vi.mock("next-auth", () => ({ getServerSession: sessionMock }))
 vi.mock("@/auth", () => ({ authOptions: {} }))
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
 vi.mock("@/lib/stripe", () => ({ stripe: stripeMock }))
+vi.mock("@/lib/active-site", () => ({ getActiveSiteId: getActiveSiteIdMock }))
 
 import { POST } from "@/app/api/stripe/reactivate-subscription/route"
 
 describe("POST /api/stripe/reactivate-subscription", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
+    prismaMock.profile.findUnique.mockResolvedValue({ stripeSubscriptionId: null })
   })
 
   it("returns 401 without session", async () => {

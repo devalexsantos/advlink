@@ -15,25 +15,20 @@ model User {
   email                String?   @unique
   emailVerified        DateTime?
   image                String?
-  isActive             Boolean   @default(false)
+  isActive             Boolean   @default(true)
   stripeCustomerId     String?
   passwordHash         String?
   completed_onboarding Boolean   @default(false) @map("completed_onboarding")
 
-  accounts      Account[]
-  sessions      Session[]
-  profile       Profile?
-  activityAreas ActivityAreas[]
+  accounts Account[]
+  sessions Session[]
+  profiles Profile[]
 
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  address   Address?
-  Links     Links[]
-  Gallery   Gallery[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   tickets        Ticket[]
   ticketMessages TicketMessage[]
-  customSections CustomSection[]
 }
 
 model Account {
@@ -74,8 +69,13 @@ model VerificationToken {
 
 model Profile {
   id     String @id @default(cuid())
-  userId String @unique
+  userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  name                 String?
+  setupComplete        Boolean @default(false)
+  isActive             Boolean @default(false)
+  stripeSubscriptionId String?
 
   headline           String?
   avatarUrl          String?
@@ -106,7 +106,14 @@ model Profile {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  pageViews PageView[]
+  pageViews      PageView[]
+  activityAreas  ActivityAreas[]
+  links          Links[]
+  gallery        Gallery[]
+  address        Address?
+  customSections CustomSection[]
+
+  @@index([userId])
 }
 
 model PageView {
@@ -129,9 +136,9 @@ model PageView {
 }
 
 model ActivityAreas {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   title         String
   coverImageUrl String?
@@ -141,13 +148,13 @@ model ActivityAreas {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([userId, position], map: "ActivityAreas_userId_position_idx")
+  @@index([profileId, position], map: "ActivityAreas_profileId_position_idx")
 }
 
 model Links {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   title         String
   description   String?
@@ -160,9 +167,9 @@ model Links {
 }
 
 model Gallery {
-  id     String @id @default(cuid())
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  profileId String
+  profile   Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
 
   coverImageUrl String?
   position      Int
@@ -173,8 +180,8 @@ model Gallery {
 
 model Address {
   id           String  @id @default(cuid())
-  userId       String  @unique
-  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId    String  @unique
+  profile      Profile @relation(fields: [profileId], references: [id], onDelete: Cascade)
   public       Boolean @default(true)
   zipCode      String?
   street       String?
@@ -266,8 +273,8 @@ model AuditLog {
 
 model CustomSection {
   id          String   @id @default(cuid())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   title       String
   description String?
   imageUrl    String?
@@ -279,5 +286,5 @@ model CustomSection {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@index([userId, position])
+  @@index([profileId, position])
 }

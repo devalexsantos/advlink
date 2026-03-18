@@ -1,20 +1,23 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
-const { prismaMock, getServerSessionMock } = vi.hoisted(() => ({
+const { prismaMock, getServerSessionMock, getActiveSiteIdMock } = vi.hoisted(() => ({
   prismaMock: { profile: { findFirst: vi.fn() } },
   getServerSessionMock: vi.fn(),
+  getActiveSiteIdMock: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
 vi.mock("next-auth", () => ({ getServerSession: getServerSessionMock }))
 vi.mock("@/auth", () => ({ authOptions: {} }))
+vi.mock("@/lib/active-site", () => ({ getActiveSiteId: getActiveSiteIdMock }))
 
 import { POST } from "@/app/api/profile/validate-slug/route"
 
 describe("POST /api/profile/validate-slug", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
   })
 
   it("returns 401 without session", async () => {

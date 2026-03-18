@@ -14,10 +14,13 @@ export async function GET(
   const user = await prisma.user.findUnique({
     where: { id },
     include: {
-      profile: true,
-      activityAreas: { orderBy: { position: "asc" } },
-      Links: true,
-      address: true,
+      profiles: {
+        include: {
+          activityAreas: { orderBy: { position: "asc" } },
+          links: true,
+          address: true,
+        },
+      },
       tickets: { orderBy: { updatedAt: "desc" }, take: 10 },
     },
   })

@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma"
 import { stripe } from "@/lib/stripe"
 import { emailTemplate } from "@/lib/emails/baseTemplate"
 import nodemailer from "nodemailer"
+import { getActiveSiteId } from "@/lib/active-site"
 
 export const runtime = "nodejs"
 
@@ -13,7 +14,13 @@ export async function POST(req: Request) {
   const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-  const user = await prisma.user.findUnique({ where: { id: userId }, select: { stripeCustomerId: true, email: true } })
+  const profileId = await getActiveSiteId(userId)
+  if (!profileId) return NextResponse.json({ error: "No site found" }, { status: 404 })
+
+  const [user, profile] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { stripeCustomerId: true, email: true } }),
+    prisma.profile.findUnique({ where: { id: profileId }, select: { stripeSubscriptionId: true } }),
+  ])
   if (!user?.stripeCustomerId) return NextResponse.json({ error: "Sem cliente Stripe" }, { status: 400 })
 
   // Coleta motivo e detalhes enviados pelo cliente
@@ -27,9 +34,18 @@ export async function POST(req: Request) {
     // ignora parse
   }
 
-  // Procura uma assinatura ativa/trial/past_due
-  const subs = await stripe.subscriptions.list({ customer: user.stripeCustomerId, status: "all", limit: 10 })
-  const sub = subs.data.find((s) => ["active", "trialing", "past_due"].includes(s.status))
+  // Find subscription: prefer Profile.stripeSubscriptionId, fallback to Stripe customer search
+  let sub: { id: string; status: string } | undefined
+  if (profile?.stripeSubscriptionId) {
+    try {
+      const s = await stripe.subscriptions.retrieve(profile.stripeSubscriptionId)
+      if (["active", "trialing", "past_due"].includes(s.status)) sub = s
+    } catch { /* ignore */ }
+  }
+  if (!sub) {
+    const subs = await stripe.subscriptions.list({ customer: user.stripeCustomerId, status: "all", limit: 10 })
+    sub = subs.data.find((s) => ["active", "trialing", "past_due"].includes(s.status))
+  }
   if (!sub) return NextResponse.json({ error: "Nenhuma assinatura ativa" }, { status: 400 })
 
   await stripe.subscriptions.update(sub.id, { cancel_at_period_end: true })
@@ -70,6 +86,9 @@ export async function POST(req: Request) {
       subject,
       text,
       html,
+      headers: {
+        "X-Entity-Ref-ID": `cancel-${userId}-${Date.now()}`,
+      },
     })
   } catch (e) {
     // não falha o request por erro de email

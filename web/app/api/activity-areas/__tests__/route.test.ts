@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
-const { prismaMock, getServerSessionMock, uploadToS3Mock } = vi.hoisted(() => ({
+const { prismaMock, getServerSessionMock, uploadToS3Mock, getActiveSiteIdMock } = vi.hoisted(() => ({
   prismaMock: {
     activityAreas: {
       findFirst: vi.fn(),
@@ -14,12 +14,14 @@ const { prismaMock, getServerSessionMock, uploadToS3Mock } = vi.hoisted(() => ({
   },
   getServerSessionMock: vi.fn(),
   uploadToS3Mock: vi.fn().mockResolvedValue({ url: "https://s3.test/cover.jpg" }),
+  getActiveSiteIdMock: vi.fn(),
 }))
 
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
 vi.mock("next-auth", () => ({ getServerSession: getServerSessionMock }))
 vi.mock("@/auth", () => ({ authOptions: {} }))
 vi.mock("@/lib/s3", () => ({ uploadToS3: uploadToS3Mock }))
+vi.mock("@/lib/active-site", () => ({ getActiveSiteId: getActiveSiteIdMock }))
 
 import { POST, PATCH, DELETE } from "@/app/api/activity-areas/route"
 
@@ -29,6 +31,7 @@ describe("POST /api/activity-areas", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
     prismaMock.activityAreas.findFirst.mockResolvedValue({ position: 2 })
     prismaMock.activityAreas.create.mockResolvedValue({ id: "a1", title: "Civil", position: 3 })
   })
@@ -64,10 +67,11 @@ describe("PATCH /api/activity-areas", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
   })
 
   it("updates a single area", async () => {
-    prismaMock.activityAreas.findFirst.mockResolvedValue({ id: "a1", userId: "user-1", position: 1 })
+    prismaMock.activityAreas.findFirst.mockResolvedValue({ id: "a1", profileId: "profile-1", position: 1 })
     prismaMock.activityAreas.update.mockResolvedValue({ id: "a1", title: "Updated" })
     const req = new Request("http://localhost/api/activity-areas", {
       method: "PATCH",
@@ -95,6 +99,7 @@ describe("DELETE /api/activity-areas", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
   })
 
   it("returns 400 without id", async () => {

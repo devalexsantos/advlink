@@ -29,7 +29,7 @@ interface UserRow {
   stripeCustomerId: string | null
   createdAt: string
   _count: { tickets: number }
-  profile: { slug: string | null } | null
+  profiles: { id: string; name: string | null; slug: string | null; isActive: boolean }[]
 }
 
 export default function AdminUsersPage() {
@@ -87,7 +87,7 @@ export default function AdminUsersPage() {
                 <TableHead>Email</TableHead>
                 <TableHead>Plano</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Site</TableHead>
+                <TableHead>Sites</TableHead>
                 <TableHead>Tickets</TableHead>
                 <TableHead>Cadastro</TableHead>
               </TableRow>
@@ -110,7 +110,10 @@ export default function AdminUsersPage() {
                     </Badge>
                   </TableCell>
                   <TableCell className="text-sm">
-                    {u.profile?.slug || "—"}
+                    {u.profiles.length > 0
+                      ? u.profiles.map((p) => p.name || p.slug || "sem nome").join(", ")
+                      : "—"}
+                    {u.profiles.length > 1 && ` (${u.profiles.length})`}
                   </TableCell>
                   <TableCell className="text-sm">{u._count.tickets}</TableCell>
                   <TableCell className="text-sm">

@@ -5,11 +5,15 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { uploadToS3 } from "@/lib/s3"
 import { getVideoEmbedUrl } from "@/lib/video-embed"
+import { getActiveSiteId } from "@/lib/active-site"
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+  const profileId = await getActiveSiteId(userId)
+  if (!profileId) return NextResponse.json({ error: "No site found" }, { status: 404 })
 
   const form = await req.formData()
   const title = String(form.get("title") ?? "").trim()
@@ -56,7 +60,7 @@ export async function POST(req: Request) {
   if (imageFile && imageFile instanceof File && imageFile.size > 0) {
     const arrayBuffer = await imageFile.arrayBuffer()
     const ext = imageFile.type.split("/")[1] || "jpg"
-    const key = `custom-sections/${userId}.${Date.now()}.${ext}`
+    const key = `custom-sections/${profileId}.${Date.now()}.${ext}`
     const uploaded = await uploadToS3({
       key,
       contentType: imageFile.type || "image/jpeg",
@@ -68,21 +72,21 @@ export async function POST(req: Request) {
 
   // Get next position
   const lastSection = await prisma.customSection.findFirst({
-    where: { userId },
+    where: { profileId },
     orderBy: { position: "desc" },
     select: { position: true },
   })
   const position = (lastSection?.position ?? -1) + 1
 
   const section = await prisma.customSection.create({
-    data: { userId, title, description, imageUrl, layout, iconName, position, videoUrl, buttonConfig: buttonConfig ?? Prisma.JsonNull },
+    data: { profileId, title, description, imageUrl, layout, iconName, position, videoUrl, buttonConfig: buttonConfig ?? Prisma.JsonNull },
   })
 
   // Auto-append to profile sectionOrder
-  const profile = await prisma.profile.findUnique({ where: { userId }, select: { sectionOrder: true } })
+  const profile = await prisma.profile.findUnique({ where: { id: profileId }, select: { sectionOrder: true } })
   const currentOrder = (profile?.sectionOrder as string[] | null) ?? []
   const newOrder = [...currentOrder, `custom_${section.id}`]
-  await prisma.profile.update({ where: { userId }, data: { sectionOrder: newOrder } })
+  await prisma.profile.update({ where: { id: profileId }, data: { sectionOrder: newOrder } })
 
   return NextResponse.json({ section })
 }
@@ -92,12 +96,15 @@ export async function PATCH(req: Request) {
   const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
+  const profileId = await getActiveSiteId(userId)
+  if (!profileId) return NextResponse.json({ error: "No site found" }, { status: 404 })
+
   const form = await req.formData()
   const id = String(form.get("id") ?? "")
 
   if (!id) return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 })
 
-  const existing = await prisma.customSection.findFirst({ where: { id, userId } })
+  const existing = await prisma.customSection.findFirst({ where: { id, profileId } })
   if (!existing) return NextResponse.json({ error: "Seção não encontrada" }, { status: 404 })
 
   const title = String(form.get("title") ?? existing.title).trim()
@@ -130,7 +137,7 @@ export async function PATCH(req: Request) {
   if (imageFile && imageFile instanceof File && imageFile.size > 0) {
     const arrayBuffer = await imageFile.arrayBuffer()
     const ext = imageFile.type.split("/")[1] || "jpg"
-    const key = `custom-sections/${userId}.${Date.now()}.${ext}`
+    const key = `custom-sections/${profileId}.${Date.now()}.${ext}`
     const uploaded = await uploadToS3({
       key,
       contentType: imageFile.type || "image/jpeg",
@@ -155,11 +162,14 @@ export async function DELETE(req: Request) {
   const userId = (session?.user as { id?: string } | undefined)?.id
   if (!userId) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
+  const profileId = await getActiveSiteId(userId)
+  if (!profileId) return NextResponse.json({ error: "No site found" }, { status: 404 })
+
   const { searchParams } = new URL(req.url)
   const id = searchParams.get("id")
   if (!id) return NextResponse.json({ error: "ID é obrigatório" }, { status: 400 })
 
-  const existing = await prisma.customSection.findFirst({ where: { id, userId } })
+  const existing = await prisma.customSection.findFirst({ where: { id, profileId } })
   if (!existing) return NextResponse.json({ error: "Seção não encontrada" }, { status: 404 })
 
   await prisma.customSection.delete({ where: { id } })
@@ -167,7 +177,7 @@ export async function DELETE(req: Request) {
   // Remove from profile sectionOrder, sectionLabels, sectionIcons
   const customKey = `custom_${id}`
   const profile = await prisma.profile.findUnique({
-    where: { userId },
+    where: { id: profileId },
     select: { sectionOrder: true, sectionLabels: true, sectionIcons: true },
   })
   const updateData: Record<string, unknown> = {}
@@ -185,7 +195,7 @@ export async function DELETE(req: Request) {
     updateData.sectionIcons = icons
   }
   if (Object.keys(updateData).length > 0) {
-    await prisma.profile.update({ where: { userId }, data: updateData })
+    await prisma.profile.update({ where: { id: profileId }, data: updateData })
   }
 
   return NextResponse.json({ ok: true })
