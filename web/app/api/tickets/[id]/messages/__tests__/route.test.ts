@@ -118,4 +118,66 @@ describe("POST /api/tickets/[id]/messages", () => {
     await POST(req, { params: Promise.resolve({ id: "t1" }) })
     expect(sendTicketReplyEmailMock).toHaveBeenCalledWith(5, "Bug", "urgent", "admin@test.com", "User Test")
   })
+
+  it("uploads a single image to S3 and includes imageUrls in message", async () => {
+    sessionMock.mockResolvedValue({ user: { id: "u1" } })
+    prismaMock.ticket.findFirst.mockResolvedValue({ id: "t1", number: 1, subject: "Help", status: "open", assignedAdmin: null })
+    prismaMock.ticketMessage.create.mockResolvedValue({ id: "m1", message: "", imageUrls: ["https://s3.example.com/img.png"] })
+
+    const req = new Request("http://localhost", {
+      method: "POST",
+      body: makeFormData({ message: "" }, [{ name: "screenshot.png", content: "fake-image-data" }]),
+    })
+    const res = await POST(req, { params: Promise.resolve({ id: "t1" }) })
+    expect(res.status).toBe(201)
+    expect(uploadToS3Mock).toHaveBeenCalledTimes(1)
+    expect(uploadToS3Mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentType: "image/png",
+      })
+    )
+    expect(prismaMock.ticketMessage.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          ticketId: "t1",
+          imageUrls: ["https://s3.example.com/img.png"],
+        }),
+      })
+    )
+  })
+
+  it("uploads multiple images to S3 and collects all URLs", async () => {
+    sessionMock.mockResolvedValue({ user: { id: "u1" } })
+    prismaMock.ticket.findFirst.mockResolvedValue({ id: "t1", number: 1, subject: "Help", status: "open", assignedAdmin: null })
+    prismaMock.ticketMessage.create.mockResolvedValue({ id: "m1", message: "see attached" })
+    uploadToS3Mock
+      .mockResolvedValueOnce({ url: "https://s3.example.com/img1.png" })
+      .mockResolvedValueOnce({ url: "https://s3.example.com/img2.png" })
+      .mockResolvedValueOnce({ url: "https://s3.example.com/img3.png" })
+
+    const req = new Request("http://localhost", {
+      method: "POST",
+      body: makeFormData({ message: "see attached" }, [
+        { name: "photo1.png", content: "data1" },
+        { name: "photo2.png", content: "data2" },
+        { name: "photo3.png", content: "data3" },
+      ]),
+    })
+    const res = await POST(req, { params: Promise.resolve({ id: "t1" }) })
+    expect(res.status).toBe(201)
+    expect(uploadToS3Mock).toHaveBeenCalledTimes(3)
+    expect(prismaMock.ticketMessage.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          ticketId: "t1",
+          message: "see attached",
+          imageUrls: [
+            "https://s3.example.com/img1.png",
+            "https://s3.example.com/img2.png",
+            "https://s3.example.com/img3.png",
+          ],
+        }),
+      })
+    )
+  })
 })

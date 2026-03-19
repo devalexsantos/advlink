@@ -489,6 +489,83 @@ describe("POST /api/custom-sections — no site found", () => {
   })
 })
 
+describe("POST /api/custom-sections — multipart/form-data content-type", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
+    prismaMock.customSection.findFirst.mockResolvedValue(null)
+    prismaMock.customSection.create.mockResolvedValue({ id: "cs-img", title: "Image Section" })
+    prismaMock.profile.findUnique.mockResolvedValue({ sectionOrder: ["servicos"] })
+    prismaMock.profile.update.mockResolvedValue({})
+  })
+
+  it("reads form fields from multipart/form-data request (line 18)", async () => {
+    const imageFile = new File(["pixels"], "banner.png", { type: "image/png" })
+    const form = new FormData()
+    form.append("title", "Image Section")
+    form.append("layout", "image-left")
+    form.append("image", imageFile)
+    const req = new Request("http://localhost/api/custom-sections", { method: "POST", body: form })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    expect(uploadToS3Mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentType: "image/png",
+      })
+    )
+    expect(prismaMock.customSection.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          title: "Image Section",
+          layout: "image-left",
+          imageUrl: "https://s3.test/section.jpg",
+        }),
+      })
+    )
+  })
+})
+
+describe("PATCH /api/custom-sections — multipart/form-data with new image file", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
+    prismaMock.customSection.findFirst.mockResolvedValue({
+      id: "cs1",
+      title: "Old Title",
+      description: "Old Desc",
+      layout: "image-left",
+      iconName: "FileText",
+      imageUrl: "https://s3.test/old.jpg",
+      videoUrl: null,
+      buttonConfig: null,
+    })
+    prismaMock.customSection.update.mockResolvedValue({ id: "cs1", title: "Old Title", imageUrl: "https://s3.test/section.jpg" })
+  })
+
+  it("uploads new image via multipart/form-data in PATCH (lines 139-143)", async () => {
+    const newImage = new File(["new-pixels"], "new-banner.png", { type: "image/png" })
+    const form = new FormData()
+    form.append("id", "cs1")
+    form.append("image", newImage)
+    const req = new Request("http://localhost/api/custom-sections", { method: "PATCH", body: form })
+    const res = await PATCH(req)
+    expect(res.status).toBe(200)
+    expect(uploadToS3Mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentType: "image/png",
+        cacheControl: "public, max-age=604800, immutable",
+      })
+    )
+    expect(prismaMock.customSection.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ imageUrl: "https://s3.test/section.jpg" }),
+      })
+    )
+  })
+})
+
 describe("DELETE /api/custom-sections", () => {
   beforeEach(() => {
     vi.clearAllMocks()

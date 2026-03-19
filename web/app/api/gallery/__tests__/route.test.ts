@@ -54,6 +54,28 @@ describe("POST /api/gallery", () => {
     expect(uploadToS3Mock).toHaveBeenCalled()
     expect(prismaMock.gallery.create).toHaveBeenCalled()
   })
+
+  it("returns 415 when content-type is not multipart/form-data", async () => {
+    const req = new Request("http://localhost/api/gallery", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ cover: "test" }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(415)
+    const data = await res.json()
+    expect(data.error).toBe("Unsupported content type")
+  })
+
+  it("returns 400 when form does not contain a valid File for cover", async () => {
+    const form = new FormData()
+    form.append("cover", "just-a-string-not-a-file")
+    const req = new Request("http://localhost/api/gallery", { method: "POST", body: form })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe("Missing image")
+  })
 })
 
 describe("PATCH /api/gallery", () => {
@@ -84,6 +106,18 @@ describe("PATCH /api/gallery", () => {
     })
     const res = await PATCH(req)
     expect(res.status).toBe(403)
+  })
+
+  it("returns 400 when body.order is not an array", async () => {
+    const req = new Request("http://localhost/api/gallery", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ order: "not-an-array" }),
+    })
+    const res = await PATCH(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toBe("Bad request")
   })
 })
 

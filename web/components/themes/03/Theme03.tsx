@@ -3,6 +3,7 @@
 import { motion } from "framer-motion"
 import { AreasCarousel } from "@/app/adv/[slug]/AreasCarousel"
 import { GalleryCarousel } from "@/app/adv/[slug]/GalleryCarousel"
+import { TeamCarousel } from "@/app/adv/[slug]/TeamCarousel"
 import { renderContent } from "@/lib/render-content"
 import { Heart, Instagram, Mail, Phone, Scale, SquareArrowOutUpRight } from "lucide-react"
 import Link from "next/link"
@@ -17,9 +18,10 @@ type LinkItem = { id: string; title: string; description: string | null; url: st
 type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
 type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string; videoUrl?: string | null; buttonConfig?: { url: string; label: string; bgColor: string; textColor: string; borderRadius: number; iconName?: string } | null }
+type TeamMember = { id: string; name: string; description: string | null; avatarUrl: string | null; phone: string | null; whatsapp: string | null; email: string | null }
 type Profile = { publicName?: string | null; headline?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
 
-export default function Theme03({ profile, areas, address, primary, text, secondary, links = [], gallery = [], constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean> }) {
+export default function Theme03({ profile, areas, address, primary, text, secondary, links = [], gallery = [], constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [] }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean>; teamMembers?: TeamMember[] }) {
   const order = getSectionOrder(sectionOrder as SectionKey[] | undefined)
   const label = (key: SectionKey) => getSectionLabel(key, sectionLabels as SectionLabels)
   const icon = (key: SectionKey) => getIconComponent(getSectionIcon(key, sectionIcons))
@@ -190,6 +192,29 @@ export default function Theme03({ profile, areas, address, primary, text, second
         >
           <iframe src={profile.calendlyUrl} width="100%" height="750" frameBorder="0" />
         </div>
+      </motion.section>
+    ) : null,
+
+    equipe: () => teamMembers.length > 0 ? (
+      <motion.section
+        initial={{ opacity: 0, y: 36 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.6 }}
+        className="relative z-10 px-6 py-16 text-center"
+      >
+        {!hidden("equipe") && (
+          <>
+            <div
+              className="mx-auto mb-8 h-[2px] w-24 rounded"
+              style={{ background: `linear-gradient(to right, transparent, ${text}55, transparent)` }}
+            />
+            <h2 className="mb-8 text-4xl md:text-5xl font-bold flex justify-center items-center gap-3 font-serif" style={{ color: secondary }}>
+              {(() => { const I = icon("equipe"); return I ? <I className="w-10 h-10" style={{ color: secondary }} /> : null })()} {label("equipe")}
+            </h2>
+          </>
+        )}
+        <TeamCarousel members={teamMembers} primary={primary} text={text} secondary={secondary} />
       </motion.section>
     ) : null,
 

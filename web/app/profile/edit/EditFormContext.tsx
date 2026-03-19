@@ -12,6 +12,7 @@ import {
   type LinkItem,
   type GalleryItem,
   type CustomSectionItem,
+  type TeamMemberItem,
   type FetchProfileResponse,
 } from "./types"
 import { DEFAULT_SECTION_ORDER, getSectionOrder, type SectionKey, type SectionLabels } from "@/lib/section-order"
@@ -33,6 +34,10 @@ import {
   createCustomSection as createCustomSectionApi,
   patchCustomSection as patchCustomSectionApi,
   deleteCustomSection as deleteCustomSectionApi,
+  createTeamMember as createTeamMemberApi,
+  patchTeamMember as patchTeamMemberApi,
+  reorderTeamMembers as reorderTeamMembersApi,
+  deleteTeamMember as deleteTeamMemberApi,
 } from "./api"
 
 // ---- Helpers ----
@@ -119,6 +124,11 @@ type EditFormContextType = {
   // Custom sections
   customSections: CustomSectionItem[]
   setCustomSections: React.Dispatch<React.SetStateAction<CustomSectionItem[]>>
+  // Team members
+  teamMembers: TeamMemberItem[]
+  setTeamMembers: React.Dispatch<React.SetStateAction<TeamMemberItem[]>>
+  deleteTeamMemberConfirm: TeamMemberItem | null
+  setDeleteTeamMemberConfirm: React.Dispatch<React.SetStateAction<TeamMemberItem | null>>
   // Section order
   sectionOrder: SectionKey[]
   setSectionOrder: React.Dispatch<React.SetStateAction<SectionKey[]>>
@@ -184,6 +194,10 @@ type EditFormContextType = {
   createCustomSectionMutation: ReturnType<typeof useMutation<{ section: CustomSectionItem }, Error, FormData>>
   patchCustomSectionMutation: ReturnType<typeof useMutation<{ section: CustomSectionItem }, Error, { id: string; formData: FormData }>>
   deleteCustomSectionMutation: ReturnType<typeof useMutation<{ ok: boolean }, Error, string>>
+  createTeamMemberMutation: ReturnType<typeof useMutation<{ member: TeamMemberItem }, Error, FormData>>
+  patchTeamMemberMutation: ReturnType<typeof useMutation<{ member: TeamMemberItem }, Error, FormData>>
+  reorderTeamMembersMutation: ReturnType<typeof useMutation<{ ok: boolean }, Error, { id: string; position: number }[]>>
+  deleteTeamMemberMutation: ReturnType<typeof useMutation<{ ok: boolean }, Error, string>>
   // Utilities
   getCroppedBlob: (imageSrc: string, pixelCrop: { x: number; y: number; width: number; height: number }) => Promise<Blob>
   showToast: (msg: string) => void
@@ -256,6 +270,9 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
   const [whatsappIsFixed, setWhatsappIsFixed] = useState<boolean>(false)
   // Custom sections
   const [customSections, setCustomSections] = useState<CustomSectionItem[]>([])
+  // Team members
+  const [teamMembers, setTeamMembers] = useState<TeamMemberItem[]>([])
+  const [deleteTeamMemberConfirm, setDeleteTeamMemberConfirm] = useState<TeamMemberItem | null>(null)
   // Section order
   const [sectionOrder, setSectionOrder] = useState<SectionKey[]>([...DEFAULT_SECTION_ORDER])
   const [sectionLabels, setSectionLabels] = useState<SectionLabels>({})
@@ -296,6 +313,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     setLinks(data.links ?? [])
     setGallery(data.gallery ?? [])
     setCustomSections(data.customSections ?? [])
+    setTeamMembers(data.teamMembers ?? [])
 
     // Form + local state only on initial load
     if (initialSyncDone.current) return
@@ -532,6 +550,45 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     },
   })
 
+  const createTeamMemberMutation = useMutation({
+    mutationFn: (formData: FormData) => createTeamMemberApi(formData),
+    onSuccess: async (res) => {
+      setTeamMembers((prev) => [...prev, res.member])
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    },
+  })
+
+  const patchTeamMemberMutation = useMutation({
+    mutationFn: (formData: FormData) => {
+      const id = formData.get("id") as string
+      return patchTeamMemberApi(id, formData)
+    },
+    onSuccess: async (res) => {
+      setTeamMembers((prev) => prev.map((m) => (m.id === res.member.id ? res.member : m)))
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    },
+  })
+
+  const reorderTeamMembersMutation = useMutation({
+    mutationFn: reorderTeamMembersApi,
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    },
+  })
+
+  const deleteTeamMemberMutation = useMutation({
+    mutationFn: deleteTeamMemberApi,
+    onSuccess: async (_res, id) => {
+      setTeamMembers((prev) => prev.filter((m) => m.id !== id))
+      setDeleteTeamMemberConfirm(null)
+      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
+      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+    },
+  })
+
   async function onSubmit(values: ProfileEditValues) {
     const fd = new FormData()
     fd.set("publicName", values.publicName)
@@ -600,6 +657,8 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     publicPhoneIsFixed, setPublicPhoneIsFixed,
     whatsappIsFixed, setWhatsappIsFixed,
     customSections, setCustomSections,
+    teamMembers, setTeamMembers,
+    deleteTeamMemberConfirm, setDeleteTeamMemberConfirm,
     sectionOrder, setSectionOrder,
     sectionLabels, setSectionLabels,
     sectionIcons, setSectionIcons,
@@ -640,6 +699,10 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     createCustomSectionMutation,
     patchCustomSectionMutation,
     deleteCustomSectionMutation,
+    createTeamMemberMutation,
+    patchTeamMemberMutation,
+    reorderTeamMembersMutation,
+    deleteTeamMemberMutation,
     getCroppedBlob,
     showToast,
   }

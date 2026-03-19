@@ -38,6 +38,10 @@ vi.mock("../api", () => ({
   createCustomSection: vi.fn(),
   patchCustomSection: vi.fn(),
   deleteCustomSection: vi.fn(),
+  createTeamMember: vi.fn(),
+  patchTeamMember: vi.fn(),
+  reorderTeamMembers: vi.fn(),
+  deleteTeamMember: vi.fn(),
 }))
 
 import { render, screen, fireEvent, waitFor as waitForDom } from "@testing-library/react"
@@ -84,7 +88,7 @@ const fakeProfileResponse = {
     secondaryColor: "#E2E2E2",
     textColor: "#FFFFFF",
     theme: "classic",
-    sectionOrder: ["servicos", "sobre", "galeria", "links", "calendly", "endereco"],
+    sectionOrder: ["servicos", "sobre", "galeria", "links", "equipe", "calendly", "endereco"],
     sectionLabels: { servicos: "Serviços Jurídicos" },
     sectionIcons: { servicos: "Scale" },
     sectionTitleHidden: { galeria: true },
@@ -114,6 +118,7 @@ const fakeProfileResponse = {
   customSections: [
     { id: "cs-1", title: "Publicações", description: "Meus artigos.", imageUrl: null, layout: "text-only", iconName: "FileText", position: 0 },
   ],
+  teamMembers: [],
 }
 
 // ---------------------------------------------------------------------------
@@ -353,6 +358,7 @@ describe("EditFormContext", () => {
         links: [],
         gallery: [],
         customSections: [],
+        teamMembers: [],
       } as ReturnType<typeof apiModule.fetchProfile> extends Promise<infer T> ? T : never)
       const qc = makeQueryClient()
       const { result } = renderHook(() => useEditForm(), { wrapper: makeWrapper(qc) })

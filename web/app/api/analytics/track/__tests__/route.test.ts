@@ -97,4 +97,36 @@ describe("POST /api/analytics/track", () => {
       })
     )
   })
+
+  it("returns 'Outro' browser for unknown user-agent", async () => {
+    const res = await POST(makeReq({ slug: "test" }, { "user-agent": "SomeCustomApp/1.0" }))
+    expect(res.status).toBe(200)
+    expect(prismaMock.pageView.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          browser: "Outro",
+        }),
+      })
+    )
+  })
+
+  it("returns 'Outro' referrer for unknown referrer source", async () => {
+    const res = await POST(makeReq({ slug: "test", referrer: "https://some-random-site.xyz/page" }))
+    expect(res.status).toBe(200)
+    expect(prismaMock.pageView.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          referrer: "Outro",
+        }),
+      })
+    )
+  })
+
+  it("returns 500 when an unexpected error occurs", async () => {
+    prismaMock.profile.findFirst.mockRejectedValue(new Error("DB connection lost"))
+    const res = await POST(makeReq({ slug: "test" }))
+    expect(res.status).toBe(500)
+    const data = await res.json()
+    expect(data.ok).toBe(false)
+  })
 })

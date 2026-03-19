@@ -72,7 +72,7 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
     )
   }
 
-  const [areas, links, gallery, customSections] = await Promise.all([
+  const [areas, links, gallery, customSections, teamMembers] = await Promise.all([
     prisma.activityAreas.findMany({
       where: { profileId: profile.id },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
@@ -86,6 +86,10 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     }),
     prisma.customSection.findMany({
+      where: { profileId: profile.id },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+    }),
+    prisma.teamMember.findMany({
       where: { profileId: profile.id },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
     }),
@@ -138,6 +142,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           customSections={customSections as any}
           sectionIcons={profile.sectionIcons as Record<string, string> | undefined}
           sectionTitleHidden={profile.sectionTitleHidden as Record<string, boolean> | undefined}
+          teamMembers={teamMembers as any}
         />
       )}
       {theme === "classic" && (
@@ -155,6 +160,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           customSections={customSections as any}
           sectionIcons={profile.sectionIcons as Record<string, string> | undefined}
           sectionTitleHidden={profile.sectionTitleHidden as Record<string, boolean> | undefined}
+          teamMembers={teamMembers as any}
         />
       )}
       {theme === "corporate" && (
@@ -172,6 +178,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           customSections={customSections as any}
           sectionIcons={profile.sectionIcons as Record<string, string> | undefined}
           sectionTitleHidden={profile.sectionTitleHidden as Record<string, boolean> | undefined}
+          teamMembers={teamMembers as any}
         />
       )}
     </div>

@@ -3,6 +3,7 @@ export const DEFAULT_SECTION_ORDER = [
   "sobre",
   "galeria",
   "links",
+  "equipe",
   "calendly",
   "endereco",
 ] as const
@@ -27,6 +28,7 @@ export const DEFAULT_SECTION_LABELS: Record<BuiltInSectionKey, string> = {
   sobre: "Sobre",
   galeria: "Galeria",
   links: "Links",
+  equipe: "Equipe",
   calendly: "Agende uma conversa",
   endereco: "Endereço",
 }
@@ -36,6 +38,7 @@ export const DEFAULT_SECTION_ICONS: Record<BuiltInSectionKey, string> = {
   sobre: "HeartHandshake",
   galeria: "Images",
   links: "Link2",
+  equipe: "Users",
   calendly: "Calendar",
   endereco: "MapPin",
 }

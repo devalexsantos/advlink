@@ -10,6 +10,7 @@ type LinkItem = { id: string; title: string; description: string | null; url: st
 type Address = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
 type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string; videoUrl?: string | null; buttonConfig?: { url: string; label: string; bgColor: string; textColor: string; borderRadius: number; iconName?: string } | null }
+type TeamMember = { id: string; name: string; description: string | null; avatarUrl: string | null; phone: string | null; whatsapp: string | null; email: string | null }
 type Profile = {
   theme?: string | null
   primaryColor?: string | null
@@ -32,7 +33,7 @@ type Profile = {
 async function fetchProfile() {
   const res = await fetch("/api/profile", { cache: "no-store" })
   if (!res.ok) throw new Error("Falha ao carregar preview")
-  return res.json() as Promise<{ profile: Profile | null; areas: Area[]; address?: Address; links: LinkItem[]; gallery: GalleryItem[]; customSections: CustomSection[] }>
+  return res.json() as Promise<{ profile: Profile | null; areas: Area[]; address?: Address; links: LinkItem[]; gallery: GalleryItem[]; customSections: CustomSection[]; teamMembers: TeamMember[] }>
 }
 
 export default function Preview() {
@@ -57,13 +58,14 @@ export default function Preview() {
   const sectionIcons = profile.sectionIcons ?? undefined
   const sectionTitleHidden = profile.sectionTitleHidden ?? undefined
   const customSections = data?.customSections ?? []
+  const teamMembers = data?.teamMembers ?? []
   if (theme === "classic") {
-    return <Preview03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} />
+    return <Preview03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} />
   }
   if (theme === "corporate") {
-    return <Preview04 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} />
+    return <Preview04 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} />
   }
-  return <Preview02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} />
+  return <Preview02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} />
 }
 
 

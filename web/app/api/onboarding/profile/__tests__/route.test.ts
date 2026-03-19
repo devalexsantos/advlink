@@ -267,4 +267,50 @@ describe("POST /api/onboarding/profile", () => {
       })
     )
   })
+
+  it("defaults slug to 'user' when displayName is empty", async () => {
+    const req = new Request("http://localhost/api/onboarding/profile", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ displayName: "", email: "empty@test.com" }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    const updateArg = prismaMock.profile.update.mock.calls[0][0]
+    expect(updateArg.data.slug).toBe("user")
+  })
+
+  it("returns 500 with formatted error message from catch block (line 148)", async () => {
+    prismaMock.profile.update.mockRejectedValue({ message: "Unique constraint failed" })
+    const req = new Request("http://localhost/api/onboarding/profile", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ displayName: "Test", email: "test@test.com" }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(500)
+    const data = await res.json()
+    expect(data.error).toBe("Unique constraint failed")
+  })
+
+  it("handles multiple slug collision iterations (lines 71-91)", async () => {
+    // Three consecutive collisions, then success on the 4th attempt
+    prismaMock.profile.findFirst
+      .mockResolvedValueOnce({ id: "conflict-1" })
+      .mockResolvedValueOnce({ id: "conflict-2" })
+      .mockResolvedValueOnce({ id: "conflict-3" })
+      .mockResolvedValueOnce(null)
+    const req = new Request("http://localhost/api/onboarding/profile", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ displayName: "Popular Name", email: "popular@test.com" }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    expect(prismaMock.profile.findFirst).toHaveBeenCalledTimes(4)
+    const updateArg = prismaMock.profile.update.mock.calls[0][0]
+    // The final slug should contain a suffix (number + random chars)
+    expect(updateArg.data.slug).toContain("popular-name")
+    expect(updateArg.data.slug).not.toBe("popular-name")
+  })
 })

@@ -93,6 +93,73 @@ describe("PATCH /api/activity-areas", () => {
     const res = await PATCH(req)
     expect(res.status).toBe(200)
   })
+
+  it("updates area via multipart/form-data without cover", async () => {
+    prismaMock.activityAreas.findFirst.mockResolvedValue({ id: "a1", profileId: "profile-1", position: 1 })
+    prismaMock.activityAreas.update.mockResolvedValue({ id: "a1", title: "Updated" })
+    const form = new FormData()
+    form.append("id", "a1")
+    form.append("title", "Updated")
+    form.append("description", "Desc")
+    const req = new Request("http://localhost/api/activity-areas", { method: "PATCH", body: form })
+    const res = await PATCH(req)
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.area).toEqual({ id: "a1", title: "Updated" })
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+    expect(prismaMock.activityAreas.update).toHaveBeenCalledWith({
+      where: { id: "a1" },
+      data: { title: "Updated", description: "Desc", coverImageUrl: undefined },
+    })
+  })
+
+  it("updates area via multipart/form-data with cover File and uploads to S3", async () => {
+    prismaMock.activityAreas.findFirst.mockResolvedValue({ id: "a1", profileId: "profile-1", position: 1 })
+    prismaMock.activityAreas.update.mockResolvedValue({ id: "a1", title: "WithCover", coverImageUrl: "https://s3.test/cover.jpg" })
+    const file = new File([new Uint8Array([137, 80, 78, 71])], "cover.png", { type: "image/png" })
+    const form = new FormData()
+    form.append("id", "a1")
+    form.append("title", "WithCover")
+    form.append("description", "")
+    form.append("cover", file)
+    const req = new Request("http://localhost/api/activity-areas", { method: "PATCH", body: form })
+    const res = await PATCH(req)
+    expect(res.status).toBe(200)
+    expect(uploadToS3Mock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        contentType: "image/png",
+        cacheControl: "public, max-age=604800, immutable",
+      })
+    )
+    expect(prismaMock.activityAreas.update).toHaveBeenCalledWith({
+      where: { id: "a1" },
+      data: expect.objectContaining({ coverImageUrl: "https://s3.test/cover.jpg" }),
+    })
+  })
+
+  it("returns 404 via multipart/form-data when area not owned by user", async () => {
+    prismaMock.activityAreas.findFirst.mockResolvedValue(null)
+    const form = new FormData()
+    form.append("id", "not-owned")
+    form.append("title", "T")
+    const req = new Request("http://localhost/api/activity-areas", { method: "PATCH", body: form })
+    const res = await PATCH(req)
+    expect(res.status).toBe(404)
+    const json = await res.json()
+    expect(json.error).toBe("Not found")
+  })
+
+  it("returns 415 for unsupported content-type", async () => {
+    const req = new Request("http://localhost/api/activity-areas", {
+      method: "PATCH",
+      headers: { "content-type": "text/plain" },
+      body: "some text",
+    })
+    const res = await PATCH(req)
+    expect(res.status).toBe(415)
+    const json = await res.json()
+    expect(json.error).toBe("Unsupported content type")
+  })
 })
 
 describe("DELETE /api/activity-areas", () => {

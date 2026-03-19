@@ -1,4 +1,4 @@
-import type { Area, LinkItem, GalleryItem, CustomSectionItem, FetchProfileResponse } from "./types"
+import type { Area, LinkItem, GalleryItem, CustomSectionItem, TeamMemberItem, FetchProfileResponse } from "./types"
 
 export async function fetchProfile() {
   const res = await fetch("/api/profile", { cache: "no-store" })
@@ -115,5 +115,30 @@ export async function deleteCustomSection(id: string) {
     const data = await res.json().catch(() => null)
     throw new Error(data?.error || "Falha ao excluir seção")
   }
+  return res.json() as Promise<{ ok: boolean }>
+}
+
+export async function createTeamMember(formData: FormData) {
+  const res = await fetch("/api/team-members", { method: "POST", body: formData })
+  if (!res.ok) throw new Error("Falha ao criar membro")
+  return res.json() as Promise<{ member: TeamMemberItem }>
+}
+
+export async function patchTeamMember(id: string, formData: FormData) {
+  formData.set("id", id)
+  const res = await fetch("/api/team-members", { method: "PATCH", body: formData })
+  if (!res.ok) throw new Error("Falha ao salvar membro")
+  return res.json() as Promise<{ member: TeamMemberItem }>
+}
+
+export async function reorderTeamMembers(order: { id: string; position: number }[]) {
+  const res = await fetch("/api/team-members", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ order }) })
+  if (!res.ok) throw new Error("Falha ao reordenar equipe")
+  return res.json() as Promise<{ ok: boolean }>
+}
+
+export async function deleteTeamMember(id: string) {
+  const res = await fetch(`/api/team-members?id=${encodeURIComponent(id)}`, { method: "DELETE" })
+  if (!res.ok) throw new Error("Falha ao excluir membro")
   return res.json() as Promise<{ ok: boolean }>
 }

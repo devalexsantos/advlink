@@ -13,9 +13,9 @@ import {
 } from "@/lib/section-order"
 
 describe("DEFAULT_SECTION_ORDER", () => {
-  it("has 6 items in correct order", () => {
+  it("has 7 items in correct order", () => {
     expect(DEFAULT_SECTION_ORDER).toEqual([
-      "servicos", "sobre", "galeria", "links", "calendly", "endereco",
+      "servicos", "sobre", "galeria", "links", "equipe", "calendly", "endereco",
     ])
   })
 })

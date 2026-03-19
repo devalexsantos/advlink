@@ -24,6 +24,10 @@ import {
   createCustomSection,
   patchCustomSection,
   deleteCustomSection,
+  createTeamMember,
+  patchTeamMember,
+  reorderTeamMembers,
+  deleteTeamMember,
 } from "@/app/profile/edit/api"
 
 function makeOkResponse(body: unknown) {
@@ -430,6 +434,96 @@ describe("api.ts", () => {
         json: async () => ({ error: "Não autorizado" }),
       })
       await expect(deleteCustomSection("cs1")).rejects.toThrow("Não autorizado")
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // createTeamMember
+  // ---------------------------------------------------------------------------
+
+  describe("createTeamMember", () => {
+    it("POSTs to /api/team-members with FormData", async () => {
+      const member = { id: "tm1", name: "Dr. Ana", role: "Advogada" }
+      mockFetch.mockResolvedValueOnce(makeOkResponse({ member }))
+      const fd = new FormData()
+      fd.set("name", "Dr. Ana")
+      fd.set("role", "Advogada")
+      const result = await createTeamMember(fd)
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit]
+      expect(url).toBe("/api/team-members")
+      expect(init.method).toBe("POST")
+      expect(init.body).toBe(fd)
+      expect(result).toEqual({ member })
+    })
+
+    it("throws when response is not ok", async () => {
+      mockFetch.mockResolvedValueOnce(makeErrorResponse())
+      await expect(createTeamMember(new FormData())).rejects.toThrow("Falha ao criar membro")
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // patchTeamMember
+  // ---------------------------------------------------------------------------
+
+  describe("patchTeamMember", () => {
+    it("sets id on FormData and PATCHes /api/team-members", async () => {
+      const member = { id: "tm1", name: "Dr. Ana Updated", role: "Sócia" }
+      mockFetch.mockResolvedValueOnce(makeOkResponse({ member }))
+      const fd = new FormData()
+      fd.set("name", "Dr. Ana Updated")
+      await patchTeamMember("tm1", fd)
+      expect(fd.get("id")).toBe("tm1")
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit]
+      expect(url).toBe("/api/team-members")
+      expect(init.method).toBe("PATCH")
+      expect(init.body).toBe(fd)
+    })
+
+    it("throws when response is not ok", async () => {
+      mockFetch.mockResolvedValueOnce(makeErrorResponse())
+      await expect(patchTeamMember("tm1", new FormData())).rejects.toThrow("Falha ao salvar membro")
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // reorderTeamMembers
+  // ---------------------------------------------------------------------------
+
+  describe("reorderTeamMembers", () => {
+    it("PATCHes /api/team-members with JSON order array", async () => {
+      mockFetch.mockResolvedValueOnce(makeOkResponse({ ok: true }))
+      const order = [{ id: "tm1", position: 0 }, { id: "tm2", position: 1 }]
+      await reorderTeamMembers(order)
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit]
+      expect(url).toBe("/api/team-members")
+      expect(init.method).toBe("PATCH")
+      expect(init.headers).toMatchObject({ "Content-Type": "application/json" })
+      expect(JSON.parse(init.body as string)).toEqual({ order })
+    })
+
+    it("throws when response is not ok", async () => {
+      mockFetch.mockResolvedValueOnce(makeErrorResponse())
+      await expect(reorderTeamMembers([])).rejects.toThrow("Falha ao reordenar equipe")
+    })
+  })
+
+  // ---------------------------------------------------------------------------
+  // deleteTeamMember
+  // ---------------------------------------------------------------------------
+
+  describe("deleteTeamMember", () => {
+    it("DELETEs /api/team-members?id=<id>", async () => {
+      mockFetch.mockResolvedValueOnce(makeOkResponse({ ok: true }))
+      await deleteTeamMember("tm1")
+      const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit]
+      expect(url).toBe("/api/team-members?id=tm1")
+      expect(init.method).toBe("DELETE")
+    })
+
+    it("throws when response is not ok", async () => {
+      mockFetch.mockResolvedValueOnce(makeErrorResponse())
+      await expect(deleteTeamMember("tm1")).rejects.toThrow("Falha ao excluir membro")
     })
   })
 })

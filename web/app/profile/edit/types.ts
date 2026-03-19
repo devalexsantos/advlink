@@ -93,6 +93,17 @@ export type ButtonConfig = {
   iconName?: string
 }
 
+export type TeamMemberItem = {
+  id: string
+  name: string
+  description: string | null
+  avatarUrl: string | null
+  phone: string | null
+  whatsapp: string | null
+  email: string | null
+  position?: number
+}
+
 export type CustomSectionItem = {
   id: string
   title: string
@@ -140,5 +151,6 @@ export type FetchProfileResponse = {
   links: LinkItem[]
   gallery: GalleryItem[]
   customSections: CustomSectionItem[]
+  teamMembers: TeamMemberItem[]
   profileId?: string
 }

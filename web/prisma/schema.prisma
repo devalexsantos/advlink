@@ -112,6 +112,7 @@ model Profile {
   gallery        Gallery[]
   address        Address?
   customSections CustomSection[]
+  teamMembers    TeamMember[]
 
   @@index([userId])
 }
@@ -269,6 +270,23 @@ model AuditLog {
   @@index([adminUserId])
   @@index([entityType, entityId])
   @@index([createdAt])
+}
+
+model TeamMember {
+  id          String   @id @default(cuid())
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  avatarUrl   String?
+  phone       String?
+  whatsapp    String?
+  email       String?
+  position    Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([profileId, position])
 }
 
 model CustomSection {

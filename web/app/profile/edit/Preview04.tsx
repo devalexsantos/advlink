@@ -25,6 +25,7 @@ type Profile = {
 }
 
 type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string; videoUrl?: string | null; buttonConfig?: { url: string; label: string; bgColor: string; textColor: string; borderRadius: number; iconName?: string } | null }
+type TeamMember = { id: string; name: string; description: string | null; avatarUrl: string | null; phone: string | null; whatsapp: string | null; email: string | null }
 type Props = {
   profile: Profile
   areas: Area[]
@@ -36,9 +37,10 @@ type Props = {
   customSections?: CustomSection[]
   sectionIcons?: Record<string, string> | null
   sectionTitleHidden?: Record<string, boolean> | null
+  teamMembers?: TeamMember[]
 }
 
-export default function Preview04({ profile, areas, address, links = [], gallery = [], sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden }: Props) {
+export default function Preview04({ profile, areas, address, links = [], gallery = [], sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [] }: Props) {
   const [mode, setMode] = useState<"desktop" | "mobile">("desktop")
   const containerStyle = useMemo(
     () => ({
@@ -66,7 +68,7 @@ export default function Preview04({ profile, areas, address, links = [], gallery
 
       <div className={`rounded-xl border border-zinc-800 bg-zinc-900/30 ${mode === "mobile" ? "[&_.min-w-0]:!basis-full [&_.shrink-0]:!basis-full" : ""}`} style={containerStyle}>
         <div className="relative">
-          <Theme04 profile={profile} areas={areas} address={address} links={links} gallery={gallery} primary={primary} text={text} secondary={secondary} constrainToContainer forceMobile={mode === "mobile"} sectionOrder={sectionOrder ?? undefined} sectionLabels={sectionLabels ?? undefined} customSections={customSections} sectionIcons={sectionIcons ?? undefined} sectionTitleHidden={sectionTitleHidden ?? undefined} />
+          <Theme04 profile={profile} areas={areas} address={address} links={links} gallery={gallery} primary={primary} text={text} secondary={secondary} constrainToContainer forceMobile={mode === "mobile"} sectionOrder={sectionOrder ?? undefined} sectionLabels={sectionLabels ?? undefined} customSections={customSections} sectionIcons={sectionIcons ?? undefined} sectionTitleHidden={sectionTitleHidden ?? undefined} teamMembers={teamMembers} />
         </div>
       </div>
     </div>

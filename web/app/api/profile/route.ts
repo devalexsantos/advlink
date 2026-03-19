@@ -15,15 +15,16 @@ export async function GET() {
   if (!resolvedProfileId) return NextResponse.json({ error: "No site found" }, { status: 404 })
   const profileId: string = resolvedProfileId
 
-  const [profile, areas, address, links, gallery, customSections] = await Promise.all([
+  const [profile, areas, address, links, gallery, customSections, teamMembers] = await Promise.all([
     prisma.profile.findUnique({ where: { id: profileId } }),
     prisma.activityAreas.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     prisma.address.findUnique({ where: { profileId } }),
     prisma.links.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     prisma.gallery.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     prisma.customSection.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+    prisma.teamMember.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
   ])
-  return NextResponse.json({ profile, areas, address, links, gallery, customSections, profileId })
+  return NextResponse.json({ profile, areas, address, links, gallery, customSections, teamMembers, profileId })
 }
 
 export async function PATCH(req: Request) {

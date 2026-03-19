@@ -82,4 +82,38 @@ describe("POST /api/stripe/cancel-subscription", () => {
     expect(res.status).toBe(200)
     expect(stripeMock.subscriptions.update).toHaveBeenCalledWith("sub_trial", { cancel_at_period_end: true })
   })
+
+  it("handles empty body gracefully and still cancels", async () => {
+    sessionMock.mockResolvedValue({ user: { id: "u1", email: "a@b.com" } })
+    prismaMock.user.findUnique.mockResolvedValue({ stripeCustomerId: "cus_1", email: "a@b.com" })
+    stripeMock.subscriptions.list.mockResolvedValue({ data: [{ id: "sub_1", status: "active" }] })
+    stripeMock.subscriptions.update.mockResolvedValue({})
+
+    // Send a request with no body at all (empty string)
+    const req = new Request("http://localhost", { method: "POST" })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(stripeMock.subscriptions.update).toHaveBeenCalledWith("sub_1", { cancel_at_period_end: true })
+  })
+
+  it("handles malformed JSON body and still cancels", async () => {
+    sessionMock.mockResolvedValue({ user: { id: "u1", email: "a@b.com" } })
+    prismaMock.user.findUnique.mockResolvedValue({ stripeCustomerId: "cus_1", email: "a@b.com" })
+    stripeMock.subscriptions.list.mockResolvedValue({ data: [{ id: "sub_2", status: "active" }] })
+    stripeMock.subscriptions.update.mockResolvedValue({})
+
+    // Send a request with invalid JSON body
+    const req = new Request("http://localhost", {
+      method: "POST",
+      body: "not-valid-json{{{",
+      headers: { "content-type": "application/json" },
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    const json = await res.json()
+    expect(json.ok).toBe(true)
+    expect(stripeMock.subscriptions.update).toHaveBeenCalledWith("sub_2", { cancel_at_period_end: true })
+  })
 })
