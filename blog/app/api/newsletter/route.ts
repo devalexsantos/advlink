@@ -2,13 +2,20 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
-const DATA_FILE = path.join(process.cwd(), "data", "newsletter.json");
+const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_FILE = path.join(DATA_DIR, "newsletter.json");
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 interface Subscriber {
   email: string;
   subscribedAt: string;
+}
+
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) {
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+  }
 }
 
 function readSubscribers(): Subscriber[] {
@@ -21,6 +28,7 @@ function readSubscribers(): Subscriber[] {
 }
 
 function writeSubscribers(subscribers: Subscriber[]) {
+  ensureDataDir();
   fs.writeFileSync(DATA_FILE, JSON.stringify(subscribers, null, 2), "utf-8");
 }
 
