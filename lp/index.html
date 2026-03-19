@@ -40,6 +40,22 @@
 
   <!-- Styles -->
   <link rel="stylesheet" href="css/main.css?v=2">
+  <style>
+    .brush-underline {
+      position: relative;
+      white-space: nowrap;
+    }
+    .brush-underline::after {
+      content: "";
+      position: absolute;
+      left: -1%;
+      right: -1%;
+      bottom: -.08em;
+      height: .22em;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 400 12' preserveAspectRatio='none'%3E%3Cpath d='M3 7 C60 6, 120 5.5, 200 6 S340 6.5, 397 6' fill='none' stroke='%23e6b422' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E") no-repeat center;
+      background-size: 100% 100%;
+    }
+  </style>
 
   <!-- Schema.org -->
   <script type="application/ld+json">
@@ -81,6 +97,7 @@
         <a href="#como-funciona" class="navbar__link">Como funciona</a>
         <a href="#preco" class="navbar__link">Preço</a>
         <a href="#faq" class="navbar__link">FAQ</a>
+        <a href="#blog" class="navbar__link">Blog</a>
         <a href="https://app.advlink.site" class="navbar__login">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
           Entrar
@@ -108,6 +125,7 @@
       <a href="#como-funciona" class="drawer__link">Como funciona</a>
       <a href="#preco" class="drawer__link">Preço</a>
       <a href="#faq" class="drawer__link">FAQ</a>
+      <a href="#blog" class="drawer__link">Blog</a>
     </nav>
     <a href="https://app.advlink.site" class="drawer__login">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
@@ -123,11 +141,11 @@
       <div class="container hero__inner">
         <div class="hero__content" data-animate>
           <span class="hero__badge">FORTALEÇA SUA PRESENÇA ONLINE</span>
-          <h1 class="hero__title">Seu site jurídico profissional, pronto em minutos</h1>
-          <p class="hero__subtitle">Crie seu site <strong>jurídico profissional</strong> em minutos e comece a captar clientes online. <strong>Sem programação. Sem complicação.</strong></p>
+          <h1 class="hero__title">Pare de perder clientes por não ter <span class="brush-underline">presença online</span></h1>
+          <p class="hero__subtitle">Crie um <strong>site jurídico profissional</strong> em minutos e seja encontrado por quem está <strong>procurando um advogado</strong> agora.</p>
           <div class="hero__actions">
             <a href="https://app.advlink.site" class="btn btn--primary btn--lg">Criar site agora</a>
-            <a href="#como-funciona" class="btn btn--outline btn--lg">Veja como funciona</a>
+            <a href="#por-dentro" class="btn btn--outline btn--lg"><svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="flex-shrink:0;"><polygon points="5,3 19,12 5,21"/></svg> Vídeo demonstrativo</a>
           </div>
           <p class="hero__note">Pronto em minutos. Sem programação.</p>
         </div>
@@ -1099,6 +1117,62 @@
       </div>
     </section>
 
+    <!-- ========== BLOG ========== -->
+    <section class="blog" id="blog">
+      <div class="container">
+        <div class="section-header" data-animate>
+          <span class="section-label">Blog</span>
+          <h2 class="section-title">Dicas para conquistar mais clientes</h2>
+          <p class="section-subtitle">Conteúdo prático sobre marketing jurídico, presença digital e captação de clientes para advogados.</p>
+        </div>
+
+        <div class="blog__grid" data-animate-stagger>
+          <a href="https://blog.advlink.site/blog/como-conseguir-clientes-advocacia" target="_blank" rel="noopener" class="blog-card">
+            <img src="https://blog.advlink.site/images/como-conseguir-clientes-advocacia.png" alt="Como conseguir clientes na advocacia" class="blog-card__thumb" loading="lazy">
+            <div class="blog-card__body">
+              <span class="blog-card__tag">Marketing Jurídico</span>
+              <h3 class="blog-card__title">Como Conseguir Clientes na Advocacia</h3>
+              <p class="blog-card__desc">Estratégias práticas e éticas para advogados que querem atrair mais clientes e construir uma carteira sólida.</p>
+              <div class="blog-card__footer">
+                <span class="blog-card__date">15 Mar 2026</span>
+                <span class="blog-card__link">Ler artigo →</span>
+              </div>
+            </div>
+          </a>
+
+          <a href="https://blog.advlink.site/blog/advogado-precisa-ter-site" target="_blank" rel="noopener" class="blog-card">
+            <img src="https://blog.advlink.site/images/advogado-precisa-ter-site.png" alt="Advogado precisa ter site?" class="blog-card__thumb" loading="lazy">
+            <div class="blog-card__body">
+              <span class="blog-card__tag">Presença Digital</span>
+              <h3 class="blog-card__title">Advogado Precisa Ter Site?</h3>
+              <p class="blog-card__desc">Descubra por que ter um site profissional é essencial para advogados que querem se destacar no mercado atual.</p>
+              <div class="blog-card__footer">
+                <span class="blog-card__date">12 Mar 2026</span>
+                <span class="blog-card__link">Ler artigo →</span>
+              </div>
+            </div>
+          </a>
+
+          <a href="https://blog.advlink.site/blog/como-aparecer-no-google-advogado" target="_blank" rel="noopener" class="blog-card">
+            <img src="https://blog.advlink.site/images/como-aparecer-no-google-advogado.png" alt="Como aparecer no Google sendo advogado" class="blog-card__thumb" loading="lazy">
+            <div class="blog-card__body">
+              <span class="blog-card__tag">SEO</span>
+              <h3 class="blog-card__title">Como Aparecer no Google Sendo Advogado</h3>
+              <p class="blog-card__desc">Guia completo de SEO para advogados: como otimizar seu site e aparecer nas primeiras posições do Google.</p>
+              <div class="blog-card__footer">
+                <span class="blog-card__date">10 Mar 2026</span>
+                <span class="blog-card__link">Ler artigo →</span>
+              </div>
+            </div>
+          </a>
+        </div>
+
+        <div class="blog__cta" data-animate>
+          <a href="https://blog.advlink.site" target="_blank" rel="noopener" class="btn btn--outline btn--lg">Ver todos os posts</a>
+        </div>
+      </div>
+    </section>
+
     <!-- ========== CTA FINAL ========== -->
     <section class="cta-final" id="comece">
       <div class="container">
@@ -1133,6 +1207,7 @@
           <a href="/politica-de-privacidade" class="footer__link">Política de Privacidade</a>
           <a href="/politica-de-cookies" class="footer__link">Política de Cookies</a>
           <a href="https://app.advlink.site" class="footer__link" target="_blank" rel="noopener">Acessar plataforma</a>
+          <a href="https://blog.advlink.site" class="footer__link" target="_blank" rel="noopener">Blog</a>
         </div>
         <div class="footer__col">
           <h4 class="footer__heading">Contato</h4>
