@@ -1184,6 +1184,24 @@ describe("EditFormContext", () => {
       await waitForDom(() => expect(mockShowToast).toHaveBeenCalledWith("Salvo com sucesso!"))
     })
 
+    it("shows the error in a toast and not 'Salvo com sucesso!' when saving fails", async () => {
+      vi.mocked(apiModule.updateProfile).mockRejectedValue(new Error("calendlyUrl inválida. Use https://calendly.com/..."))
+
+      renderWithProvider()
+
+      await waitForDom(() => expect(apiModule.fetchProfile).toHaveBeenCalled())
+
+      const input = screen.getByRole("textbox")
+      fireEvent.change(input, { target: { value: "Dr. Render Test" } })
+
+      await userEvent.click(screen.getByRole("button", { name: /salvar/i }))
+
+      await waitForDom(() =>
+        expect(mockShowToast).toHaveBeenCalledWith("calendlyUrl inválida. Use https://calendly.com/...", 6000)
+      )
+      expect(mockShowToast).not.toHaveBeenCalledWith("Salvo com sucesso!")
+    })
+
     it("calls showToast with validation error when publicName is too short", async () => {
       // Use a fresh fetchProfile that returns a profile with a short publicName
       vi.mocked(apiModule.fetchProfile).mockResolvedValue({

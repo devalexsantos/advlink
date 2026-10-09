@@ -9,6 +9,7 @@ vi.stubGlobal("fetch", mockFetch)
 import {
   fetchProfile,
   updateProfile,
+  ensureOk,
   createArea,
   patchArea,
   reorderAreas,
@@ -525,5 +526,41 @@ describe("api.ts", () => {
       mockFetch.mockResolvedValueOnce(makeErrorResponse())
       await expect(deleteTeamMember("tm1")).rejects.toThrow("Falha ao excluir membro")
     })
+  })
+})
+
+describe("ensureOk", () => {
+  function res(status: number, body?: unknown) {
+    return {
+      ok: status >= 200 && status < 300,
+      status,
+      json: () => (body === undefined ? Promise.reject(new Error("no body")) : Promise.resolve(body)),
+    } as unknown as Response
+  }
+
+  it("resolves for ok responses", async () => {
+    await expect(ensureOk(res(200, {}), "fallback")).resolves.toBeUndefined()
+  })
+
+  it("uses the API error message for 4xx", async () => {
+    await expect(ensureOk(res(400, { error: "calendlyUrl inválida" }), "fallback")).rejects.toThrow("calendlyUrl inválida")
+  })
+
+  it("uses the fallback for 5xx even when the body has a technical error", async () => {
+    await expect(ensureOk(res(500, { error: "PrismaClientKnownRequestError" }), "Falha ao salvar perfil")).rejects.toThrow(
+      /^Falha ao salvar perfil$/
+    )
+  })
+
+  it("explains 413 as a file size problem", async () => {
+    await expect(ensureOk(res(413), "fallback")).rejects.toThrow(/muito grande/)
+  })
+
+  it("asks to log in again on 401", async () => {
+    await expect(ensureOk(res(401, { error: "Unauthorized" }), "fallback")).rejects.toThrow(/sessão expirou/)
+  })
+
+  it("uses the fallback when a 4xx body is not JSON", async () => {
+    await expect(ensureOk(res(400), "fallback")).rejects.toThrow("fallback")
   })
 })

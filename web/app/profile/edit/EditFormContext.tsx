@@ -410,6 +410,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
       showToast("Tema atualizado!")
     },
+    onError: () => showToast("Não foi possível trocar o tema. Tente novamente."),
   })
 
   const updateSectionConfigMutation = useMutation({
@@ -620,7 +621,12 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     if (coverFile) fd.set("cover", coverFile)
     fd.set("publicPhoneIsFixed", String(publicPhoneIsFixed))
     fd.set("whatsappIsFixed", String(whatsappIsFixed))
-    await saveProfileMutation.mutateAsync(fd)
+    try {
+      await saveProfileMutation.mutateAsync(fd)
+    } catch (err) {
+      showToast(err instanceof Error && err.message ? err.message : "Não foi possível salvar. Tente novamente.", 6000)
+      return
+    }
     // Commit current values as new defaults so RHF state stays in sync
     form.reset(form.getValues())
     showToast("Salvo com sucesso!")
