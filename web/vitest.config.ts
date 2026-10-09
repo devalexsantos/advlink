@@ -13,7 +13,21 @@ export default defineConfig({
     environment: "jsdom",
     globals: true,
     setupFiles: ["./test/setup.ts"],
-    include: ["**/__tests__/**/*.test.{ts,tsx}", "**/*.test.{ts,tsx}"],
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          include: ["**/__tests__/**/*.test.{ts,tsx}", "**/*.test.{ts,tsx}"],
+          exclude: ["**/node_modules/**", "**/*.db.test.ts"],
+        },
+      },
+      {
+        // Integration tests that share one real Postgres (DATABASE_URL_TEST): one file at a time
+        extends: true,
+        test: { name: "db", include: ["**/*.db.test.ts"], exclude: ["**/node_modules/**"], fileParallelism: false },
+      },
+    ],
     coverage: {
       provider: "v8",
       include: [

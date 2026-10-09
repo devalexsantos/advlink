@@ -53,6 +53,11 @@ export class FakeAsaas implements AsaasApi {
     this.calls.push(`deleteSubscription:${id}`)
   }
 
+  async listPaymentsByReference(externalReference: string) {
+    this.calls.push(`listPaymentsByReference:${externalReference}`)
+    return Object.values(this.payments).filter((p) => p.externalReference === externalReference)
+  }
+
   /** Customer pays through the link: creates subscription + first charge with the given status. */
   simulatePayment(linkId: string, opts: { status: string; dueDate: string; billingType?: string }) {
     const link = this.links[linkId]

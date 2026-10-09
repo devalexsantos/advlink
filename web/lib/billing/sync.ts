@@ -96,6 +96,16 @@ export async function syncPayment(deps: BillingDeps, paymentId: string): Promise
   return profileId
 }
 
+/**
+ * Pulls the site's payments straight from Asaas (by externalReference) and recomputes. Lets the return
+ * from the checkout confirm the payment without waiting for the webhook (BIL-3).
+ */
+export async function reconcileProfile(deps: BillingDeps, profileId: string): Promise<BillingStatus | null> {
+  const payments = await deps.asaas.listPaymentsByReference(profileId)
+  for (const p of payments) await syncPayment(deps, p.id)
+  return recomputeProfile(deps, profileId)
+}
+
 export async function syncSubscription(deps: BillingDeps, subscriptionId: string): Promise<string | null> {
   const s = await deps.asaas.getSubscription(subscriptionId)
   const profileId = await profileForReference(s.externalReference)

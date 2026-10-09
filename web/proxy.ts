@@ -112,9 +112,13 @@ function isUnsafeMethod(method: string) {
   return !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase())
 }
 
-// Server-to-server callers (signed webhooks) and NextAuth (has its own CSRF token).
+// Server-to-server callers (token-authenticated webhooks) and NextAuth (has its own CSRF token).
 function isCsrfExempt(pathname: string) {
-  return pathname.startsWith("/api/stripe/webhook") || pathname.startsWith("/api/auth/")
+  return (
+    pathname.startsWith("/api/webhooks/") ||
+    pathname.startsWith("/api/stripe/webhook") ||
+    pathname.startsWith("/api/auth/")
+  )
 }
 
 function isSameOriginRequest(req: NextRequest) {

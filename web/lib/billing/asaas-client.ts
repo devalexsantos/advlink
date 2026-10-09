@@ -45,6 +45,8 @@ export interface AsaasApi {
   getPayment(id: string): Promise<AsaasPayment>
   getSubscription(id: string): Promise<AsaasSubscription>
   deleteSubscription(id: string): Promise<void>
+  /** Payments created for a site (externalReference = profileId), newest first. */
+  listPaymentsByReference(externalReference: string): Promise<AsaasPayment[]>
 }
 
 export class AsaasError extends Error {
@@ -121,6 +123,14 @@ export class HttpAsaas implements AsaasApi {
 
   async deleteSubscription(id: string) {
     await this.request("DELETE", `/subscriptions/${encodeURIComponent(id)}`)
+  }
+
+  async listPaymentsByReference(externalReference: string) {
+    const r = await this.request<{ data: AsaasPayment[] }>(
+      "GET",
+      `/payments?externalReference=${encodeURIComponent(externalReference)}&limit=20`
+    )
+    return r.data ?? []
   }
 }
 
