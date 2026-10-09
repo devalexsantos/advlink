@@ -1,19 +1,15 @@
 "use client"
 
-import { useState } from "react"
-import { CheckCircle2, ExternalLink, X } from "lucide-react"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Button } from "@/components/ui/button"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
-import { getProfileUrl, getRootDomain } from "@/lib/site-url"
+import { CheckCircle2, ExternalLink } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { getProfileUrl } from "@/lib/site-url"
+import ChangeSlugButton from "./ChangeSlugButton"
 
 type Props = {
   slug?: string | null
 }
 
 export default function PublishedCTA({ slug }: Props) {
-  const qc = useQueryClient()
   const { data } = useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
@@ -26,47 +22,6 @@ export default function PublishedCTA({ slug }: Props) {
   const effectiveSlug = data?.profile?.slug ?? slug ?? ""
   const hasSlug = effectiveSlug.trim().length > 0
   const href = hasSlug ? getProfileUrl(effectiveSlug).replace(/\/$/, "") : undefined
-
-  const [open, setOpen] = useState(false)
-  const [slugInput, setSlugInput] = useState<string>("")
-  const [initialSlug, setInitialSlug] = useState<string>("")
-  const [slugValid, setSlugValid] = useState<boolean | null>(null)
-  const [slugChecking, setSlugChecking] = useState<boolean>(false)
-
-  const [slugError, setSlugError] = useState<string | null>(null)
-
-  async function validateSlug(slugToCheck: string) {
-    const res = await fetch("/api/profile/validate-slug", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ slug: slugToCheck })
-    })
-    if (!res.ok) throw new Error("Slug inválido")
-    return res.json() as Promise<{ valid: boolean; slug: string; error?: string }>
-  }
-
-  const saveSlugMutation = useMutation({
-    mutationFn: async (nextSlug: string) => {
-      const res = await fetch("/api/profile", {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: nextSlug })
-      })
-      if (!res.ok) throw new Error("Falha ao salvar")
-      return res.json() as Promise<{ profile?: { slug?: string | null } }>
-    },
-    onSuccess: async (res) => {
-      qc.setQueryData(["profile"], (old: unknown) => {
-        const next = (res as { profile?: Record<string, unknown> } | null) || null
-        if (!old) return next
-        const oldObj = old as { profile?: Record<string, unknown> }
-        return { ...oldObj, profile: { ...(oldObj.profile || {}), ...(next?.profile || {}) } }
-      })
-      await qc.invalidateQueries({ queryKey: ["profile"], exact: false })
-      await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
-      setOpen(false)
-    }
-  })
 
   return (
     <>
@@ -93,104 +48,16 @@ export default function PublishedCTA({ slug }: Props) {
                 </>
               ) : (
                 <>
-                  Defina um link público (slug) na seção de Estilo para divulgar sua página.
+                  Defina o link público da sua página para divulgá-la.
                 </>
               )}
               {" "}
-              <Button
-                type="button"
-                size="sm"
-                className="ml-2 cursor-pointer mt-2 md:mt-0 border border-purple-400 bg-purple-600 text-white hover:bg-purple-500"
-                onClick={() => {
-                  setSlugInput(effectiveSlug)
-                  setInitialSlug(effectiveSlug)
-                  setSlugValid(null)
-                  setOpen(true)
-                }}
-              >
-                Alterar link
-              </Button>
+              <ChangeSlugButton effectiveSlug={effectiveSlug} />
             </p>
           </div>
         </div>
       </div>
 
-      <Dialog open={open} onOpenChange={(v) => setOpen(v)}>
-        <DialogContent className="w-full max-w-xl">
-          <DialogHeader>
-            <DialogTitle className="text-foreground">Alterar meu link</DialogTitle>
-          </DialogHeader>
-          <button
-            type="button"
-            onClick={() => setOpen(false)}
-            aria-label="Fechar modal"
-            className="cursor-pointer absolute right-3 top-3 z-20 rounded-full bg-zinc-50 text-foreground p-2 shadow-md border border-border hover:bg-zinc-100"
-          >
-            <X className="w-4 h-4" />
-          </button>
-
-          <div className="space-y-3 text-foreground">
-            <div>
-              <Label htmlFor="slug" className="mb-2 block font-bold">Link público</Label>
-              <div className="flex flex-col md:flex-row items-center gap-2">
-                <div className="flex w-full items-center overflow-hidden rounded-md border border-border bg-card">
-                  <input
-                    id="slug"
-                    value={slugInput}
-                    onChange={(e) => { setSlugInput(e.target.value); setSlugValid(null); setSlugError(null) }}
-                    placeholder="seu-link"
-                    className="flex-1 bg-transparent text-sm text-foreground outline-none px-3 py-2"
-                  />
-                  <span className="pl-1 pr-3 py-2 text-sm text-foreground font-bold whitespace-nowrap select-none">.{getRootDomain()}</span>
-                </div>
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="w-full md:w-auto cursor-pointer"
-                  disabled={slugChecking || slugInput.trim().length === 0 || slugInput === initialSlug}
-                  onClick={async () => {
-                    setSlugChecking(true)
-                    setSlugError(null)
-                    try {
-                      const res = await validateSlug(slugInput)
-                      setSlugInput(res.slug)
-                      setSlugValid(Boolean(res.valid))
-                      if (!res.valid && res.error === "reserved") {
-                        setSlugError("reserved")
-                      }
-                      if (res.valid) {
-                      }
-                    } finally {
-                      setSlugChecking(false)
-                    }
-                  }}
-                >
-                  {slugChecking ? "Verificando..." : "Validar"}
-                </Button>
-              </div>
-              {slugValid === false && slugError === "reserved" && (<p className="mt-1 text-sm text-red-400">Este link é reservado pelo sistema. Escolha outro.</p>)}
-              {slugValid === false && slugError !== "reserved" && (<p className="mt-1 text-sm text-red-400">Este slug já existe. Escolha outro.</p>)}
-              {slugValid === true && (<p className="mt-1 text-sm text-green-700">Link disponível! Salve para aplicar.</p>)}
-            </div>
-          </div>
-
-          <DialogFooter className="mt-4">
-            <Button
-              type="button"
-              className="w-full cursor-pointer"
-              onClick={async () => {
-                const next = (slugInput || "").trim()
-                if (!next) return
-                if (next !== initialSlug && slugValid !== true) return
-                await saveSlugMutation.mutateAsync(next)
-              }}
-              disabled={saveSlugMutation.isPending || (slugInput.trim().length === 0) || (slugInput !== initialSlug && slugValid !== true)}
-            >
-              {saveSlugMutation.isPending ? "Salvando..." : slugValid === true ? "Salvar" : "Valide antes de continuar"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

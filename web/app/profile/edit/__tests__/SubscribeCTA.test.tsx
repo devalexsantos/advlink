@@ -1,5 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { render, screen } from "@testing-library/react"
+import { screen } from "@testing-library/react"
+import { renderWithProviders as render } from "@/test/test-utils"
+
+const { fetchProfileMock } = vi.hoisted(() => ({ fetchProfileMock: vi.fn() }))
+vi.mock("@/app/profile/edit/api", () => ({ fetchProfile: fetchProfileMock }))
+vi.mock("@/app/profile/edit/ChangeSlugButton", () => ({
+  default: ({ effectiveSlug }: { effectiveSlug: string }) => <button type="button">Alterar link ({effectiveSlug})</button>,
+}))
 import userEvent from "@testing-library/user-event"
 
 vi.mock("@/components/ui/button", () => ({
@@ -14,6 +21,20 @@ describe("SubscribeCTA", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.restoreAllMocks()
+    fetchProfileMock.mockResolvedValue({ profile: { slug: "joao-silva-1-x7k" } })
+  })
+
+  it("shows the future public address and lets the user change it before paying", async () => {
+    render(<SubscribeCTA />)
+    expect(await screen.findByText("joao-silva-1-x7k.advlink.site")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Alterar link (joao-silva-1-x7k)" })).toBeInTheDocument()
+  })
+
+  it("hides the address line when there is no slug yet", async () => {
+    fetchProfileMock.mockResolvedValue({ profile: { slug: null } })
+    render(<SubscribeCTA />)
+    await screen.findByText("Sua página ainda não está publicada.")
+    expect(screen.queryByText(/seu endereço será/i)).not.toBeInTheDocument()
   })
 
   it("renders the unpublished warning message", () => {

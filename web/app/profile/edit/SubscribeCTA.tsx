@@ -3,9 +3,15 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { AlertTriangle, Rocket } from "lucide-react"
+import { useQuery } from "@tanstack/react-query"
+import { getProfileHost } from "@/lib/site-url"
+import { fetchProfile } from "./api"
+import ChangeSlugButton from "./ChangeSlugButton"
 
 export default function SubscribeCTA() {
   const [loading, setLoading] = useState(false)
+  const { data } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile })
+  const slug = data?.profile?.slug ?? ""
 
   async function startCheckout() {
     try {
@@ -26,9 +32,21 @@ export default function SubscribeCTA() {
           <div className="mt-0.5">
             <AlertTriangle className="w-6 h-6 text-amber-400" />
           </div>
-          <p className="text-sm md:text-base text-amber-800">
-            <span className="font-semibold text-amber-700">Sua página ainda não está publicada.</span>
-          </p>
+          <div className="text-sm md:text-base text-amber-800">
+            <p>
+              <span className="font-semibold text-amber-700">Sua página ainda não está publicada.</span>
+            </p>
+            {slug && (
+              <p className="mt-1">
+                Seu endereço será <strong className="break-all">{getProfileHost(slug)}</strong>
+                <ChangeSlugButton
+                  effectiveSlug={slug}
+                  label="Alterar link"
+                  className="ml-2 h-auto px-1 py-0 cursor-pointer text-amber-900 underline underline-offset-4 bg-transparent hover:bg-transparent shadow-none"
+                />
+              </p>
+            )}
+          </div>
         </div>
 
         <div className="shrink-0 w-full md:w-auto">
