@@ -22,7 +22,18 @@ export async function GET(req: Request) {
   const [sites, total] = await Promise.all([
     prisma.profile.findMany({
       where,
-      include: {
+      select: {
+        id: true,
+        slug: true,
+        publicName: true,
+        name: true,
+        isActive: true,
+        theme: true,
+        createdAt: true,
+        updatedAt: true,
+        billingStatus: true,
+        paidUntil: true,
+        suspendedByAdmin: true,
         user: { select: { id: true, name: true, email: true, isActive: true } },
       },
       orderBy: { createdAt: "desc" },

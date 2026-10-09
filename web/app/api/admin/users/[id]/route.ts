@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAdminSession } from "@/lib/admin-auth"
 import { logAudit } from "@/lib/audit-log"
+import { withPaidSites } from "@/app/api/admin/_lib/billing"
 
 export async function GET(
   _req: Request,
@@ -13,20 +14,40 @@ export async function GET(
   const { id } = await params
   const user = await prisma.user.findUnique({
     where: { id },
-    include: {
+    // Explicit select: never send passwordHash or provider ids to the browser
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      isActive: true,
+      createdAt: true,
       profiles: {
-        include: {
-          activityAreas: { orderBy: { position: "asc" } },
-          links: true,
-          address: true,
+        orderBy: { createdAt: "asc" },
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          publicName: true,
+          isActive: true,
+          theme: true,
+          createdAt: true,
+          billingStatus: true,
+          paidUntil: true,
+          suspendedByAdmin: true,
+          activityAreas: { orderBy: { position: "asc" }, select: { id: true, title: true } },
+          links: { orderBy: { position: "asc" }, select: { id: true, title: true, url: true } },
         },
       },
-      tickets: { orderBy: { updatedAt: "desc" }, take: 10 },
+      tickets: {
+        orderBy: { updatedAt: "desc" },
+        take: 10,
+        select: { id: true, subject: true, status: true, createdAt: true },
+      },
     },
   })
 
   if (!user) return NextResponse.json({ error: "Usuário não encontrado" }, { status: 404 })
-  return NextResponse.json(user)
+  return NextResponse.json(withPaidSites(user))
 }
 
 export async function PATCH(

@@ -3,15 +3,22 @@ import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 import { jwtVerify } from "jose"
 import { RESERVED_SLUGS } from "@/lib/reserved-slugs"
+import { getAdminJwtSecret } from "@/lib/admin-secret"
+import { ATTRIBUTION_COOKIE, ATTRIBUTION_MAX_AGE, attributionFromRequest } from "@/lib/attribution"
 
-const ADMIN_JWT_SECRET = new TextEncoder().encode(
-  process.env.ADMIN_JWT_SECRET || "admin-secret-change-me"
-)
 
 // Subdomain rewrite to /adv/[slug] for *.advlink.site
 export async function proxy(req: NextRequest) {
   const { nextUrl } = req
   const pathname = nextUrl.pathname
+
+  // CSRF: reject cross-origin state-changing API calls (cookies are same-site across *.ROOT_DOMAIN,
+  // so SameSite=Lax alone doesn't stop a script on a profile subdomain).
+  if (pathname.startsWith("/api") && isUnsafeMethod(req.method) && !isCsrfExempt(pathname)) {
+    if (!isSameOriginRequest(req)) {
+      return NextResponse.json({ error: "Origem não permitida" }, { status: 403 })
+    }
+  }
 
   // Skip API and static assets from any rewrite consideration
   const isApi = pathname.startsWith("/api")
@@ -34,7 +41,7 @@ export async function proxy(req: NextRequest) {
     }
 
     try {
-      await jwtVerify(token, ADMIN_JWT_SECRET)
+      await jwtVerify(token, getAdminJwtSecret())
       return NextResponse.next()
     } catch {
       return NextResponse.redirect(new URL("/admin/login", nextUrl.origin))
@@ -46,6 +53,16 @@ export async function proxy(req: NextRequest) {
   const host = req.headers.get("host") || ""
   const ROOT_DOMAIN = process.env.ROOT_DOMAIN || "advlink.site"
   const suffix = `.${ROOT_DOMAIN}`
+
+  if (host.endsWith(suffix) || host === ROOT_DOMAIN) {
+    // Public profiles live only on their own subdomain: never serve /adv/* on app.* (same origin
+    // as the dashboard/admin APIs) or under another subdomain.
+    const advMatch = pathname.match(/^\/adv\/([a-z0-9-]+)\/?$/i)
+    if (advMatch) {
+      const proto = req.headers.get("x-forwarded-proto") ?? nextUrl.protocol.replace(":", "")
+      return NextResponse.redirect(`${proto}://${advMatch[1].toLowerCase()}.${ROOT_DOMAIN}/`, 301)
+    }
+  }
 
   if (host.endsWith(suffix)) {
     const subdomain = host.slice(0, -suffix.length)
@@ -67,18 +84,61 @@ export async function proxy(req: NextRequest) {
     if (!token && !isLoginRoute) {
       const signInUrl = new URL("/login", nextUrl.origin)
       signInUrl.searchParams.set("callbackUrl", nextUrl.href)
-      return NextResponse.redirect(signInUrl)
+      return withAttribution(req, NextResponse.redirect(signInUrl))
     }
-    return NextResponse.next()
+    return withAttribution(req, NextResponse.next())
   }
 
-  return NextResponse.next()
+  return withAttribution(req, NextResponse.next())
+}
+
+// First-touch attribution for app pages (login, onboarding, dashboard): kept for 90 days and
+// attached to the user_signed_up / site_created events. Never overwritten once set.
+function withAttribution(req: NextRequest, res: NextResponse) {
+  if (req.method !== "GET" || req.cookies.has(ATTRIBUTION_COOKIE)) return res
+  const data = attributionFromRequest(req.nextUrl, req.headers.get("referer"))
+  if (!data) return res
+  res.cookies.set(ATTRIBUTION_COOKIE, JSON.stringify(data), {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: req.nextUrl.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https",
+    maxAge: ATTRIBUTION_MAX_AGE,
+  })
+  return res
+}
+
+function isUnsafeMethod(method: string) {
+  return !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase())
+}
+
+// Server-to-server callers (token-authenticated webhooks) and NextAuth (has its own CSRF token).
+function isCsrfExempt(pathname: string) {
+  return (
+    pathname.startsWith("/api/webhooks/") ||
+    pathname.startsWith("/api/auth/")
+  )
+}
+
+function isSameOriginRequest(req: NextRequest) {
+  const host = req.headers.get("host")
+  const origin = req.headers.get("origin")
+  if (origin) {
+    try {
+      return new URL(origin).host === host
+    } catch {
+      return false
+    }
+  }
+  // No Origin (old browsers / non-browser clients): fall back to Fetch Metadata when present.
+  const site = req.headers.get("sec-fetch-site")
+  return !site || site === "same-origin" || site === "none"
 }
 
 // Run on all paths except Next internals and common static files
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
   ],
 }
 

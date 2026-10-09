@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { jpegFile, pngFile, spoofedHtmlFile } from "@/test/fixtures/images"
 
 const { prismaMock, getServerSessionMock, uploadToS3Mock, getActiveSiteIdMock } = vi.hoisted(() => ({
   prismaMock: {
@@ -368,7 +369,7 @@ describe("PATCH /api/custom-sections", () => {
   })
 
   it("uploads a new image when image file is provided", async () => {
-    const imageFile = new File(["img-data"], "photo.jpg", { type: "image/jpeg" })
+    const imageFile = jpegFile("photo.jpg")
     const form = new FormData()
     form.append("id", "cs1")
     form.append("image", imageFile)
@@ -472,7 +473,7 @@ describe("POST /api/custom-sections — no site found", () => {
     prismaMock.customSection.create.mockResolvedValue({ id: "cs3", title: "With Image" })
     prismaMock.profile.findUnique.mockResolvedValue({ sectionOrder: [] })
     prismaMock.profile.update.mockResolvedValue({})
-    const imageFile = new File(["img-data"], "photo.jpg", { type: "image/jpeg" })
+    const imageFile = jpegFile("photo.jpg")
     const form = new FormData()
     form.append("title", "With Image")
     form.append("layout", "image-left")
@@ -500,8 +501,19 @@ describe("POST /api/custom-sections — multipart/form-data content-type", () =>
     prismaMock.profile.update.mockResolvedValue({})
   })
 
+  it("rejects a spoofed image with 400 without creating the section or uploading", async () => {
+    const form = new FormData()
+    form.append("title", "Image Section")
+    form.append("layout", "image-left")
+    form.append("image", spoofedHtmlFile("banner.jpg"))
+    const res = await POST(new Request("http://localhost/api/custom-sections", { method: "POST", body: form }))
+    expect(res.status).toBe(400)
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+    expect(prismaMock.customSection.create).not.toHaveBeenCalled()
+  })
+
   it("reads form fields from multipart/form-data request (line 18)", async () => {
-    const imageFile = new File(["pixels"], "banner.png", { type: "image/png" })
+    const imageFile = pngFile("banner.png")
     const form = new FormData()
     form.append("title", "Image Section")
     form.append("layout", "image-left")
@@ -544,8 +556,18 @@ describe("PATCH /api/custom-sections — multipart/form-data with new image file
     prismaMock.customSection.update.mockResolvedValue({ id: "cs1", title: "Old Title", imageUrl: "https://s3.test/section.jpg" })
   })
 
+  it("rejects a spoofed image in PATCH with 400 and does not upload", async () => {
+    const form = new FormData()
+    form.append("id", "cs1")
+    form.append("image", spoofedHtmlFile("new-banner.png"))
+    const res = await PATCH(new Request("http://localhost/api/custom-sections", { method: "PATCH", body: form }))
+    expect(res.status).toBe(400)
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+    expect(prismaMock.customSection.update).not.toHaveBeenCalled()
+  })
+
   it("uploads new image via multipart/form-data in PATCH (lines 139-143)", async () => {
-    const newImage = new File(["new-pixels"], "new-banner.png", { type: "image/png" })
+    const newImage = pngFile("new-banner.png")
     const form = new FormData()
     form.append("id", "cs1")
     form.append("image", newImage)

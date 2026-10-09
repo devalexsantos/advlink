@@ -16,7 +16,6 @@ model User {
   emailVerified        DateTime?
   image                String?
   isActive             Boolean   @default(true)
-  stripeCustomerId     String?
   passwordHash         String?
   completed_onboarding Boolean   @default(false) @map("completed_onboarding")
 
@@ -72,10 +71,20 @@ model Profile {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  name                 String?
-  setupComplete        Boolean @default(false)
-  isActive             Boolean @default(false)
-  stripeSubscriptionId String?
+  name          String?
+  setupComplete Boolean @default(false)
+  isActive      Boolean @default(false)
+
+  // Billing (Asaas). isActive = published = billing ACTIVE|GRACE && !suspendedByAdmin (lib/billing).
+  billingStatus    BillingStatus @default(NONE)
+  /// Last day covered by paid charges (civil date, America/Sao_Paulo)
+  paidUntil        DateTime?     @db.Date
+  /// Last day of the grace period after paidUntil
+  graceUntil       DateTime?     @db.Date
+  /// Admin block, independent from billing (webhook never undoes it)
+  suspendedByAdmin Boolean       @default(false)
+  /// Set when the subscription was ended for non-payment (30 days suspended)
+  churnedAt        DateTime?
 
   headline           String?
   avatarUrl          String?
@@ -114,7 +123,12 @@ model Profile {
   customSections CustomSection[]
   teamMembers    TeamMember[]
 
+  billingPaymentLinks  BillingPaymentLink[]
+  billingSubscriptions BillingSubscription[]
+  billingPayments      BillingPayment[]
+
   @@index([userId])
+  @@index([billingStatus])
 }
 
 model PageView {
@@ -194,16 +208,16 @@ model Address {
 }
 
 model AdminUser {
-  id              String           @id @default(cuid())
-  email           String           @unique
+  id              String          @id @default(cuid())
+  email           String          @unique
   name            String?
   passwordHash    String
-  role            String           @default("admin") // "admin" | "super_admin"
-  isActive        Boolean          @default(true)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  assignedTickets Ticket[]         @relation("AssignedAdmin")
-  ticketMessages  TicketMessage[]  @relation("AdminSender")
+  role            String          @default("admin") // "admin" | "super_admin"
+  isActive        Boolean         @default(true)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  assignedTickets Ticket[]        @relation("AssignedAdmin")
+  ticketMessages  TicketMessage[] @relation("AdminSender")
   auditLogs       AuditLog[]
 }
 
@@ -290,19 +304,110 @@ model TeamMember {
 }
 
 model CustomSection {
-  id          String   @id @default(cuid())
-  profileId   String
-  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
-  title       String
-  description String?
-  imageUrl    String?
-  layout       String   // "image-left" | "image-right" | "text-only" | "video" | "button"
+  id           String   @id @default(cuid())
+  profileId    String
+  profile      Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  title        String
+  description  String?
+  imageUrl     String?
+  layout       String // "image-left" | "image-right" | "text-only" | "video" | "button"
   iconName     String   @default("FileText")
   position     Int
   videoUrl     String?
   buttonConfig Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   @@index([profileId, position])
+}
+
+// ─── Billing (Asaas) ─────────────────────────────────────────
+// Local mirror of the Asaas state. The webhook only tells what to fetch; lib/billing re-fetches
+// payments/subscriptions and recomputes Profile.billingStatus (order-independent, idempotent).
+
+enum BillingStatus {
+  NONE // never subscribed
+  PENDING // checkout started, nothing paid yet
+  ACTIVE // paid period running
+  GRACE // paid period over, inside the grace days (still published)
+  SUSPENDED // overdue after grace: unpublished, subscription still open
+  CANCELED // subscription ended (by the lawyer or after 30 days suspended)
+}
+
+model BillingPaymentLink {
+  id          String    @id @default(cuid())
+  environment String // SANDBOX | PRODUCTION
+  asaasId     String
+  profileId   String
+  profile     Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  billingType String // UNDEFINED (card + boleto) | PIX
+  url         String
+  status      String    @default("ACTIVE") // ACTIVE | CONSUMED | DISABLED
+  createdAt   DateTime  @default(now())
+  closedAt    DateTime?
+
+  @@unique([environment, asaasId])
+  @@index([profileId, status])
+}
+
+model BillingSubscription {
+  id              String    @id @default(cuid())
+  environment     String
+  asaasId         String
+  profileId       String
+  profile         Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  asaasCustomerId String
+  billingType     String?
+  valueCents      Int
+  status          String // ACTIVE | INACTIVE | EXPIRED | DELETED (Asaas status, DELETED when deleted)
+  nextDueDate     String? // YYYY-MM-DD
+  cancelReason    String?
+  canceledAt      DateTime?
+  syncedAt        DateTime  @default(now())
+  createdAt       DateTime  @default(now())
+
+  @@unique([environment, asaasId])
+  @@index([profileId, status])
+}
+
+model BillingPayment {
+  id                  String   @id @default(cuid())
+  environment         String
+  asaasId             String
+  profileId           String
+  profile             Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  subscriptionAsaasId String?
+  billingType         String
+  valueCents          Int
+  netValueCents       Int?
+  status              String // Asaas payment status (PENDING, CONFIRMED, RECEIVED, OVERDUE, REFUNDED...)
+  dueDate             String // YYYY-MM-DD
+  paymentDate         String? // YYYY-MM-DD
+  /// Refunded, charged back or deleted: covers nothing
+  revoked             Boolean  @default(false)
+  invoiceUrl          String?
+  syncedAt            DateTime @default(now())
+  createdAt           DateTime @default(now())
+
+  @@unique([environment, asaasId])
+  @@index([profileId, dueDate])
+}
+
+/// Every webhook delivery, deduplicated by (provider, environment, eventId). Unprocessed rows are
+/// retried by the billing sweep, so the webhook can always answer 200 quickly.
+model WebhookEvent {
+  id          String    @id @default(cuid())
+  provider    String    @default("ASAAS")
+  environment String
+  eventId     String
+  eventType   String
+  payload     Json
+  receivedAt  DateTime  @default(now())
+  processedAt DateTime?
+  result      String?
+  error       String?
+  attempts    Int       @default(0)
+
+  @@unique([provider, environment, eventId])
+  @@index([processedAt])
 }

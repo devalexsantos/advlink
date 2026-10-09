@@ -4,8 +4,9 @@ import { Button } from "@/components/ui/button";
 import { signIn } from "next-auth/react";
 import gmailIcon from "@/assets/icons/gmail-icon.svg"
 import Image from "next/image";
+import { DEFAULT_CALLBACK } from "@/lib/safe-callback";
 
-export function GoogleLoginButton() {
+export function GoogleLoginButton({ callbackUrl = DEFAULT_CALLBACK }: { callbackUrl?: string }) {
   return (
     <Button 
     type="button" 
@@ -14,7 +15,7 @@ export function GoogleLoginButton() {
     onClick={async () => {
        await signIn("google", {
         redirect: false,
-        callbackUrl: "/onboarding/profile",
+        callbackUrl,
        })
     }}
     >

@@ -68,6 +68,8 @@ type EditFormContextType = {
   form: UseFormReturn<ProfileEditValues>
   data: FetchProfileResponse | undefined
   isLoading: boolean
+  isError: boolean
+  refetchProfile: () => void
   // States
   areas: Area[]
   setAreas: React.Dispatch<React.SetStateAction<Area[]>>
@@ -214,7 +216,7 @@ export function useEditForm() {
 export function EditFormProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient()
   const { showToast } = useToast()
-  const { data, isLoading } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile })
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile })
 
   const form = useForm<ProfileEditValues>({
     resolver: zodResolver(profileEditSchema),
@@ -410,6 +412,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
       showToast("Tema atualizado!")
     },
+    onError: () => showToast("Não foi possível trocar o tema. Tente novamente."),
   })
 
   const updateSectionConfigMutation = useMutation({
@@ -620,16 +623,35 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     if (coverFile) fd.set("cover", coverFile)
     fd.set("publicPhoneIsFixed", String(publicPhoneIsFixed))
     fd.set("whatsappIsFixed", String(whatsappIsFixed))
-    await saveProfileMutation.mutateAsync(fd)
+    try {
+      await saveProfileMutation.mutateAsync(fd)
+    } catch (err) {
+      showToast(err instanceof Error && err.message ? err.message : "Não foi possível salvar. Tente novamente.", 6000)
+      return
+    }
     // Commit current values as new defaults so RHF state stays in sync
     form.reset(form.getValues())
     showToast("Salvo com sucesso!")
   }
 
+  // Warn before closing/reloading the tab with unsaved profile changes
+  const isDirty = form.formState.isDirty
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  }, [isDirty])
+
   const value: EditFormContextType = {
     form,
     data,
     isLoading,
+    isError,
+    refetchProfile: () => void refetch(),
     areas, setAreas,
     links, setLinks,
     gallery, setGallery,

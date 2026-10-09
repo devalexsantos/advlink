@@ -3,11 +3,34 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { sanitizeOptionalRichText } from "@/lib/sanitize-rich-text"
 import { generateActivityDescriptions } from "@/lib/openai"
 import { uploadToS3 } from "@/lib/s3"
+import { MAX_IMAGE_BYTES, imageUploadErrorResponse, rejectOversizedRequest, validateImageUpload, type ValidatedImage } from "@/lib/upload-validation"
 import { isReservedSlug } from "@/lib/reserved-slugs"
 import { trackEvent } from "@/lib/product-events"
+import { getRequestAttribution } from "@/lib/attribution-server"
 import { getActiveSiteId } from "@/lib/active-site"
+import { MAX_AREA_TITLE_LENGTH, MAX_ONBOARDING_AREAS } from "@/lib/activity-area-limits"
+import { rateLimitResponse, rateLimiters } from "@/lib/rate-limit"
+
+const OPENAI_TIMEOUT_MS = 25_000
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`timeout after ${ms}ms`)), ms)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (err) => {
+        clearTimeout(timer)
+        reject(err)
+      }
+    )
+  })
+}
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -31,6 +54,7 @@ export async function POST(req: Request) {
     let cellphone: string | undefined
     let whatsapp: string | undefined
     let instagramUrl: string | undefined
+    let calendlyUrl: string | undefined
     let avatarFile: File | undefined
 
     if (contentType.includes("application/json")) {
@@ -44,7 +68,10 @@ export async function POST(req: Request) {
       cellphone = body.cellphone
       whatsapp = body.whatsapp
       instagramUrl = body.instagramUrl
+      calendlyUrl = body.calendlyUrl
     } else if (contentType.includes("multipart/form-data")) {
+      const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES)
+      if (tooLarge) return tooLarge
       const form = await req.formData()
       displayName = String(form.get("displayName") ?? "")
       areas = JSON.parse(String(form.get("areas") ?? "[]"))
@@ -55,25 +82,64 @@ export async function POST(req: Request) {
       cellphone = String(form.get("cellphone") ?? "") || undefined
       whatsapp = String(form.get("whatsapp") ?? "") || undefined
       instagramUrl = String(form.get("instagramUrl") ?? "") || undefined
+      calendlyUrl = String(form.get("calendlyUrl") ?? "") || undefined
       const f = form.get("photo")
       if (f && f instanceof File) avatarFile = f
     }
 
-    // 1) Generate area descriptions with OpenAI
-    const titles = Array.from(new Set(areas ?? [])).filter(Boolean)
+    if (calendlyUrl && !/^https:\/\/calendly\.com\//i.test(calendlyUrl)) {
+      return NextResponse.json({ error: "Link do Calendly inválido. Use https://calendly.com/..." }, { status: 400 })
+    }
+
+    // Areas feed the OpenAI prompt: cap count and title length (cost control).
+    if (!Array.isArray(areas) || areas.some((a) => typeof a !== "string")) {
+      return NextResponse.json({ error: "Áreas de atuação inválidas." }, { status: 400 })
+    }
+    const titles = Array.from(new Set(areas.map((a) => a.trim()))).filter(Boolean)
+    if (titles.length > MAX_ONBOARDING_AREAS) {
+      return NextResponse.json(
+        { error: `Selecione no máximo ${MAX_ONBOARDING_AREAS} áreas de atuação.` },
+        { status: 400 },
+      )
+    }
+    if (titles.some((t) => t.length > MAX_AREA_TITLE_LENGTH)) {
+      return NextResponse.json(
+        { error: `Cada área de atuação deve ter no máximo ${MAX_AREA_TITLE_LENGTH} caracteres.` },
+        { status: 400 },
+      )
+    }
+
+    const limit = rateLimiters.onboardingByUser.check(userId)
+    if (!limit.ok) return rateLimitResponse(limit)
+
+    // Validate the photo before spending on OpenAI or touching S3.
+    let avatarImage: ValidatedImage | undefined
+    if (avatarFile) {
+      const image = await validateImageUpload(avatarFile)
+      if (!image.ok) return imageUploadErrorResponse(image)
+      avatarImage = image.image
+    }
+
+    // 1) Generate area descriptions with OpenAI. Best effort: a missing key, rate limit or
+    // timeout must not block onboarding — areas are saved without description instead.
     const openaiKey = process.env.OPENAI_API_KEY ?? ""
-    const descriptions = titles.length ? await generateActivityDescriptions(titles, openaiKey) : []
+    let descriptions: string[] = []
+    if (titles.length) {
+      try {
+        descriptions = await withTimeout(generateActivityDescriptions(titles, openaiKey), OPENAI_TIMEOUT_MS)
+      } catch (err) {
+        console.error("[onboarding] area description generation failed:", err)
+      }
+    }
 
     // 2) Upload avatar if provided
     let avatarUrl: string | null = null
-    if (avatarFile) {
-      const arrayBuffer = await avatarFile.arrayBuffer()
-      const ext = avatarFile.type.split("/")[1] || "jpg"
-      const key = `avatars/${profileId}.${Date.now()}.${ext}`
+    if (avatarImage) {
+      const key = `avatars/${profileId}.${Date.now()}.${avatarImage.ext}`
       const uploaded = await uploadToS3({
         key,
-        contentType: avatarFile.type || "image/jpeg",
-        body: Buffer.from(arrayBuffer),
+        contentType: avatarImage.contentType,
+        body: avatarImage.buffer,
         cacheControl: "public, max-age=604800, immutable",
       })
       avatarUrl = uploaded.url
@@ -108,12 +174,13 @@ export async function POST(req: Request) {
       where: { id: profileId },
       data: {
         publicName: displayName,
-        aboutDescription: about ?? null,
+        aboutDescription: sanitizeOptionalRichText(about ?? null),
         headline: headline ?? null,
         publicEmail: email,
         publicPhone: phone ?? null,
         whatsapp: whatsapp ?? cellphone ?? null,
         instagramUrl: instagramUrl ?? null,
+        calendlyUrl: calendlyUrl ?? null,
         avatarUrl: avatarUrl ?? undefined,
         slug,
         metaTitle: displayName,
@@ -141,7 +208,8 @@ export async function POST(req: Request) {
     })
 
     // Track product event
-    trackEvent("site_created", { userId, meta: { slug, profileId } }).catch(() => {})
+    const attribution = await getRequestAttribution()
+    trackEvent("site_created", { userId, meta: { slug, profileId, ...(attribution ? { attribution } : {}) } }).catch(() => {})
 
     return NextResponse.json({ ok: true })
   } catch (err: unknown) {

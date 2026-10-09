@@ -1,0 +1,24 @@
+name: Billing sweep
+
+# Hourly: applies grace/suspension/churn and retries failed Asaas webhook events
+# (web/app/api/cron/billing-sweep). Secrets: BILLING_SWEEP_URL, CRON_SECRET.
+on:
+  schedule:
+    - cron: "17 * * * *"
+  workflow_dispatch:
+
+jobs:
+  sweep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call billing sweep
+        env:
+          URL: ${{ secrets.BILLING_SWEEP_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "BILLING_SWEEP_URL/CRON_SECRET not configured; skipping"
+            exit 0
+          fi
+          curl --fail-with-body -sS --max-time 240 -H "Authorization: Bearer $CRON_SECRET" "$URL"

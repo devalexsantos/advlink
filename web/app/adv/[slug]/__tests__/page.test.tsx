@@ -19,6 +19,11 @@ vi.mock("@/components/themes/04/Theme04", () => ({ default: () => "Theme04" }))
 vi.mock("@/components/analytics/ProfileTracker", () => ({ ProfileTracker: () => null }))
 vi.mock("next/script", () => ({ default: () => null }))
 vi.mock("next/link", () => ({ default: ({ children }: any) => children }))
+vi.mock("next/navigation", () => ({
+  notFound: () => {
+    throw new Error("NEXT_NOT_FOUND")
+  },
+}))
 
 // We test the server component by calling it as a function and inspecting the returned JSX
 import PublicProfilePage from "@/app/adv/[slug]/page"
@@ -28,13 +33,40 @@ describe("Public Profile Page (/adv/[slug])", () => {
     vi.clearAllMocks()
   })
 
-  it("shows 'Perfil não encontrado' when profile does not exist", async () => {
+  it("responds 404 (notFound) when profile does not exist", async () => {
     prismaMock.profile.findFirst.mockResolvedValue(null)
-    const result = await PublicProfilePage({ params: Promise.resolve({ slug: "naoexiste" }) })
+    await expect(PublicProfilePage({ params: Promise.resolve({ slug: "naoexiste" }) })).rejects.toThrow("NEXT_NOT_FOUND")
+  })
 
-    // Server component returns JSX - serialize to check content
-    const rendered = JSON.stringify(result)
-    expect(rendered).toContain("Perfil não encontrado")
+  it("links the inactive page to the app with absolute URLs", async () => {
+    vi.stubEnv("NEXT_PUBLIC_APP_ORIGIN", "https://app.advlink.site")
+    prismaMock.profile.findFirst.mockResolvedValue({ id: "p1", slug: "teste", userId: "u1", isActive: false, address: null })
+    const rendered = JSON.stringify(await PublicProfilePage({ params: Promise.resolve({ slug: "teste" }) }))
+    expect(rendered).toContain("https://app.advlink.site/profile/edit")
+    expect(rendered).toContain("https://app.advlink.site/login?utm_source=perfil_inativo")
+    expect(rendered).not.toContain('"href":"/profile/edit"')
+    vi.unstubAllEnvs()
+  })
+
+  it("emits LegalService JSON-LD for active profiles", async () => {
+    prismaMock.profile.findFirst.mockResolvedValue({
+      id: "p1", slug: "joao", userId: "u1", isActive: true, theme: "classic", publicName: "Dr. João", address: null,
+    })
+    prismaMock.activityAreas.findMany.mockResolvedValueOnce([{ title: "Trabalhista" }])
+    const rendered = JSON.stringify(await PublicProfilePage({ params: Promise.resolve({ slug: "joao" }) }))
+    expect(rendered).toContain("application/ld+json")
+    expect(rendered).toContain("LegalService")
+    expect(rendered).toContain("Trabalhista")
+  })
+
+  it("falls back to the classic theme for unknown theme values", async () => {
+    prismaMock.profile.findFirst.mockResolvedValue({ id: "p1", slug: "x", userId: "u1", isActive: true, theme: null, address: null })
+    const result = (await PublicProfilePage({ params: Promise.resolve({ slug: "x" }) })) as {
+      props: { children: unknown[] }
+    }
+    // children: [gtm, tracker, modern, classic, corporate] — only the classic slot renders an element
+    const themeSlots = result.props.children.slice(-3)
+    expect(themeSlots.map((c) => Boolean(c))).toEqual([false, true, false])
   })
 
   it("shows 'Esta página está inativa' when profile is not active", async () => {
@@ -93,5 +125,36 @@ describe("Public Profile Page (/adv/[slug])", () => {
 
     // Should show inactive, not the profile
     expect(rendered).toContain("Esta página está inativa")
+  })
+})
+
+describe("generateMetadata (/adv/[slug])", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubEnv("ROOT_DOMAIN", "advlink.site")
+  })
+
+  it("sets an absolute canonical and og:url on the profile subdomain", async () => {
+    const { generateMetadata } = await import("@/app/adv/[slug]/page")
+    prismaMock.profile.findFirst.mockResolvedValue({ publicName: "Dr. João", isActive: true, aboutDescription: "<p><strong>Sobre</strong> mim</p>" })
+    const meta = await generateMetadata({ params: Promise.resolve({ slug: "joao" }) })
+    expect(meta.alternates?.canonical).toBe("https://joao.advlink.site/")
+    expect((meta.openGraph as { url?: string }).url).toBe("https://joao.advlink.site/")
+    expect(meta.description).toBe("Sobre mim")
+    expect(meta.robots).toBeUndefined()
+  })
+
+  it("marks inactive profiles as noindex", async () => {
+    const { generateMetadata } = await import("@/app/adv/[slug]/page")
+    prismaMock.profile.findFirst.mockResolvedValue({ publicName: "Dr. João", isActive: false })
+    const meta = await generateMetadata({ params: Promise.resolve({ slug: "joao" }) })
+    expect(meta.robots).toEqual({ index: false, follow: false })
+  })
+
+  it("marks missing profiles as noindex", async () => {
+    const { generateMetadata } = await import("@/app/adv/[slug]/page")
+    prismaMock.profile.findFirst.mockResolvedValue(null)
+    const meta = await generateMetadata({ params: Promise.resolve({ slug: "nada" }) })
+    expect(meta.robots).toEqual({ index: false, follow: false })
   })
 })

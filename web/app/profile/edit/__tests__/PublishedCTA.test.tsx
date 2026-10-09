@@ -48,7 +48,7 @@ describe("PublishedCTA", () => {
 
   it("shows helpful message when no slug is set", () => {
     render(<PublishedCTA slug="" />)
-    expect(screen.getByText(/Defina um link público/)).toBeInTheDocument()
+    expect(screen.getByText(/Defina o link público/)).toBeInTheDocument()
   })
 
   it("renders the 'Alterar link' button", () => {
@@ -65,7 +65,7 @@ describe("PublishedCTA", () => {
 
   it("handles null slug prop", () => {
     render(<PublishedCTA slug={null} />)
-    expect(screen.getByText(/Defina um link público/)).toBeInTheDocument()
+    expect(screen.getByText(/Defina o link público/)).toBeInTheDocument()
   })
 
   it("uses the slug from server query when available", async () => {

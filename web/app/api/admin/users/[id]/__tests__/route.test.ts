@@ -75,6 +75,27 @@ describe("GET /api/admin/users/[id]", () => {
       expect.objectContaining({ where: { id: "user-1" } })
     )
   })
+
+  it("adds paidSites and never selects passwordHash or Stripe ids", async () => {
+    getAdminSessionMock.mockResolvedValue(adminSession)
+    prismaMock.user.findUnique.mockResolvedValue({
+      id: "user-1",
+      profiles: [
+        { id: "p1", billingStatus: "ACTIVE" },
+        { id: "p2", billingStatus: "CANCELED" },
+      ],
+      tickets: [],
+    })
+
+    const res = await GET(new Request("http://localhost"), { params: Promise.resolve({ id: "user-1" }) })
+    const json = await res.json()
+
+    expect(json.paidSites).toBe(1)
+    const query = prismaMock.user.findUnique.mock.calls[0][0]
+    expect(query.include).toBeUndefined()
+    expect(query.select.passwordHash).toBeUndefined()
+    expect(query.select.profiles.select).toMatchObject({ billingStatus: true, paidUntil: true, suspendedByAdmin: true })
+  })
 })
 
 describe("PATCH /api/admin/users/[id]", () => {

@@ -3,7 +3,9 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { sanitizeOptionalRichText } from "@/lib/sanitize-rich-text"
 import { uploadToS3 } from "@/lib/s3"
+import { MAX_IMAGE_BYTES, imageUploadErrorResponse, rejectOversizedRequest, validateImageUpload } from "@/lib/upload-validation"
 import { getActiveSiteId } from "@/lib/active-site"
 
 export async function POST(req: Request) {
@@ -25,7 +27,7 @@ export async function POST(req: Request) {
   const nextPosition = (last?.position ?? 0) + 1
 
   const created = await prisma.activityAreas.create({
-    data: { profileId, title, description: description ?? null, position: nextPosition },
+    data: { profileId, title, description: sanitizeOptionalRichText(description ?? null), position: nextPosition },
   })
   return NextResponse.json({ area: created })
 }
@@ -61,12 +63,14 @@ export async function PATCH(req: Request) {
     const newCoverUrl: string | null | undefined = coverImageUrl
     const updated = await prisma.activityAreas.update({
       where: { id },
-      data: { title, description: description ?? null, coverImageUrl: newCoverUrl, position: position ?? existing.position },
+      data: { title, description: sanitizeOptionalRichText(description ?? null), coverImageUrl: newCoverUrl, position: position ?? existing.position },
     })
     return NextResponse.json({ area: updated })
   }
 
   if (contentType.includes("multipart/form-data")) {
+    const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES)
+    if (tooLarge) return tooLarge
     const form = await req.formData()
     const id = String(form.get("id") ?? "")
     const title = String(form.get("title") ?? "")
@@ -78,13 +82,13 @@ export async function PATCH(req: Request) {
 
     let coverImageUrl: string | undefined
     if (cover && cover instanceof File) {
-      const arrayBuffer = await cover.arrayBuffer()
-      const ext = cover.type.split("/")[1] || "jpg"
-      const key = `coverAreas/${profileId}.${Date.now()}.${id}.${ext}`
+      const image = await validateImageUpload(cover)
+      if (!image.ok) return imageUploadErrorResponse(image)
+      const key = `coverAreas/${profileId}.${Date.now()}.${id}.${image.image.ext}`
       const uploaded = await uploadToS3({
         key,
-        contentType: cover.type || "image/jpeg",
-        body: Buffer.from(arrayBuffer),
+        contentType: image.image.contentType,
+        body: image.image.buffer,
         cacheControl: "public, max-age=604800, immutable",
       })
       coverImageUrl = uploaded.url
@@ -92,7 +96,7 @@ export async function PATCH(req: Request) {
 
     const updated = await prisma.activityAreas.update({
       where: { id },
-      data: { title, description: description ?? null, coverImageUrl },
+      data: { title, description: sanitizeOptionalRichText(description ?? null), coverImageUrl },
     })
     return NextResponse.json({ area: updated })
   }

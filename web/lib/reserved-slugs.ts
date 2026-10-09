@@ -3,7 +3,7 @@ export const RESERVED_SLUGS = new Set([
   "mail", "smtp", "ftp", "ssh",
   "login", "signup", "register",
   "dashboard", "painel",
-  "billing", "stripe", "webhook",
+  "billing", "stripe", "asaas", "pagamento", "webhook", "webhooks", "cron",
   "support", "suporte", "help", "ajuda",
   "blog", "docs", "status",
   "static", "assets", "cdn", "media",

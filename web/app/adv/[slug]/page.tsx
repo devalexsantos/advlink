@@ -3,10 +3,15 @@ import type { Metadata } from "next"
 import Theme03 from "@/components/themes/03/Theme03"
 import Theme02 from "@/components/themes/02/Theme02"
 import Theme04 from "@/components/themes/04/Theme04"
-import Link from "next/link"
 import Script from "next/script"
 import { Wrench } from "lucide-react"
 import { ProfileTracker } from "@/components/analytics/ProfileTracker"
+import { notFound } from "next/navigation"
+import { getAppOrigin, getProfileUrl } from "@/lib/site-url"
+import { buildProfileJsonLd, jsonLdScript } from "@/lib/profile-jsonld"
+
+const THEMES = ["modern", "classic", "corporate"] as const
+type ThemeName = (typeof THEMES)[number]
 
 type RouteParams = Promise<{ slug: string }>
 
@@ -16,19 +21,12 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
     where: { slug },
     include: { address: true },
   })
-  if (!profile) {
-    return (
-      <div className="min-h-screen grid place-items-center bg-black text-white">
-        <div className="text-center space-y-2">
-          <h1 className="text-2xl font-semibold">Perfil não encontrado</h1>
-          <p className="text-zinc-400">Verifique o link e tente novamente.</p>
-        </div>
-      </div>
-    )
-  }
+  if (!profile) notFound()
 
-  // If the site is not active, show inactive notice
+  // If the site is not active, show inactive notice (noindex via generateMetadata).
+  // Links are absolute: this page is served on <slug>.ROOT_DOMAIN, where /profile/edit doesn't exist.
   if (!profile.isActive) {
+    const appUrl = getAppOrigin()
     return (
       <div className="relative isolate overflow-hidden min-h-screen text-zinc-100">
         {/* Geometric background (same style as landing header) */}
@@ -56,12 +54,12 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
                 Esta página está inativa
               </h1>
               <p className="text-zinc-400 text-lg">
-                Se você é o administrador, acesse a plataforma da <Link href="/profile/edit" className="text-zinc-300 underline underline-offset-4 hover:text-white">AdvLink</Link>, faça login e publique sua página.
+                Se você é o administrador, acesse a plataforma da <a href={`${appUrl}/profile/edit`} className="text-zinc-300 underline underline-offset-4 hover:text-white">AdvLink</a>, faça login e publique sua página.
               </p>
               <div>
-                <Link href="/profile/edit" className="text-lg text-zinc-300 underline underline-offset-4 hover:text-white">
+                <a href={`${appUrl}/login?utm_source=perfil_inativo&utm_medium=referral`} className="text-lg text-zinc-300 underline underline-offset-4 hover:text-white">
                  Acessar AdvLink
-                </Link>
+                </a>
               </div>
             </div>
           </div>
@@ -99,10 +97,18 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
   const primary = profile.primaryColor || "#8B0000"
   const text = profile.textColor || "#FFFFFF"
   const secondary = profile.secondaryColor || "#FFFFFF"
-  const theme = profile.theme
-  const gtmId = profile.gtmContainerId
+  // Unknown/legacy values would render an empty page: fall back to the schema default
+  const theme: ThemeName = THEMES.includes(profile.theme as ThemeName) ? (profile.theme as ThemeName) : "classic"
+  // Re-checked here for rows saved before the API validated it: the ID is interpolated into a script
+  const gtmId = profile.gtmContainerId && /^GTM-[A-Z0-9]{4,10}$/.test(profile.gtmContainerId) ? profile.gtmContainerId : null
+  const jsonLd = buildProfileJsonLd(
+    { ...profile, slug: profile.slug ?? slug },
+    address,
+    areas.map((a) => a.title)
+  )
   return (
     <div>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
       {gtmId && (
         <>
           <Script
@@ -113,12 +119,12 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
 j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','${gtmId}');`,
+})(window,document,'script','dataLayer',${JSON.stringify(gtmId)});`,
             }}
           />
           <noscript>
             <iframe
-              src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
+              src={`https://www.googletagmanager.com/ns.html?id=${encodeURIComponent(gtmId)}`}
               height="0"
               width="0"
               style={{ display: "none", visibility: "hidden" }}
@@ -187,18 +193,23 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 
 export async function generateMetadata({ params }: { params: RouteParams }): Promise<Metadata> {
   const { slug } = await params
-  const profile = await prisma.profile.findFirst({ where: { slug }, select: { metaTitle: true, metaDescription: true, publicName: true, aboutDescription: true, avatarUrl: true } })
-  const title = profile?.metaTitle || profile?.publicName || "Advogado"
-  const description = profile?.metaDescription || profile?.aboutDescription || ""
-  const image = profile?.avatarUrl || undefined
+  const profile = await prisma.profile.findFirst({ where: { slug }, select: { metaTitle: true, metaDescription: true, publicName: true, aboutDescription: true, avatarUrl: true, isActive: true } })
+  if (!profile) return { title: "Perfil não encontrado", robots: { index: false, follow: false } }
+  const title = profile.metaTitle || profile.publicName || "Advogado"
+  const description = profile.metaDescription || stripMarkup(profile.aboutDescription || "").slice(0, 300)
+  const image = profile.avatarUrl || undefined
+  const url = getProfileUrl(slug)
   return {
     title,
     description,
+    metadataBase: new URL(url),
+    alternates: { canonical: url },
+    robots: profile.isActive ? undefined : { index: false, follow: false },
     openGraph: {
       title,
       description,
       type: "website",
-      url: `/adv/${slug}`,
+      url,
       images: image ? [image] : undefined,
     },
     twitter: {
@@ -210,3 +221,7 @@ export async function generateMetadata({ params }: { params: RouteParams }): Pro
   }
 }
 
+// Meta description must be plain text; aboutDescription is rich text (HTML or markdown)
+function stripMarkup(text: string) {
+  return text.replace(/<[^>]*>/g, " ").replace(/[*_#>`[\]]/g, "").replace(/\s+/g, " ").trim()
+}

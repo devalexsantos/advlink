@@ -40,8 +40,9 @@ export default function TermsPrivacyPage() {
             <h2 className="text-xl font-semibold mb-2">Conta, assinatura e pagamentos</h2>
             <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
               <li>Alguns recursos são pagos e exigem uma assinatura ativa.</li>
-              <li>O pagamento é processado de forma segura por parceiro externo (Stripe).</li>
-              <li>Você pode cancelar a qualquer momento; o acesso permanece até o fim do período vigente.</li>
+              <li>O pagamento (cartão, boleto ou Pix) é processado de forma segura pelo Asaas, parceiro externo de pagamentos; a cobrança é emitida em nome da NAIR APPS.</li>
+              <li>Você pode cancelar a qualquer momento; o site permanece publicado até o fim do período já pago.</li>
+              <li>Em caso de atraso, o site fica no ar por mais 5 dias; depois sai do ar até o pagamento, e a assinatura é encerrada após 30 dias.</li>
               <li>Podemos alterar preços e planos, comunicando previamente quando aplicável.</li>
             </ul>
           </section>
@@ -93,7 +94,7 @@ export default function TermsPrivacyPage() {
                 <li>Dados de conta (nome, e-mail, autenticação via provedores).</li>
                 <li>Dados de perfil exibidos publicamente (nome, áreas de atuação, descrições, links, galeria etc.).</li>
                 <li>Preferências visuais (tema, cores, imagens de capa/avatares).</li>
-                <li>Dados de pagamento e status de assinatura (via Stripe).</li>
+                <li>Status de assinatura e de cobranças (via Asaas); dados de cartão não são armazenados pelo AdvLink.</li>
                 <li>Métricas de uso e analytics (cookies e tecnologias semelhantes).</li>
               </ul>
               <h3 className="font-semibold">Como usamos os dados</h3>

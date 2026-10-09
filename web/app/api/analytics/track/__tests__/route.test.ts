@@ -12,6 +12,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
 vi.mock("geoip-lite", () => ({ default: { lookup: vi.fn().mockReturnValue({ country: "BR", city: "São Paulo", region: "SP" }) } }))
 
 import { POST } from "@/app/api/analytics/track/route"
+import { resetRateLimiters } from "@/lib/rate-limit"
 import { NextRequest } from "next/server"
 
 function makeReq(body: Record<string, unknown>, headers?: Record<string, string>) {
@@ -29,6 +30,7 @@ function makeReq(body: Record<string, unknown>, headers?: Record<string, string>
 
 describe("POST /api/analytics/track", () => {
   beforeEach(() => {
+    resetRateLimiters()
     vi.clearAllMocks()
     prismaMock.profile.findFirst.mockResolvedValue({ id: "p1" })
     prismaMock.pageView.findFirst.mockResolvedValue(null)
@@ -128,5 +130,21 @@ describe("POST /api/analytics/track", () => {
     expect(res.status).toBe(500)
     const data = await res.json()
     expect(data.ok).toBe(false)
+  })
+
+  it("hashes the trusted proxy IP, not the spoofable first X-Forwarded-For hop", async () => {
+    prismaMock.profile.findFirst.mockResolvedValue({ id: "p1" })
+    prismaMock.pageView.findFirst.mockResolvedValue(null)
+    await POST(makeReq({ slug: "x" }, { "x-forwarded-for": "1.1.1.1, 189.1.2.3" }))
+    await POST(makeReq({ slug: "x" }, { "x-forwarded-for": "9.9.9.9, 189.1.2.3" }))
+    const [a, b] = prismaMock.pageView.create.mock.calls.map((c) => c[0].data.visitorHash)
+    expect(a).toBe(b)
+  })
+
+  it("stops recording after 60 beacons per IP and slug in an hour", async () => {
+    prismaMock.profile.findFirst.mockResolvedValue({ id: "p1" })
+    prismaMock.pageView.findFirst.mockResolvedValue(null)
+    for (let i = 0; i < 61; i++) await POST(makeReq({ slug: "x" }))
+    expect(prismaMock.pageView.create).toHaveBeenCalledTimes(60)
   })
 })

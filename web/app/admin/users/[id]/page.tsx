@@ -14,6 +14,12 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  billingStatusLabel,
+  billingStatusVariant,
+  formatCivilDate,
+  paidSitesLabel,
+} from "@/app/admin/_lib/billing-labels"
 
 interface ProfileSummary {
   id: string
@@ -23,6 +29,9 @@ interface ProfileSummary {
   isActive: boolean
   theme: string | null
   createdAt: string
+  billingStatus: string
+  paidUntil: string | null
+  suspendedByAdmin: boolean
   activityAreas: { id: string; title: string }[]
   links: { id: string; title: string; url: string }[]
 }
@@ -32,7 +41,7 @@ interface UserDetail {
   name: string | null
   email: string | null
   isActive: boolean
-  stripeCustomerId: string | null
+  paidSites: number
   createdAt: string
   profiles: ProfileSummary[]
   tickets: { id: string; subject: string; status: string; createdAt: string }[]
@@ -93,7 +102,7 @@ export default function AdminUserDetailPage() {
         <Card>
           <CardHeader className="pb-2"><CardTitle className="text-sm">Plano</CardTitle></CardHeader>
           <CardContent>
-            <p className="font-medium">{user.stripeCustomerId ? "Pago" : "Free"}</p>
+            <p className="font-medium">{paidSitesLabel(user.paidSites)}</p>
           </CardContent>
         </Card>
         <Card>
@@ -116,6 +125,8 @@ export default function AdminUserDetailPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead>Slug</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead>Cobrança</TableHead>
+                  <TableHead>Pago até</TableHead>
                   <TableHead>Criado em</TableHead>
                   <TableHead></TableHead>
                 </TableRow>
@@ -129,7 +140,16 @@ export default function AdminUserDetailPage() {
                       <Badge variant={p.isActive ? "default" : "secondary"}>
                         {p.isActive ? "Ativo" : "Inativo"}
                       </Badge>
+                      {p.suspendedByAdmin && (
+                        <Badge variant="destructive" className="ml-1">Suspenso pela equipe</Badge>
+                      )}
                     </TableCell>
+                    <TableCell>
+                      <Badge variant={billingStatusVariant(p.billingStatus)}>
+                        {billingStatusLabel(p.billingStatus)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">{formatCivilDate(p.paidUntil)}</TableCell>
                     <TableCell className="text-sm">
                       {new Date(p.createdAt).toLocaleDateString("pt-BR")}
                     </TableCell>

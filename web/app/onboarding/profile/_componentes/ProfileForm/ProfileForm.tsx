@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useForm, Controller } from "react-hook-form"
+import { useForm, Controller, type FieldErrors } from "react-hook-form"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ArrowLeft, ArrowRight, Camera, Upload, X, ImagePlus } from "lucide-react"
 import dynamic from "next/dynamic"
+import { useToast } from "@/components/toast/ToastProvider"
 
 // Lazy load cropper for client only
 const Cropper = dynamic(() => import("react-easy-crop"), { ssr: false })
@@ -31,8 +32,9 @@ const profileSchema = z.object({
     .optional()
     .or(z.literal("").transform(() => undefined)),
   areas: z
-    .array(z.string().min(1))
-    .min(1, { message: "Adicione pelo menos uma área de atuação." }),
+    .array(z.string().min(1).max(120, { message: "Máximo de 120 caracteres por área." }))
+    .min(1, { message: "Adicione pelo menos uma área de atuação." })
+    .max(20, { message: "Selecione no máximo 20 áreas de atuação." }),
   about: z
     .string()
     .max(600, { message: "Máximo de 600 caracteres." })
@@ -67,6 +69,20 @@ const profileSchema = z.object({
 
 type ProfileFormValues = z.infer<typeof profileSchema>
 
+// Which wizard step renders each field, so a validation error can send the user back to it.
+const FIELD_STEP: Partial<Record<keyof ProfileFormValues, number>> = {
+  photo: 1,
+  headline: 1,
+  cellphone: 1,
+  displayName: 1,
+  areas: 2,
+  about: 3,
+  email: 3,
+  phone: 3,
+  instagramUrl: 5,
+  calendlyUrl: 5,
+}
+
 const defaultAreaSuggestions = [
   "Civil",
   "Penal",
@@ -86,6 +102,8 @@ export function ProfileForm() {
   const [areaInput, setAreaInput] = useState("")
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [currentStep, setCurrentStep] = useState<number>(1)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+  const { showToast } = useToast()
   const totalSteps = 5
   const [galleryFiles, setGalleryFiles] = useState<File[]>([])
   const [isDragging, setIsDragging] = useState(false)
@@ -238,33 +256,66 @@ export function ProfileForm() {
     if (instagramUrl) formData.set("instagramUrl", instagramUrl)
     if (photo) formData.set("photo", photo)
 
-    const res = await fetch("/api/onboarding/profile", {
-      method: "POST",
-      body: formData,
-    })
-    if (!res.ok) {
-      // eslint-disable-next-line no-alert
-      alert("Falha ao salvar. Tente novamente.")
+    setSubmitError(null)
+    let res: Response
+    try {
+      res = await fetch("/api/onboarding/profile", {
+        method: "POST",
+        body: formData,
+      })
+    } catch {
+      setSubmitError("Não foi possível conectar. Verifique sua internet e tente novamente.")
       return
     }
-    // Upload gallery files if any
+    if (!res.ok) {
+      const data = await res.json().catch(() => null)
+      // 4xx messages are written for the user; 5xx may be technical, so keep them generic
+      setSubmitError(
+        res.status < 500 && data?.error ? data.error : "Não foi possível salvar agora. Tente novamente em instantes."
+      )
+      return
+    }
+    // Conversion event for the AdvLink Meta Pixel (loaded only in the app funnel, see MetaPixel)
+    window.fbq?.("track", "CompleteRegistration")
+    // Upload gallery files if any; the profile is already saved, so failures don't block the redirect
     if (galleryFiles.length > 0) {
-      await Promise.all(
+      const results = await Promise.all(
         galleryFiles.map(async (file) => {
           const fd = new FormData()
           fd.set("cover", file)
-          await fetch("/api/gallery", { method: "POST", body: fd })
+          try {
+            const r = await fetch("/api/gallery", { method: "POST", body: fd })
+            return r.ok
+          } catch {
+            return false
+          }
         })
       )
+      const failed = results.filter((ok) => !ok).length
+      if (failed > 0) {
+        showToast(
+          failed === 1
+            ? "1 foto não pôde ser enviada. Você pode adicioná-la de novo na aba Galeria."
+            : `${failed} fotos não puderam ser enviadas. Você pode adicioná-las de novo na aba Galeria.`,
+          8000
+        )
+      }
     }
     router.replace("/profile/edit")
+  }
+
+  function onInvalid(fieldErrors: FieldErrors<ProfileFormValues>) {
+    const steps = Object.keys(fieldErrors)
+      .map((name) => FIELD_STEP[name as keyof ProfileFormValues])
+      .filter((step): step is number => typeof step === "number")
+    if (steps.length) setCurrentStep(Math.min(...steps))
   }
 
   
 
   async function handleNext() {
     if (currentStep === 1) {
-      const ok = await trigger(["displayName"])
+      const ok = await trigger(["displayName", "headline", "cellphone", "photo"])
       if (!ok) return
       setCurrentStep(2)
       return
@@ -276,6 +327,8 @@ export function ProfileForm() {
       return
     }
     if (currentStep === 3) {
+      const ok = await trigger(["about", "email", "phone"])
+      if (!ok) return
       setCurrentStep(4)
       return
     }
@@ -284,7 +337,7 @@ export function ProfileForm() {
       return
     }
     if (currentStep === 5) {
-      await handleSubmit(onSubmit)()
+      await handleSubmit(onSubmit, onInvalid)()
     }
   }
 
@@ -308,7 +361,7 @@ export function ProfileForm() {
 
   return (
     <form
-      onSubmit={handleSubmit(onSubmit)}
+      onSubmit={handleSubmit(onSubmit, onInvalid)}
       className="w-full max-w-2xl rounded-xl border border-border bg-card p-6 shadow-xl"
     >
       {/* Steps header + progress */}
@@ -703,6 +756,12 @@ export function ProfileForm() {
         )}
       </div>
       </>
+      )}
+
+      {submitError && (
+        <p role="alert" className="mt-6 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+          {submitError}
+        </p>
       )}
 
       {/* Navigation */}

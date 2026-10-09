@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import crypto from "crypto"
 import geoip from "geoip-lite"
+import { getClientIp, rateLimiters } from "@/lib/rate-limit"
 
 export const runtime = "nodejs"
 
@@ -55,8 +56,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false }, { status: 404 })
     }
 
-    // Visitor hash: SHA-256(IP + UA + date) truncated
-    const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown"
+    // Visitor hash: SHA-256(IP + UA + date) truncated. IP comes from the trusted proxy hop: the
+    // first X-Forwarded-For entry is client-controlled and would let anyone fake unique visitors.
+    const ip = getClientIp(req.headers)
+    // Silently drop beacons over the limit (the client ignores the response anyway)
+    if (!rateLimiters.analyticsByIpSlug.check(`${ip}|${slug}`).ok) {
+      return NextResponse.json({ ok: true })
+    }
     const today = new Date().toISOString().slice(0, 10)
     const visitorHash = crypto
       .createHash("sha256")

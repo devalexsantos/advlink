@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { jpegFile, pngFile, spoofedHtmlFile } from "@/test/fixtures/images"
 
 const { prismaMock, getServerSessionMock, uploadToS3Mock, trackEventMock, sendTicketCreatedEmailMock } = vi.hoisted(
   () => ({
@@ -258,8 +259,31 @@ describe("POST /api/tickets", () => {
     expect(prismaMock.ticketMessage.update).not.toHaveBeenCalled()
   })
 
+  it("rejects a spoofed attachment with 400 without creating the ticket or uploading", async () => {
+    const form = new FormData()
+    form.append("subject", "Com imagens")
+    form.append("message", "Veja")
+    form.append("images", pngFile("ok.png"))
+    form.append("images", spoofedHtmlFile("evil.jpg"))
+    const res = await POST(new Request("http://localhost/api/tickets", { method: "POST", body: form }))
+    expect(res.status).toBe(400)
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+    expect(prismaMock.ticket.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects more than 5 attachments with 400", async () => {
+    const form = new FormData()
+    form.append("subject", "Muitas imagens")
+    form.append("message", "Veja")
+    for (let i = 0; i < 6; i++) form.append("images", jpegFile(`p${i}.jpg`))
+    const res = await POST(new Request("http://localhost/api/tickets", { method: "POST", body: form }))
+    expect(res.status).toBe(400)
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+    expect(prismaMock.ticket.create).not.toHaveBeenCalled()
+  })
+
   it("uploads images to S3 and updates the first message with image URLs", async () => {
-    const imageFile = new File(["img-data"], "screenshot.png", { type: "image/png" })
+    const imageFile = pngFile("screenshot.png")
     const form = new FormData()
     form.append("subject", "Com imagens")
     form.append("message", "Veja o screenshot")
@@ -282,8 +306,8 @@ describe("POST /api/tickets", () => {
   })
 
   it("uploads multiple images and updates message with all URLs", async () => {
-    const image1 = new File(["img1"], "screenshot1.png", { type: "image/png" })
-    const image2 = new File(["img2"], "screenshot2.jpg", { type: "image/jpeg" })
+    const image1 = pngFile("screenshot1.png")
+    const image2 = jpegFile("screenshot2.jpg")
     uploadToS3Mock
       .mockResolvedValueOnce({ url: "https://s3.test/img1.png" })
       .mockResolvedValueOnce({ url: "https://s3.test/img2.jpg" })
@@ -304,7 +328,7 @@ describe("POST /api/tickets", () => {
 
   it("skips message image update when no firstMessage is found", async () => {
     prismaMock.ticketMessage.findFirst.mockResolvedValue(null)
-    const imageFile = new File(["img"], "photo.jpg", { type: "image/jpeg" })
+    const imageFile = jpegFile("photo.jpg")
     const form = new FormData()
     form.append("subject", "Ticket")
     form.append("message", "Message")

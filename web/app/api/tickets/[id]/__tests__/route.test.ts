@@ -56,4 +56,14 @@ describe("GET /api/tickets/[id]", () => {
       })
     )
   })
+
+  it("never returns admin IDs to the customer", async () => {
+    sessionMock.mockResolvedValue({ user: { id: "u1" } })
+    prismaMock.ticket.findFirst.mockResolvedValue({ id: "t1", messages: [] })
+    await GET(new Request("http://localhost"), { params: Promise.resolve({ id: "t1" }) })
+    const args = prismaMock.ticket.findFirst.mock.calls[0][0]
+    expect(args.omit).toEqual({ assignedAdminId: true })
+    expect(args.include.messages.omit).toEqual({ senderAdminId: true })
+    expect(args.include.messages.include.senderAdmin).toEqual({ select: { name: true } })
+  })
 })

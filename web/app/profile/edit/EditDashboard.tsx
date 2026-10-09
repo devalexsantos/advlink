@@ -1,13 +1,14 @@
 "use client"
 
 import { Suspense } from "react"
-import { Save } from "lucide-react"
+import { AlertTriangle, Save } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { EditFormProvider, useEditForm } from "./EditFormContext"
 import SectionRenderer from "./SectionRenderer"
 import Preview from "./Preview"
 import SubscribeCTA from "./SubscribeCTA"
 import PublishedCTA from "./PublishedCTA"
+import OverdueAlert from "@/components/billing/OverdueAlert"
 import { useMobilePreview } from "../MobilePreviewContext"
 
 function PreviewBanner({ className }: { className?: string }) {
@@ -21,23 +22,57 @@ function PreviewBanner({ className }: { className?: string }) {
   )
 }
 
+function EditorSkeleton() {
+  return (
+    <div className="space-y-4" aria-busy="true" aria-label="Carregando editor">
+      <div className="h-8 w-1/3 animate-pulse rounded-md bg-muted" />
+      <div className="h-40 animate-pulse rounded-xl bg-muted" />
+      <div className="h-24 animate-pulse rounded-xl bg-muted" />
+    </div>
+  )
+}
+
+function EditorLoadError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/10 p-6 text-center space-y-3">
+      <AlertTriangle className="mx-auto h-6 w-6 text-destructive" />
+      <p className="text-sm text-foreground">Não foi possível carregar os dados do seu site.</p>
+      <Button type="button" variant="secondary" onClick={onRetry} className="cursor-pointer">
+        Tentar novamente
+      </Button>
+    </div>
+  )
+}
+
+function EditorContent() {
+  const { isLoading, isError, refetchProfile } = useEditForm()
+  if (isLoading) return <EditorSkeleton />
+  if (isError) return <EditorLoadError onRetry={refetchProfile} />
+  return (
+    <Suspense fallback={null}>
+      <SectionRenderer />
+    </Suspense>
+  )
+}
+
 function EditDashboardInner({ isActive, slug }: { isActive: boolean; slug?: string }) {
-  const { saveProfileMutation } = useEditForm()
+  const { saveProfileMutation, isLoading, isError } = useEditForm()
   const { mobilePreview } = useMobilePreview()
+  // Saving before the profile loaded would overwrite it with empty defaults
+  const canSave = !isLoading && !isError && !saveProfileMutation.isPending
 
   return (
     <div className="space-y-4">
       {/* CTA bar */}
       {!isActive ? <SubscribeCTA /> : <PublishedCTA slug={slug} />}
+      {isActive && <OverdueAlert />}
 
       {/* Desktop: 2 columns */}
       <div className="hidden lg:grid grid-cols-[1fr_1fr] gap-6 items-start">
         <div className="max-w-[640px] space-y-4">
-          <Suspense fallback={null}>
-            <SectionRenderer />
-          </Suspense>
+          <EditorContent />
           <div className="flex justify-end">
-            <Button type="submit" disabled={saveProfileMutation.isPending} className="gap-2 cursor-pointer">
+            <Button type="submit" disabled={!canSave} className="gap-2 cursor-pointer">
               <Save className="w-4 h-4" />
               {saveProfileMutation.isPending ? "Salvando..." : "Salvar"}
             </Button>
@@ -54,12 +89,10 @@ function EditDashboardInner({ isActive, slug }: { isActive: boolean; slug?: stri
       {!mobilePreview ? (
         <>
           <div className="lg:hidden max-w-[640px] space-y-4">
-            <Suspense fallback={null}>
-              <SectionRenderer />
-            </Suspense>
+            <EditorContent />
           </div>
           {/* Mobile: floating save button */}
-          <Button type="submit" disabled={saveProfileMutation.isPending} aria-label="Salvar" size="icon"
+          <Button type="submit" disabled={!canSave} aria-label="Salvar" size="icon"
             className="lg:hidden fixed bottom-4 right-4 z-20 shadow-lg h-12 w-12 rounded-full">
             <Save className="w-6 h-6" />
           </Button>

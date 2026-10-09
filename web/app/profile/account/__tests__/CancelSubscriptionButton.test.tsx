@@ -2,8 +2,13 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 import { render, screen, waitFor, within } from "@testing-library/react"
 import userEvent from "@testing-library/user-event"
 
-const { mockFetch } = vi.hoisted(() => ({
+const { mockFetch, mockRefresh } = vi.hoisted(() => ({
   mockFetch: vi.fn(),
+  mockRefresh: vi.fn(),
+}))
+
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ refresh: mockRefresh, push: vi.fn(), replace: vi.fn() }),
 }))
 
 vi.stubGlobal("fetch", mockFetch)
@@ -115,85 +120,109 @@ describe("CancelSubscriptionButton", () => {
       await userEvent.selectOptions(screen.getByRole("combobox"), reason)
     }
 
-    it("POSTs to /api/stripe/cancel-subscription with the selected reason", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true })
-      render(<CancelSubscriptionButton />)
-      await openAndSelectReason("Preço muito alto")
+    async function confirm() {
       const dialog = screen.getByRole("dialog")
       const confirmBtn = within(dialog).getAllByRole("button").find(
         (btn) => btn.textContent?.includes("Cancelar assinatura")
       )!
       await userEvent.click(confirmBtn)
-      await waitFor(() =>
-        expect(mockFetch).toHaveBeenCalledWith("/api/stripe/cancel-subscription", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason: "Preço muito alto", details: "" }),
-        })
-      )
+      return dialog
+    }
+
+    function jsonResponse(ok: boolean, body: unknown) {
+      return { ok, json: async () => body }
+    }
+
+    it("POSTs to /api/billing/cancel with only the reason when no details were typed", async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(true, { activeUntil: "2026-11-05" }))
+      render(<CancelSubscriptionButton />)
+      await openAndSelectReason("Preço muito alto")
+      await confirm()
+      await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1))
+      const [url, init] = mockFetch.mock.calls[0]
+      expect(url).toBe("/api/billing/cancel")
+      expect(init.method).toBe("POST")
+      expect(JSON.parse(init.body)).toEqual({ reason: "Preço muito alto" })
     })
 
     it("includes the details text in the POST body", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true })
+      mockFetch.mockResolvedValueOnce(jsonResponse(true, { activeUntil: "2026-11-05" }))
       render(<CancelSubscriptionButton />)
       await openAndSelectReason("Outro")
       await userEvent.type(screen.getByPlaceholderText(/conte um pouco mais/i), "Motivo pessoal")
-      const dialog = screen.getByRole("dialog")
-      const confirmBtn = within(dialog).getAllByRole("button").find(
-        (btn) => btn.textContent?.includes("Cancelar assinatura")
-      )!
-      await userEvent.click(confirmBtn)
-      await waitFor(() =>
-        expect(mockFetch).toHaveBeenCalledWith("/api/stripe/cancel-subscription", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ reason: "Outro", details: "Motivo pessoal" }),
-        })
-      )
+      await confirm()
+      await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(1))
+      expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({ reason: "Outro", details: "Motivo pessoal" })
     })
 
-    it("shows success message after successful cancellation", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true })
+    it("shows the date the site stays online, refreshes the page and removes the trigger on success", async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(true, { activeUntil: "2026-11-05" }))
       render(<CancelSubscriptionButton />)
       await openAndSelectReason()
-      const dialog = screen.getByRole("dialog")
-      const confirmBtn = within(dialog).getAllByRole("button").find(
-        (btn) => btn.textContent?.includes("Cancelar assinatura")
-      )!
-      await userEvent.click(confirmBtn)
-      await waitFor(() =>
-        expect(
-          screen.getByText(/sua assinatura será cancelada ao final do período atual/i)
-        ).toBeInTheDocument()
-      )
+      await confirm()
+      expect(
+        await screen.findByText(/Assinatura cancelada\. Seu site continua no ar até 05\/11\/2026\./)
+      ).toBeInTheDocument()
+      expect(mockRefresh).toHaveBeenCalledTimes(1)
+      expect(screen.queryByRole("button", { name: /cancelar assinatura/i })).not.toBeInTheDocument()
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument()
     })
 
-    it("removes the trigger button after successful cancellation", async () => {
-      mockFetch.mockResolvedValueOnce({ ok: true })
+    it("tells the site went offline when the server returns no activeUntil", async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(true, { activeUntil: null }))
       render(<CancelSubscriptionButton />)
       await openAndSelectReason()
-      const dialog = screen.getByRole("dialog")
-      const confirmBtn = within(dialog).getAllByRole("button").find(
-        (btn) => btn.textContent?.includes("Cancelar assinatura")
-      )!
-      await userEvent.click(confirmBtn)
-      await waitFor(() =>
-        expect(screen.queryByRole("button", { name: /cancelar assinatura/i })).not.toBeInTheDocument()
-      )
+      await confirm()
+      expect(await screen.findByText(/Seu site saiu do ar\./)).toBeInTheDocument()
     })
 
     it("shows 'Cancelando...' while the request is in flight", async () => {
       mockFetch.mockReturnValueOnce(new Promise(() => {}))
       render(<CancelSubscriptionButton />)
       await openAndSelectReason()
-      const dialog = screen.getByRole("dialog")
-      const confirmBtn = within(dialog).getAllByRole("button").find(
-        (btn) => btn.textContent?.includes("Cancelar assinatura")
-      )!
-      await userEvent.click(confirmBtn)
-      await waitFor(() =>
-        expect(within(dialog).getByText(/cancelando\.\.\./i)).toBeInTheDocument()
-      )
+      const dialog = await confirm()
+      expect(await within(dialog).findByText(/cancelando\.\.\./i)).toBeInTheDocument()
+    })
+
+    it("shows the server error inside the dialog and keeps it open without refreshing", async () => {
+      mockFetch.mockResolvedValueOnce(jsonResponse(false, { error: "Nenhuma assinatura ativa para cancelar." }))
+      render(<CancelSubscriptionButton />)
+      await openAndSelectReason()
+      const dialog = await confirm()
+      const alert = await within(dialog).findByRole("alert")
+      expect(alert).toHaveTextContent("Nenhuma assinatura ativa para cancelar.")
+      expect(screen.getByRole("dialog")).toBeInTheDocument()
+      expect(mockRefresh).not.toHaveBeenCalled()
+    })
+
+    it("falls back to a generic message when the error response has no body", async () => {
+      mockFetch.mockResolvedValueOnce({ ok: false, json: async () => { throw new Error("bad json") } })
+      render(<CancelSubscriptionButton />)
+      await openAndSelectReason()
+      const dialog = await confirm()
+      expect(await within(dialog).findByRole("alert")).toHaveTextContent(/não foi possível cancelar agora/i)
+    })
+
+    it("shows a connection error when the request fails", async () => {
+      mockFetch.mockRejectedValueOnce(new Error("network"))
+      render(<CancelSubscriptionButton />)
+      await openAndSelectReason()
+      const dialog = await confirm()
+      expect(await within(dialog).findByRole("alert")).toHaveTextContent(/não foi possível conectar/i)
+      expect(mockRefresh).not.toHaveBeenCalled()
+    })
+
+    it("clears the previous error when the user retries", async () => {
+      mockFetch
+        .mockResolvedValueOnce(jsonResponse(false, { error: "Falhou" }))
+        .mockResolvedValueOnce(jsonResponse(true, { activeUntil: "2026-11-05" }))
+      render(<CancelSubscriptionButton />)
+      await openAndSelectReason()
+      await confirm()
+      await screen.findByText("Falhou")
+      await confirm()
+      await screen.findByText(/Assinatura cancelada/)
+      expect(screen.queryByText("Falhou")).not.toBeInTheDocument()
     })
   })
 })

@@ -166,15 +166,91 @@
       }
     });
   });
-  // ========== Cookie Consent ==========
+  // ========== Attribution: carry UTMs to the app ==========
+  // The app stores them as first-touch attribution on sign-up. Visitors without UTMs are
+  // tagged as coming from the landing page so the channel is never "unknown".
+  (function propagateUtm() {
+    const keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+    const current = new URLSearchParams(window.location.search);
+    const incoming = keys.filter((k) => current.get(k));
+    document.querySelectorAll('a[href^="https://app.advlink.site"]').forEach((link) => {
+      const url = new URL(link.href);
+      if (incoming.length) {
+        incoming.forEach((k) => url.searchParams.set(k, current.get(k)));
+      } else {
+        url.searchParams.set('utm_source', 'landing');
+        url.searchParams.set('utm_medium', 'cta');
+      }
+      if (!url.searchParams.get('utm_content')) {
+        const cls = (link.className || '').split(' ')[0];
+        if (cls) url.searchParams.set('utm_content', cls);
+      }
+      link.href = url.toString();
+      // Conversion signal for GA4 (already loaded on this page): a click on any "go to app" CTA
+      link.addEventListener('click', () => {
+        if (typeof window.gtag === 'function') {
+          window.gtag('event', 'generate_lead', { cta: url.searchParams.get('utm_content') || 'app_link' });
+        }
+        if (typeof window.fbq === 'function') {
+          window.fbq('track', 'Lead', { content_name: url.searchParams.get('utm_content') || 'app_link' });
+        }
+      });
+    });
+  })();
+
+  // ========== Cookie Consent + Meta Pixel ==========
+  // cookie_consent: "1" = accepted (marketing cookies allowed), "0" = rejected.
+  // The AdvLink Meta Pixel only loads after explicit consent.
+  const FB_PIXEL_ID = '1003801661770634';
+
+  function loadMetaPixel() {
+    if (window.fbq) return;
+    /* eslint-disable */
+    !function(f,b,e,v,n,t,s){if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+    n.callMethod.apply(n,arguments):n.queue.push(arguments)};if(!f._fbq)f._fbq=n;
+    n.push=n;n.loaded=!0;n.version='2.0';n.queue=[];t=b.createElement(e);t.async=!0;
+    t.src=v;s=b.getElementsByTagName(e)[0];s.parentNode.insertBefore(t,s)}(window,
+    document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    /* eslint-enable */
+    window.fbq('init', FB_PIXEL_ID);
+    window.fbq('track', 'PageView');
+  }
+
+  function getConsent() {
+    try {
+      return localStorage.getItem('cookie_consent');
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function setConsent(value) {
+    try {
+      localStorage.setItem('cookie_consent', value);
+    } catch (e) {
+      /* storage blocked: choice lasts for this page view only */
+    }
+  }
+
   const banner = document.getElementById('cookieBanner');
   const acceptBtn = document.getElementById('cookieAccept');
-  if (banner && !localStorage.getItem('cookie_consent')) {
+  const rejectBtn = document.getElementById('cookieReject');
+  const consent = getConsent();
+
+  if (consent === '1') loadMetaPixel();
+  if (banner && consent !== '1' && consent !== '0') {
     banner.classList.add('cookie-banner--visible');
   }
   if (acceptBtn) {
     acceptBtn.addEventListener('click', () => {
-      localStorage.setItem('cookie_consent', '1');
+      setConsent('1');
+      banner.classList.remove('cookie-banner--visible');
+      loadMetaPixel();
+    });
+  }
+  if (rejectBtn) {
+    rejectBtn.addEventListener('click', () => {
+      setConsent('0');
       banner.classList.remove('cookie-banner--visible');
     });
   }

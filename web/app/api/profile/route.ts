@@ -2,7 +2,9 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { sanitizeOptionalRichText } from "@/lib/sanitize-rich-text"
 import { uploadToS3 } from "@/lib/s3"
+import { MAX_IMAGE_BYTES, imageUploadErrorResponse, rejectOversizedRequest, validateImageUpload, type ValidatedImage } from "@/lib/upload-validation"
 import { isReservedSlug } from "@/lib/reserved-slugs"
 import { getActiveSiteId } from "@/lib/active-site"
 
@@ -118,6 +120,8 @@ export async function PATCH(req: Request) {
     city = body.city
     state = body.state
   } else if (contentType.includes("multipart/form-data")) {
+    const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES, 2)
+    if (tooLarge) return tooLarge
     const form = await req.formData()
     publicName = String(form.get("publicName") ?? "")
     aboutDescription = String(form.get("aboutDescription") ?? "")
@@ -169,6 +173,37 @@ export async function PATCH(req: Request) {
   }
 
   // Slug validation: check uniqueness excluding current profile
+  // Validate URL/ID fields before any upload. The validators throw a 400 NextResponse, which must
+  // be returned (a thrown Response becomes a 500 in a route handler).
+  let validated: { instagramUrl: string | null | undefined; calendlyUrl: string | null | undefined; gtmContainerId: string | null | undefined }
+  try {
+    validated = {
+      instagramUrl: validateInstagram(instagramUrl),
+      calendlyUrl: validateCalendly(calendlyUrl),
+      gtmContainerId: validateGtm(gtmContainerId),
+    }
+  } catch (e) {
+    if (e instanceof Response) return e
+    throw e
+  }
+  if (theme !== undefined && !["modern", "classic", "corporate"].includes(theme)) {
+    return NextResponse.json({ error: "Tema inválido" }, { status: 400 })
+  }
+
+  // Validate image files (magic bytes + size) before any upload.
+  let avatarImage: ValidatedImage | undefined
+  let coverImage: ValidatedImage | undefined
+  if (avatarFile) {
+    const image = await validateImageUpload(avatarFile)
+    if (!image.ok) return imageUploadErrorResponse(image)
+    avatarImage = image.image
+  }
+  if (coverFile) {
+    const image = await validateImageUpload(coverFile)
+    if (!image.ok) return imageUploadErrorResponse(image)
+    coverImage = image.image
+  }
+
   async function validateOrGenerateSlug(name: string, input?: string) {
     function baseFrom(text: string) {
       return text
@@ -200,14 +235,12 @@ export async function PATCH(req: Request) {
 
   // Upload avatar
   let avatarUrl: string | null | undefined
-  if (avatarFile) {
-    const arrayBuffer = await avatarFile.arrayBuffer()
-    const ext = avatarFile.type.split("/")[1] || "jpg"
-    const key = `avatars/${profileId}.${Date.now()}.${ext}`
+  if (avatarImage) {
+    const key = `avatars/${profileId}.${Date.now()}.${avatarImage.ext}`
     const uploaded = await uploadToS3({
       key,
-      contentType: avatarFile.type || "image/jpeg",
-      body: Buffer.from(arrayBuffer),
+      contentType: avatarImage.contentType,
+      body: avatarImage.buffer,
       cacheControl: "public, max-age=604800, immutable",
     })
     avatarUrl = uploaded.url
@@ -218,14 +251,12 @@ export async function PATCH(req: Request) {
 
   // Upload cover
   let coverUrl: string | null | undefined
-  if (coverFile) {
-    const arrayBuffer = await coverFile.arrayBuffer()
-    const ext = coverFile.type.split("/")[1] || "jpg"
-    const key = `covers/${profileId}.${Date.now()}.${ext}`
+  if (coverImage) {
+    const key = `covers/${profileId}.${Date.now()}.${coverImage.ext}`
     const uploaded = await uploadToS3({
       key,
-      contentType: coverFile.type || "image/jpeg",
-      body: Buffer.from(arrayBuffer),
+      contentType: coverImage.contentType,
+      body: coverImage.buffer,
       cacheControl: "public, max-age=604800, immutable",
     })
     coverUrl = uploaded.url
@@ -251,6 +282,17 @@ export async function PATCH(req: Request) {
     return v
   }
 
+  // GTM container IDs end up inside an inline <script>, so only the official format is accepted
+  function validateGtm(id?: string) {
+    const v = nopt(id)
+    if (v == null) return v
+    const upper = v.toUpperCase()
+    if (!/^GTM-[A-Z0-9]{4,10}$/.test(upper)) {
+      throw NextResponse.json({ error: "ID do Google Tag Manager inválido. Use o formato GTM-XXXXXXX." }, { status: 400 })
+    }
+    return upper
+  }
+
   // Validate Instagram URL if provided
   function validateInstagram(url?: string) {
     const v = nopt(url)
@@ -266,25 +308,25 @@ export async function PATCH(req: Request) {
     where: { id: profileId },
     data: {
       publicName,
-      aboutDescription: nopt(aboutDescription),
+      aboutDescription: sanitizeOptionalRichText(nopt(aboutDescription)),
       publicEmail: nopt(publicEmail),
       publicPhone: nopt(publicPhone),
       headline: nopt(headline),
       publicPhoneIsFixed,
       whatsapp: nopt(whatsapp),
       whatsappIsFixed,
-      instagramUrl: validateInstagram(instagramUrl),
+      instagramUrl: validated.instagramUrl,
       avatarUrl,
       slug,
       primaryColor,
       secondaryColor,
       textColor,
       coverUrl,
-      calendlyUrl: validateCalendly(calendlyUrl),
+      calendlyUrl: validated.calendlyUrl,
       metaTitle: nopt(metaTitle),
       metaDescription: nopt(metaDescription),
       keywords: nopt(keywords),
-      gtmContainerId: nopt(gtmContainerId),
+      gtmContainerId: validated.gtmContainerId,
       theme,
     },
   })

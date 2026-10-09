@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { jpegFile, pngFile, spoofedHtmlFile } from "@/test/fixtures/images"
 
 const { sessionMock, prismaMock, uploadToS3Mock, sendTicketReplyEmailMock } = vi.hoisted(() => ({
   sessionMock: vi.fn(),
@@ -25,7 +26,7 @@ function makeFormData(fields: Record<string, string>, files?: { name: string; co
   for (const [k, v] of Object.entries(fields)) fd.append(k, v)
   if (files) {
     for (const f of files) {
-      fd.append("images", new File([f.content], f.name, { type: "image/png" }))
+      fd.append("images", pngFile(f.name))
     }
   }
   return fd
@@ -118,6 +119,21 @@ describe("POST /api/tickets/[id]/messages", () => {
     const req = new Request("http://localhost", { method: "POST", body: makeFormData({ message: "urgent" }) })
     await POST(req, { params: Promise.resolve({ id: "t1" }) })
     expect(sendTicketReplyEmailMock).toHaveBeenCalledWith(5, "Bug", "urgent", "admin@test.com", "User Test")
+  })
+
+  it("rejects a spoofed attachment with 400 and does not upload", async () => {
+    sessionMock.mockResolvedValue({ user: { id: "u1" } })
+    prismaMock.ticket.findFirst.mockResolvedValue({ id: "t1", number: 1, subject: "Help", status: "open", assignedAdmin: null })
+    const fd = new FormData()
+    fd.append("message", "veja")
+    fd.append("images", jpegFile("ok.jpg"))
+    fd.append("images", spoofedHtmlFile("evil.jpg"))
+    const res = await POST(new Request("http://localhost", { method: "POST", body: fd }), {
+      params: Promise.resolve({ id: "t1" }),
+    })
+    expect(res.status).toBe(400)
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+    expect(prismaMock.ticketMessage.create).not.toHaveBeenCalled()
   })
 
   it("uploads a single image to S3 and includes imageUrls in message", async () => {

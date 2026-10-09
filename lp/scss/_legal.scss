@@ -203,3 +203,20 @@
     flex-shrink: 0;
   }
 }
+
+.cookie-banner__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.cookie-banner__reject {
+  font-size: 0.8125rem;
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+
+  &:hover {
+    color: #fff;
+  }
+}

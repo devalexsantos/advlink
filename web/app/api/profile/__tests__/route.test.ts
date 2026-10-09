@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { jpegFile, pngFile, spoofedHtmlFile } from "@/test/fixtures/images"
 
 const { prismaMock, getServerSessionMock, uploadToS3Mock, getActiveSiteIdMock } = vi.hoisted(() => ({
   prismaMock: {
@@ -98,6 +99,54 @@ describe("PATCH /api/profile", () => {
     const res = await PATCH(req)
     expect(res.status).toBe(200)
     expect(prismaMock.profile.update).toHaveBeenCalled()
+  })
+
+  it("rejects a gtmContainerId that is not GTM-XXXX (script injection)", async () => {
+    const req = new Request("http://localhost/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ publicName: "Updated Name", gtmContainerId: "GTM-X');alert(1)//" }),
+    })
+    const res = await PATCH(req)
+    expect(res.status).toBe(400)
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
+  })
+
+  it("returns 400 for an unknown theme", async () => {
+    const req = new Request("http://localhost/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ publicName: "Updated Name", theme: "neon" }),
+    })
+    const res = await PATCH(req)
+    expect(res.status).toBe(400)
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
+  })
+
+  it("normalizes a valid gtmContainerId to upper case", async () => {
+    const req = new Request("http://localhost/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ publicName: "Updated Name", gtmContainerId: " gtm-ab12cd3 " }),
+    })
+    const res = await PATCH(req)
+    expect(res.status).toBe(200)
+    expect(prismaMock.profile.update.mock.calls.at(-1)![0].data.gtmContainerId).toBe("GTM-AB12CD3")
+  })
+
+  it("sanitizes aboutDescription HTML before saving (stored XSS)", async () => {
+    const req = new Request("http://localhost/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        publicName: "Updated Name",
+        aboutDescription: '<p>Sobre</p><img src=x onerror="fetch(\'/api/admin/admins\')"><script>alert(1)</script>',
+      }),
+    })
+    const res = await PATCH(req)
+    expect(res.status).toBe(200)
+    const data = prismaMock.profile.update.mock.calls.at(-1)![0].data
+    expect(data.aboutDescription).toBe("<p>Sobre</p>")
   })
 
   it("handles sectionOrder update", async () => {
@@ -251,9 +300,19 @@ describe("PATCH /api/profile", () => {
     expect(updateCall.data.whatsappIsFixed).toBeUndefined()
   })
 
+  it("rejects a spoofed cover (HTML sent as image/jpeg) with 400 before any upload", async () => {
+    const form = new FormData()
+    form.append("publicName", "Test")
+    form.append("photo", pngFile("avatar.png"))
+    form.append("cover", spoofedHtmlFile("cover.jpg"))
+    const res = await PATCH(new Request("http://localhost/api/profile", { method: "PATCH", body: form }))
+    expect(res.status).toBe(400)
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
+  })
+
   it("uploads avatar via FormData photo field", async () => {
-    const fileContent = new Uint8Array([0x89, 0x50, 0x4e, 0x47])
-    const file = new File([fileContent], "avatar.png", { type: "image/png" })
+    const file = pngFile("avatar.png")
     const form = new FormData()
     form.append("publicName", "Test")
     form.append("photo", file)
@@ -276,8 +335,7 @@ describe("PATCH /api/profile", () => {
   })
 
   it("uploads cover via FormData cover field", async () => {
-    const fileContent = new Uint8Array([0xff, 0xd8, 0xff, 0xe0])
-    const file = new File([fileContent], "cover.jpg", { type: "image/jpeg" })
+    const file = jpegFile("cover.jpg")
     const form = new FormData()
     form.append("publicName", "Test")
     form.append("cover", file)
@@ -291,7 +349,7 @@ describe("PATCH /api/profile", () => {
 
     expect(uploadToS3Mock).toHaveBeenCalledTimes(1)
     const s3Call = uploadToS3Mock.mock.calls[0][0]
-    expect(s3Call.key).toMatch(/^covers\/profile-1\.\d+\.jpeg$/)
+    expect(s3Call.key).toMatch(/^covers\/profile-1\.\d+\.jpg$/)
     expect(s3Call.contentType).toBe("image/jpeg")
 
     const updateCall = prismaMock.profile.update.mock.calls[0][0]
@@ -364,19 +422,12 @@ describe("PATCH /api/profile", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ publicName: "Test", calendlyUrl: "https://example.com/invalid" }),
     })
-    // validateCalendly throws a NextResponse, so PATCH will throw
-    try {
-      await PATCH(req)
-      // If it doesn't throw, it must have returned 400
-      expect(true).toBe(false) // Should not reach here
-    } catch (e) {
-      // The thrown value is a NextResponse
-      expect(e).toBeInstanceOf(Response)
-      const res = e as Response
-      expect(res.status).toBe(400)
-      const data = await res.json()
-      expect(data.error).toMatch(/calendlyUrl/)
-    }
+    // Must be returned, not thrown: a thrown Response becomes a 500 in a route handler
+    const res = await PATCH(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toMatch(/calendlyUrl/)
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
   })
 
   it("saves valid Calendly URL", async () => {
@@ -397,16 +448,12 @@ describe("PATCH /api/profile", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ publicName: "Test", instagramUrl: "https://twitter.com/user" }),
     })
-    try {
-      await PATCH(req)
-      expect(true).toBe(false) // Should not reach here
-    } catch (e) {
-      expect(e).toBeInstanceOf(Response)
-      const res = e as Response
-      expect(res.status).toBe(400)
-      const data = await res.json()
-      expect(data.error).toMatch(/instagramUrl/)
-    }
+    // Must be returned, not thrown: a thrown Response becomes a 500 in a route handler
+    const res = await PATCH(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toMatch(/instagramUrl/)
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
   })
 
   it("saves valid Instagram URL with www prefix", async () => {

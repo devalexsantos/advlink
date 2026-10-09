@@ -1,5 +1,5 @@
 import { MDXRemote } from "next-mdx-remote/rsc";
-import { ADVLINK_URL } from "@/lib/constants";
+import { ADVLINK_URL, withUtm } from "@/lib/constants";
 
 function Callout({ children }: { children: React.ReactNode }) {
   return (
@@ -19,7 +19,7 @@ function CTA() {
         Sem precisar saber programar. Configure em minutos.
       </p>
       <a
-        href={ADVLINK_URL}
+        href={withUtm(ADVLINK_URL, "post_cta")}
         target="_blank"
         rel="noopener noreferrer"
         className="mt-4 inline-block rounded-full bg-primary px-6 py-3 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"

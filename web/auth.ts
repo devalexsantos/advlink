@@ -7,6 +7,7 @@ import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { createSignInEmailHtml, createSignInEmailText } from "@/lib/emails/authEmail"
 import nodemailer from "nodemailer"
+import { getRequestAttribution } from "@/lib/attribution-server"
 import { trackEvent } from "@/lib/product-events"
 
 export const authOptions: NextAuthOptions = {
@@ -85,7 +86,8 @@ export const authOptions: NextAuthOptions = {
   ],
   events: {
     async createUser({ user }) {
-      trackEvent("user_signed_up", { userId: user.id, meta: { email: user.email } }).catch(() => {})
+      const attribution = await getRequestAttribution()
+      trackEvent("user_signed_up", { userId: user.id, meta: { email: user.email, ...(attribution ? { attribution } : {}) } }).catch(() => {})
     },
   },
   callbacks: {
@@ -104,6 +106,8 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
+    // Expired magic links etc. land on our pt-BR login page instead of NextAuth's English one
+    error: "/login",
   },
   secret: process.env.NEXTAUTH_SECRET,
 }
