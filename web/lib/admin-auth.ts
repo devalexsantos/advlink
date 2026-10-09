@@ -1,11 +1,9 @@
 import { SignJWT, jwtVerify } from "jose"
 import { cookies } from "next/headers"
 import { prisma } from "@/lib/prisma"
+import { getAdminJwtSecret } from "@/lib/admin-secret"
 
 const ADMIN_COOKIE = "admin-token"
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.ADMIN_JWT_SECRET || "admin-secret-change-me"
-)
 
 export interface AdminPayload {
   adminId: string
@@ -18,12 +16,12 @@ export async function createAdminToken(payload: AdminPayload) {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("7d")
-    .sign(JWT_SECRET)
+    .sign(getAdminJwtSecret())
 }
 
 export async function verifyAdminToken(token: string): Promise<AdminPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET)
+    const { payload } = await jwtVerify(token, getAdminJwtSecret())
     return payload as unknown as AdminPayload
   } catch {
     return null

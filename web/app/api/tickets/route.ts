@@ -14,6 +14,7 @@ export async function GET() {
   const tickets = await prisma.ticket.findMany({
     where: { userId },
     orderBy: { updatedAt: "desc" },
+    omit: { assignedAdminId: true },
     include: { _count: { select: { messages: true } } },
   })
 

@@ -3,10 +3,8 @@ import type { NextRequest } from "next/server"
 import { getToken } from "next-auth/jwt"
 import { jwtVerify } from "jose"
 import { RESERVED_SLUGS } from "@/lib/reserved-slugs"
+import { getAdminJwtSecret } from "@/lib/admin-secret"
 
-const ADMIN_JWT_SECRET = new TextEncoder().encode(
-  process.env.ADMIN_JWT_SECRET || "admin-secret-change-me"
-)
 
 // Subdomain rewrite to /adv/[slug] for *.advlink.site
 export async function proxy(req: NextRequest) {
@@ -42,7 +40,7 @@ export async function proxy(req: NextRequest) {
     }
 
     try {
-      await jwtVerify(token, ADMIN_JWT_SECRET)
+      await jwtVerify(token, getAdminJwtSecret())
       return NextResponse.next()
     } catch {
       return NextResponse.redirect(new URL("/admin/login", nextUrl.origin))

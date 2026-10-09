@@ -14,9 +14,12 @@ export async function GET(
   const { id } = await params
   const ticket = await prisma.ticket.findFirst({
     where: { id, userId },
+    // Never expose admin IDs to customers (they are the subject of the admin JWT).
+    omit: { assignedAdminId: true },
     include: {
       messages: {
         orderBy: { createdAt: "asc" },
+        omit: { senderAdminId: true },
         include: {
           senderUser: { select: { name: true, email: true } },
           senderAdmin: { select: { name: true } },
