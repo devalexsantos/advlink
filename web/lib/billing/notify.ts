@@ -1,11 +1,65 @@
+import { prisma } from "@/lib/prisma"
 import type { BillingNotification } from "./sync"
+import {
+  sendBillingEmail,
+  sendCancellationConfirmationEmail,
+  sendCancellationTeamEmail,
+} from "@/lib/emails/billingEmails"
 
-/** E-mails to the lawyer on billing transitions (wired to Resend in the UI/e-mail phase). */
-export async function notifyBilling(n: BillingNotification): Promise<void> {
-  console.info("[billing] notificação pendente de e-mail", { profileId: n.profileId, notice: n.notice })
+const DEFAULT_TEAM_EMAIL = "advlinkcontato@gmail.com"
+
+async function loadOwner(profileId: string) {
+  const profile = await prisma.profile.findUnique({
+    where: { id: profileId },
+    select: { slug: true, user: { select: { email: true } } },
+  })
+  const email = profile?.user?.email
+  if (!profile || !email) return null
+  return { slug: profile.slug, email }
 }
 
-/** Lawyer + team are told about a cancellation request (wired to Resend in the e-mail phase). */
+/** E-mails to the lawyer on billing transitions. Never throws: failures are logged. */
+export async function notifyBilling(n: BillingNotification): Promise<void> {
+  try {
+    const owner = await loadOwner(n.profileId)
+    if (!owner) {
+      console.warn("[billing] sem destinatário para notificação", { profileId: n.profileId, notice: n.notice })
+      return
+    }
+    await sendBillingEmail({
+      notice: n.notice,
+      to: owner.email,
+      siteSlug: owner.slug,
+      graceUntil: n.entitlement.graceUntil,
+      invoiceUrl: n.invoiceUrl,
+    })
+  } catch (err) {
+    console.error("[billing] falha ao enviar e-mail", { profileId: n.profileId, notice: n.notice }, err)
+  }
+}
+
+/** Lawyer + team are told about a cancellation request. Never throws: failures are logged. */
 export async function notifyCancellationRequested(n: { profileId: string; reason: string; activeUntil: string | null }) {
-  console.info("[billing] cancelamento solicitado", { profileId: n.profileId, activeUntil: n.activeUntil })
+  try {
+    const owner = await loadOwner(n.profileId)
+    if (!owner) {
+      console.warn("[billing] sem destinatário para cancelamento", { profileId: n.profileId })
+      return
+    }
+    const teamTo = process.env.BILLING_TEAM_EMAIL || DEFAULT_TEAM_EMAIL
+    await Promise.all([
+      sendCancellationConfirmationEmail({ to: owner.email, activeUntil: n.activeUntil }).catch((e) =>
+        console.error("[billing] falha no e-mail de cancelamento ao advogado", e)
+      ),
+      sendCancellationTeamEmail({
+        to: teamTo,
+        siteSlug: owner.slug,
+        ownerEmail: owner.email,
+        reason: n.reason,
+        activeUntil: n.activeUntil,
+      }).catch((e) => console.error("[billing] falha no e-mail de cancelamento à equipe", e)),
+    ])
+  } catch (err) {
+    console.error("[billing] falha ao notificar cancelamento", { profileId: n.profileId }, err)
+  }
 }
