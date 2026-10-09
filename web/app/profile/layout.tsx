@@ -4,6 +4,10 @@ import { authOptions } from "@/auth"
 import { redirect } from "next/navigation"
 import { getActiveSiteId } from "@/lib/active-site"
 import { ProfileLayoutClient } from "./ProfileLayoutClient"
+import type { Metadata } from "next"
+
+// Private area: never indexed
+export const metadata: Metadata = { robots: { index: false, follow: false } }
 
 export default async function ProfileLayout({ children }: { children: React.ReactNode }) {
   const session = await getServerSession(authOptions)
