@@ -22,7 +22,9 @@ export function MagicLinkForm() {
         redirect: false,
         callbackUrl: "/onboarding/profile",
       })
-      if (res?.error) {
+      if (res?.status === 429) {
+        setError("Muitas tentativas. Aguarde alguns minutos e tente novamente.")
+      } else if (res?.error) {
         setError("Não foi possível enviar o link. Verifique o e-mail.")
       } else {
         setSent(true)

@@ -10,6 +10,8 @@ import { MAX_IMAGE_BYTES, imageUploadErrorResponse, rejectOversizedRequest, vali
 import { isReservedSlug } from "@/lib/reserved-slugs"
 import { trackEvent } from "@/lib/product-events"
 import { getActiveSiteId } from "@/lib/active-site"
+import { MAX_AREA_TITLE_LENGTH, MAX_ONBOARDING_AREAS } from "@/lib/activity-area-limits"
+import { rateLimitResponse, rateLimiters } from "@/lib/rate-limit"
 
 const OPENAI_TIMEOUT_MS = 25_000
 
@@ -88,6 +90,27 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Link do Calendly inválido. Use https://calendly.com/..." }, { status: 400 })
     }
 
+    // Areas feed the OpenAI prompt: cap count and title length (cost control).
+    if (!Array.isArray(areas) || areas.some((a) => typeof a !== "string")) {
+      return NextResponse.json({ error: "Áreas de atuação inválidas." }, { status: 400 })
+    }
+    const titles = Array.from(new Set(areas.map((a) => a.trim()))).filter(Boolean)
+    if (titles.length > MAX_ONBOARDING_AREAS) {
+      return NextResponse.json(
+        { error: `Selecione no máximo ${MAX_ONBOARDING_AREAS} áreas de atuação.` },
+        { status: 400 },
+      )
+    }
+    if (titles.some((t) => t.length > MAX_AREA_TITLE_LENGTH)) {
+      return NextResponse.json(
+        { error: `Cada área de atuação deve ter no máximo ${MAX_AREA_TITLE_LENGTH} caracteres.` },
+        { status: 400 },
+      )
+    }
+
+    const limit = rateLimiters.onboardingByUser.check(userId)
+    if (!limit.ok) return rateLimitResponse(limit)
+
     // Validate the photo before spending on OpenAI or touching S3.
     let avatarImage: ValidatedImage | undefined
     if (avatarFile) {
@@ -98,7 +121,6 @@ export async function POST(req: Request) {
 
     // 1) Generate area descriptions with OpenAI. Best effort: a missing key, rate limit or
     // timeout must not block onboarding — areas are saved without description instead.
-    const titles = Array.from(new Set(areas ?? [])).filter(Boolean)
     const openaiKey = process.env.OPENAI_API_KEY ?? ""
     let descriptions: string[] = []
     if (titles.length) {

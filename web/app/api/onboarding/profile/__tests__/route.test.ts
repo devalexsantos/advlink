@@ -25,12 +25,22 @@ vi.mock("@/lib/reserved-slugs", async (importOriginal) => importOriginal())
 vi.mock("@/lib/active-site", () => ({ getActiveSiteId: getActiveSiteIdMock }))
 
 import { POST } from "@/app/api/onboarding/profile/route"
+import { resetRateLimiters } from "@/lib/rate-limit"
+
+function jsonReq(body: Record<string, unknown>) {
+  return new Request("http://localhost/api/onboarding/profile", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body),
+  })
+}
 
 const session = { user: { id: "user-1" } }
 
 describe("POST /api/onboarding/profile", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetRateLimiters()
     getServerSessionMock.mockResolvedValue(session)
     getActiveSiteIdMock.mockResolvedValue("profile-1")
     prismaMock.user.findUnique.mockResolvedValue({ id: "user-1" })
@@ -365,5 +375,46 @@ describe("POST /api/onboarding/profile", () => {
     // The final slug should contain a suffix (number + random chars)
     expect(updateArg.data.slug).toContain("popular-name")
     expect(updateArg.data.slug).not.toBe("popular-name")
+  })
+
+  describe("OpenAI input limits and rate limiting", () => {
+    const base = { displayName: "Maria", email: "maria@test.com" }
+
+    it("returns 400 for more than 20 areas without calling OpenAI", async () => {
+      const areas = Array.from({ length: 21 }, (_, i) => `Área ${i}`)
+      const res = await POST(jsonReq({ ...base, areas }))
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toMatch(/no máximo 20/)
+      expect(generateMock).not.toHaveBeenCalled()
+    })
+
+    it("accepts exactly 20 areas", async () => {
+      generateMock.mockResolvedValue([])
+      const areas = Array.from({ length: 20 }, (_, i) => `Área ${i}`)
+      expect((await POST(jsonReq({ ...base, areas }))).status).toBe(200)
+    })
+
+    it("returns 400 for an area title longer than 120 characters", async () => {
+      const res = await POST(jsonReq({ ...base, areas: ["x".repeat(121)] }))
+      expect(res.status).toBe(400)
+      expect(generateMock).not.toHaveBeenCalled()
+    })
+
+    it("returns 400 when areas is not an array of strings", async () => {
+      expect((await POST(jsonReq({ ...base, areas: "Direito Civil" }))).status).toBe(400)
+      expect((await POST(jsonReq({ ...base, areas: [{ title: "x" }] }))).status).toBe(400)
+    })
+
+    it("returns 429 with Retry-After after 10 submissions per user per hour", async () => {
+      generateMock.mockResolvedValue(["desc"])
+      for (let i = 0; i < 10; i++) {
+        expect((await POST(jsonReq({ ...base, areas: ["Direito Civil"] }))).status).toBe(200)
+      }
+      generateMock.mockClear()
+      const res = await POST(jsonReq({ ...base, areas: ["Direito Civil"] }))
+      expect(res.status).toBe(429)
+      expect(Number(res.headers.get("Retry-After"))).toBeGreaterThan(0)
+      expect(generateMock).not.toHaveBeenCalled()
+    })
   })
 })
