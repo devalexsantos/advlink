@@ -111,6 +111,17 @@ describe("PATCH /api/profile", () => {
     expect(prismaMock.profile.update).not.toHaveBeenCalled()
   })
 
+  it("returns 400 for an unknown theme", async () => {
+    const req = new Request("http://localhost/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ publicName: "Updated Name", theme: "neon" }),
+    })
+    const res = await PATCH(req)
+    expect(res.status).toBe(400)
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
+  })
+
   it("normalizes a valid gtmContainerId to upper case", async () => {
     const req = new Request("http://localhost/api/profile", {
       method: "PATCH",

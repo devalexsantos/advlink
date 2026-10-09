@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import Link from "next/link"
+import { getProfileHost } from "@/lib/site-url"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -67,7 +68,7 @@ export default function AdminSiteDetailPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{site.publicName || site.slug || "Site"}</h1>
-          <p className="text-muted-foreground">{site.slug}.advlink.site</p>
+          <p className="text-muted-foreground">{site.slug ? getProfileHost(site.slug) : "—"}</p>
         </div>
         <Button
           variant={site.isActive ? "destructive" : "default"}

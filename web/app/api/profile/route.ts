@@ -183,6 +183,9 @@ export async function PATCH(req: Request) {
     if (e instanceof Response) return e
     throw e
   }
+  if (theme !== undefined && !["modern", "classic", "corporate"].includes(theme)) {
+    return NextResponse.json({ error: "Tema inválido" }, { status: 400 })
+  }
 
   async function validateOrGenerateSlug(name: string, input?: string) {
     function baseFrom(text: string) {

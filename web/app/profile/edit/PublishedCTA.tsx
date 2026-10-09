@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { getProfileUrl, getRootDomain } from "@/lib/site-url"
 
 type Props = {
   slug?: string | null
@@ -24,7 +25,7 @@ export default function PublishedCTA({ slug }: Props) {
 
   const effectiveSlug = data?.profile?.slug ?? slug ?? ""
   const hasSlug = effectiveSlug.trim().length > 0
-  const href = hasSlug ? `https://${effectiveSlug}.advlink.site` : undefined
+  const href = hasSlug ? getProfileUrl(effectiveSlug).replace(/\/$/, "") : undefined
 
   const [open, setOpen] = useState(false)
   const [slugInput, setSlugInput] = useState<string>("")
@@ -140,7 +141,7 @@ export default function PublishedCTA({ slug }: Props) {
                     placeholder="seu-link"
                     className="flex-1 bg-transparent text-sm text-foreground outline-none px-3 py-2"
                   />
-                  <span className="pl-1 pr-3 py-2 text-sm text-foreground font-bold whitespace-nowrap select-none">.advlink.site</span>
+                  <span className="pl-1 pr-3 py-2 text-sm text-foreground font-bold whitespace-nowrap select-none">.{getRootDomain()}</span>
                 </div>
                 <Button
                   type="button"
