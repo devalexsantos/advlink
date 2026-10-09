@@ -7,6 +7,15 @@ import { getProfileHost } from "@/lib/site-url"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  billingStatusLabel,
+  billingStatusVariant,
+  billingTypeLabel,
+  formatCents,
+  formatCivilDate,
+  paymentStatusLabel,
+  subscriptionStatusLabel,
+} from "@/app/admin/_lib/billing-labels"
 
 interface SiteDetail {
   id: string
@@ -27,19 +36,42 @@ interface SiteDetail {
   metaDescription: string | null
   createdAt: string
   updatedAt: string
+  billingStatus: string
+  paidUntil: string | null
+  graceUntil: string | null
+  suspendedByAdmin: boolean
+  churnedAt: string | null
   user: {
     id: string
     name: string | null
     email: string | null
     isActive: boolean
-    stripeCustomerId: string | null
   }
+  billingSubscriptions: {
+    status: string
+    valueCents: number
+    billingType: string | null
+    nextDueDate: string | null
+    canceledAt: string | null
+    cancelReason: string | null
+  }[]
+  billingPayments: {
+    id: string
+    status: string
+    valueCents: number
+    billingType: string
+    dueDate: string
+    paymentDate: string | null
+    revoked: boolean
+    invoiceUrl: string | null
+  }[]
 }
 
 export default function AdminSiteDetailPage() {
   const { id } = useParams<{ id: string }>()
   const [site, setSite] = useState<SiteDetail | null>(null)
   const [toggling, setToggling] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   function fetchSite() {
     fetch(`/api/admin/sites/${id}`)
@@ -49,34 +81,50 @@ export default function AdminSiteDetailPage() {
 
   useEffect(() => { fetchSite() }, [id])
 
+  // Legacy sites (no Asaas billing) unpublished by the old admin toggle count as suspended too
+  const suspended = site ? site.suspendedByAdmin || (site.billingStatus === "NONE" && !site.isActive) : false
+
   async function toggleSuspend() {
     if (!site) return
     setToggling(true)
-    await fetch(`/api/admin/sites/${id}`, {
+    setError(null)
+    const res = await fetch(`/api/admin/sites/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ isActive: !site.isActive }),
+      body: JSON.stringify({ suspended: !suspended }),
     })
+    if (!res.ok) setError("Não foi possível alterar o site. Tente novamente.")
     fetchSite()
     setToggling(false)
   }
 
   if (!site) return <div className="p-8 text-center text-muted-foreground">Carregando...</div>
 
+  const subscription = site.billingSubscriptions[0]
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold">{site.publicName || site.slug || "Site"}</h1>
           <p className="text-muted-foreground">{site.slug ? getProfileHost(site.slug) : "—"}</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Badge variant={site.isActive ? "default" : "secondary"}>
+              {site.isActive ? "Publicado" : "Fora do ar"}
+            </Badge>
+            {site.suspendedByAdmin && <Badge variant="destructive">Suspenso pela equipe</Badge>}
+          </div>
         </div>
-        <Button
-          variant={site.isActive ? "destructive" : "default"}
-          onClick={toggleSuspend}
-          disabled={toggling}
-        >
-          {site.isActive ? "Suspender" : "Reativar"}
-        </Button>
+        <div className="flex flex-col items-end gap-1">
+          <Button
+            variant={suspended ? "default" : "destructive"}
+            onClick={toggleSuspend}
+            disabled={toggling}
+          >
+            {suspended ? "Reativar" : "Suspender"}
+          </Button>
+          {error && <p className="text-xs text-destructive">{error}</p>}
+        </div>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -105,10 +153,68 @@ export default function AdminSiteDetailPage() {
                 {site.user.isActive ? "Ativa" : "Bloqueada"}
               </Badge>
             </p>
-            <p><strong>Stripe:</strong> {site.user.stripeCustomerId ? "Sim" : "Não"}</p>
             <Link href={`/admin/users/${site.user.id}`} className="text-primary hover:underline">
               Ver perfil do usuário
             </Link>
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-2">
+          <CardHeader><CardTitle className="text-sm">Cobrança</CardTitle></CardHeader>
+          <CardContent className="text-sm space-y-2">
+            <p>
+              <strong>Status:</strong>{" "}
+              <Badge variant={billingStatusVariant(site.billingStatus)}>
+                {billingStatusLabel(site.billingStatus)}
+              </Badge>
+              {site.billingStatus === "NONE" && site.isActive && (
+                <span className="ml-2 text-muted-foreground">(publicado antes do Asaas)</span>
+              )}
+            </p>
+            <p><strong>Pago até:</strong> {formatCivilDate(site.paidUntil)}</p>
+            {site.graceUntil && site.billingStatus === "GRACE" && (
+              <p><strong>Carência até:</strong> {formatCivilDate(site.graceUntil)}</p>
+            )}
+            {subscription ? (
+              <>
+                <p>
+                  <strong>Assinatura:</strong> {subscriptionStatusLabel(subscription.status)} ·{" "}
+                  {formatCents(subscription.valueCents)}/mês · {billingTypeLabel(subscription.billingType)}
+                </p>
+                {subscription.status === "ACTIVE" && (
+                  <p><strong>Próxima cobrança:</strong> {formatCivilDate(subscription.nextDueDate)}</p>
+                )}
+                {subscription.canceledAt && (
+                  <p>
+                    <strong>Encerrada em:</strong> {new Date(subscription.canceledAt).toLocaleDateString("pt-BR")}
+                    {subscription.cancelReason && ` · ${subscription.cancelReason}`}
+                  </p>
+                )}
+              </>
+            ) : (
+              <p><strong>Assinatura:</strong> nenhuma</p>
+            )}
+            {site.billingPayments.length > 0 && (
+              <div className="pt-2">
+                <p className="font-medium">Últimas cobranças</p>
+                <ul className="mt-1 space-y-1">
+                  {site.billingPayments.map((p) => (
+                    <li key={p.id} className="flex flex-wrap gap-x-2 text-muted-foreground">
+                      <span>Venc. {formatCivilDate(p.dueDate)}</span>
+                      <span>{formatCents(p.valueCents)}</span>
+                      <span>{billingTypeLabel(p.billingType)}</span>
+                      <span>{p.revoked ? "Revogada" : paymentStatusLabel(p.status)}</span>
+                      {p.paymentDate && <span>pago em {formatCivilDate(p.paymentDate)}</span>}
+                      {p.invoiceUrl && (
+                        <a href={p.invoiceUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                          fatura
+                        </a>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

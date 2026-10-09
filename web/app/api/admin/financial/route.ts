@@ -1,62 +1,100 @@
 import { NextResponse } from "next/server"
+import { z } from "zod"
 import { prisma } from "@/lib/prisma"
 import { getAdminSession } from "@/lib/admin-auth"
-import { stripe } from "@/lib/stripe"
+import {
+  PAID_BILLING_STATUSES,
+  PAID_PAYMENT_STATUSES,
+  billingEnvironment,
+  canceledSitesWhere,
+  currentMonthRange,
+} from "@/app/api/admin/_lib/billing"
 
-export async function GET() {
+export const dynamic = "force-dynamic"
+
+const PER_PAGE = 20
+
+const querySchema = z.object({
+  page: z.coerce.number().int().min(1).max(10_000).catch(1),
+})
+
+/**
+ * Financial KPIs per site, from the local billing mirror (BIL-11). Only rows of the configured Asaas
+ * environment count, so sandbox tests never leak into production numbers.
+ */
+export async function GET(req: Request) {
   const admin = await getAdminSession()
   if (!admin) return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
 
+  const { page } = querySchema.parse(Object.fromEntries(new URL(req.url).searchParams))
+  const environment = billingEnvironment()
   const now = new Date()
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
+  const month = currentMonthRange(now)
 
-  // DB stats
-  const [paying, trial, recentlyCancelled] = await Promise.all([
-    prisma.user.count({ where: { isActive: true, stripeCustomerId: { not: null } } }),
-    prisma.user.count({ where: { isActive: false, stripeCustomerId: null } }),
-    prisma.user.count({
-      where: { isActive: false, stripeCustomerId: { not: null }, updatedAt: { gte: thirtyDaysAgo } },
+  const [byStatus, recentlyCancelled, mrr, monthRevenue, subscriptions, totalSubscriptions] = await Promise.all([
+    prisma.profile.groupBy({ by: ["billingStatus"], _count: { _all: true } }),
+    prisma.profile.count({ where: canceledSitesWhere(environment, { gte: thirtyDaysAgo }) }),
+    prisma.billingSubscription.aggregate({
+      where: { environment, status: "ACTIVE", profile: { billingStatus: { in: PAID_BILLING_STATUSES } } },
+      _sum: { valueCents: true },
     }),
+    prisma.billingPayment.aggregate({
+      where: {
+        environment,
+        status: { in: PAID_PAYMENT_STATUSES },
+        revoked: false,
+        paymentDate: { gte: month.first, lte: month.last },
+      },
+      _sum: { valueCents: true, netValueCents: true },
+      _count: { _all: true },
+    }),
+    prisma.billingSubscription.findMany({
+      where: { environment },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PER_PAGE,
+      take: PER_PAGE,
+      select: {
+        id: true,
+        status: true,
+        valueCents: true,
+        billingType: true,
+        nextDueDate: true,
+        canceledAt: true,
+        createdAt: true,
+        profile: {
+          select: {
+            id: true,
+            slug: true,
+            publicName: true,
+            name: true,
+            billingStatus: true,
+            paidUntil: true,
+            suspendedByAdmin: true,
+            user: { select: { email: true } },
+          },
+        },
+      },
+    }),
+    prisma.billingSubscription.count({ where: { environment } }),
   ])
 
-  // Stripe MRR from active subscriptions
-  let mrr = 0
-  let subscriptions: Array<{
-    id: string
-    customerEmail: string | null
-    status: string
-    amount: number
-    currentPeriodEnd: number
-  }> = []
-
-  try {
-    const subs = await stripe.subscriptions.list({
-      status: "active",
-      limit: 100,
-      expand: ["data.customer"],
-    })
-
-    for (const sub of subs.data) {
-      const amount = sub.items.data.reduce((sum, item) => sum + (item.price?.unit_amount || 0), 0)
-      mrr += amount
-      const customer = sub.customer as { email?: string | null } | string
-      subscriptions.push({
-        id: sub.id,
-        customerEmail: typeof customer === "object" ? customer?.email || null : null,
-        status: sub.status,
-        amount: amount / 100,
-        currentPeriodEnd: sub.current_period_end,
-      })
-    }
-  } catch {
-    // Stripe may not be configured
-  }
+  const count = (status: string) => byStatus.find((g) => g.billingStatus === status)?._count._all ?? 0
 
   return NextResponse.json({
-    paying,
-    trial,
+    environment,
+    paying: count("ACTIVE") + count("GRACE"),
+    overdue: count("GRACE"),
+    delinquent: count("SUSPENDED"),
+    pending: count("PENDING"),
     recentlyCancelled,
-    mrr: mrr / 100,
+    mrrCents: mrr._sum.valueCents ?? 0,
+    monthRevenueCents: monthRevenue._sum.valueCents ?? 0,
+    monthNetRevenueCents: monthRevenue._sum.netValueCents ?? 0,
+    monthPayments: monthRevenue._count._all,
     subscriptions,
+    total: totalSubscriptions,
+    page,
+    perPage: PER_PAGE,
   })
 }

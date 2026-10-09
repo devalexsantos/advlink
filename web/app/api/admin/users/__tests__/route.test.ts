@@ -39,6 +39,31 @@ describe("GET /api/admin/users", () => {
     expect(data.page).toBe(1)
   })
 
+  it("returns paidSites from the billing status of each site, without Stripe ids", async () => {
+    getAdminSessionMock.mockResolvedValue({ id: "a1" })
+    prismaMock.user.findMany.mockResolvedValue([
+      {
+        id: "u1",
+        profiles: [
+          { id: "p1", billingStatus: "ACTIVE" },
+          { id: "p2", billingStatus: "GRACE" },
+          { id: "p3", billingStatus: "SUSPENDED" },
+          { id: "p4", billingStatus: "NONE" },
+        ],
+      },
+      { id: "u2", profiles: [] },
+    ])
+    prismaMock.user.count.mockResolvedValue(2)
+
+    const data = await (await GET(new Request("http://localhost/api/admin/users"))).json()
+
+    expect(data.users[0].paidSites).toBe(2)
+    expect(data.users[1].paidSites).toBe(0)
+    const select = prismaMock.user.findMany.mock.calls[0][0].select
+    expect(select.stripeCustomerId).toBeUndefined()
+    expect(select.profiles.select.billingStatus).toBe(true)
+  })
+
   it("supports search filter", async () => {
     getAdminSessionMock.mockResolvedValue({ id: "a1" })
     prismaMock.user.findMany.mockResolvedValue([])

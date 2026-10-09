@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getAdminSession } from "@/lib/admin-auth"
 import { prisma } from "@/lib/prisma"
+import { PAID_BILLING_STATUSES, billingEnvironment, canceledSitesWhere } from "@/app/api/admin/_lib/billing"
 
 export const dynamic = "force-dynamic"
 
@@ -40,14 +41,9 @@ export async function GET(req: NextRequest) {
     prisma.profile.count(),
     prisma.profile.count({ where: { isActive: true } }),
     prisma.ticket.count({ where: { status: { in: ["open", "in_progress"] } } }),
-    prisma.profile.count({ where: { isActive: true, stripeSubscriptionId: { not: null } } }),
-    prisma.profile.count({
-      where: {
-        isActive: false,
-        stripeSubscriptionId: { not: null },
-        updatedAt: dateRange,
-      },
-    }),
+    // Billing from the local Asaas mirror, per site
+    prisma.profile.count({ where: { billingStatus: { in: PAID_BILLING_STATUSES } } }),
+    prisma.profile.count({ where: canceledSitesWhere(billingEnvironment(), dateRange) }),
     prisma.user.findMany({
       where: { createdAt: dateRange },
       take: 10,
@@ -58,7 +54,7 @@ export async function GET(req: NextRequest) {
       where: { createdAt: dateRange },
       take: 10,
       orderBy: { createdAt: "desc" },
-      include: { user: { select: { name: true, email: true } } },
+      select: { id: true, slug: true, createdAt: true, user: { select: { name: true, email: true } } },
     }),
     prisma.ticket.findMany({
       where: { updatedAt: dateRange },

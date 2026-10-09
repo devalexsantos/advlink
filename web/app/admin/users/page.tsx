@@ -20,16 +20,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { paidSitesLabel } from "@/app/admin/_lib/billing-labels"
 
 interface UserRow {
   id: string
   name: string | null
   email: string | null
   isActive: boolean
-  stripeCustomerId: string | null
+  paidSites: number
   createdAt: string
   _count: { tickets: number }
-  profiles: { id: string; name: string | null; slug: string | null; isActive: boolean }[]
+  profiles: { id: string; name: string | null; slug: string | null; isActive: boolean; billingStatus: string }[]
 }
 
 export default function AdminUsersPage() {
@@ -102,7 +103,7 @@ export default function AdminUsersPage() {
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">{u.email}</TableCell>
                   <TableCell className="text-sm">
-                    {u.stripeCustomerId ? "Pago" : "Free"}
+                    {paidSitesLabel(u.paidSites)}
                   </TableCell>
                   <TableCell>
                     <Badge variant={u.isActive ? "default" : "secondary"}>
