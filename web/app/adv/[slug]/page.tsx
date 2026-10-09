@@ -100,7 +100,8 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
   const text = profile.textColor || "#FFFFFF"
   const secondary = profile.secondaryColor || "#FFFFFF"
   const theme = profile.theme
-  const gtmId = profile.gtmContainerId
+  // Re-checked here for rows saved before the API validated it: the ID is interpolated into a script
+  const gtmId = profile.gtmContainerId && /^GTM-[A-Z0-9]{4,10}$/.test(profile.gtmContainerId) ? profile.gtmContainerId : null
   return (
     <div>
       {gtmId && (
@@ -113,12 +114,12 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
 new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
 j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','${gtmId}');`,
+})(window,document,'script','dataLayer',${JSON.stringify(gtmId)});`,
             }}
           />
           <noscript>
             <iframe
-              src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
+              src={`https://www.googletagmanager.com/ns.html?id=${encodeURIComponent(gtmId)}`}
               height="0"
               width="0"
               style={{ display: "none", visibility: "hidden" }}

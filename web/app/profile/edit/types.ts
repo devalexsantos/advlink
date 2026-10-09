@@ -35,6 +35,8 @@ export const profileEditSchema = z.object({
   keywords: z.string().optional().or(z.literal("").transform(() => undefined)),
   gtmContainerId: z
     .string()
+    .trim()
+    .regex(/^GTM-[A-Z0-9]{4,10}$/i, "Use o formato GTM-XXXXXXX")
     .optional()
     .or(z.literal("").transform(() => undefined)),
   // Address (all optional)

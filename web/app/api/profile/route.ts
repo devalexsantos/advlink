@@ -170,6 +170,20 @@ export async function PATCH(req: Request) {
   }
 
   // Slug validation: check uniqueness excluding current profile
+  // Validate URL/ID fields before any upload. The validators throw a 400 NextResponse, which must
+  // be returned (a thrown Response becomes a 500 in a route handler).
+  let validated: { instagramUrl: string | null | undefined; calendlyUrl: string | null | undefined; gtmContainerId: string | null | undefined }
+  try {
+    validated = {
+      instagramUrl: validateInstagram(instagramUrl),
+      calendlyUrl: validateCalendly(calendlyUrl),
+      gtmContainerId: validateGtm(gtmContainerId),
+    }
+  } catch (e) {
+    if (e instanceof Response) return e
+    throw e
+  }
+
   async function validateOrGenerateSlug(name: string, input?: string) {
     function baseFrom(text: string) {
       return text
@@ -252,6 +266,17 @@ export async function PATCH(req: Request) {
     return v
   }
 
+  // GTM container IDs end up inside an inline <script>, so only the official format is accepted
+  function validateGtm(id?: string) {
+    const v = nopt(id)
+    if (v == null) return v
+    const upper = v.toUpperCase()
+    if (!/^GTM-[A-Z0-9]{4,10}$/.test(upper)) {
+      throw NextResponse.json({ error: "ID do Google Tag Manager inválido. Use o formato GTM-XXXXXXX." }, { status: 400 })
+    }
+    return upper
+  }
+
   // Validate Instagram URL if provided
   function validateInstagram(url?: string) {
     const v = nopt(url)
@@ -274,18 +299,18 @@ export async function PATCH(req: Request) {
       publicPhoneIsFixed,
       whatsapp: nopt(whatsapp),
       whatsappIsFixed,
-      instagramUrl: validateInstagram(instagramUrl),
+      instagramUrl: validated.instagramUrl,
       avatarUrl,
       slug,
       primaryColor,
       secondaryColor,
       textColor,
       coverUrl,
-      calendlyUrl: validateCalendly(calendlyUrl),
+      calendlyUrl: validated.calendlyUrl,
       metaTitle: nopt(metaTitle),
       metaDescription: nopt(metaDescription),
       keywords: nopt(keywords),
-      gtmContainerId: nopt(gtmContainerId),
+      gtmContainerId: validated.gtmContainerId,
       theme,
     },
   })

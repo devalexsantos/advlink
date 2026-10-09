@@ -100,6 +100,28 @@ describe("PATCH /api/profile", () => {
     expect(prismaMock.profile.update).toHaveBeenCalled()
   })
 
+  it("rejects a gtmContainerId that is not GTM-XXXX (script injection)", async () => {
+    const req = new Request("http://localhost/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ publicName: "Updated Name", gtmContainerId: "GTM-X');alert(1)//" }),
+    })
+    const res = await PATCH(req)
+    expect(res.status).toBe(400)
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
+  })
+
+  it("normalizes a valid gtmContainerId to upper case", async () => {
+    const req = new Request("http://localhost/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ publicName: "Updated Name", gtmContainerId: " gtm-ab12cd3 " }),
+    })
+    const res = await PATCH(req)
+    expect(res.status).toBe(200)
+    expect(prismaMock.profile.update.mock.calls.at(-1)![0].data.gtmContainerId).toBe("GTM-AB12CD3")
+  })
+
   it("sanitizes aboutDescription HTML before saving (stored XSS)", async () => {
     const req = new Request("http://localhost/api/profile", {
       method: "PATCH",
@@ -379,19 +401,12 @@ describe("PATCH /api/profile", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ publicName: "Test", calendlyUrl: "https://example.com/invalid" }),
     })
-    // validateCalendly throws a NextResponse, so PATCH will throw
-    try {
-      await PATCH(req)
-      // If it doesn't throw, it must have returned 400
-      expect(true).toBe(false) // Should not reach here
-    } catch (e) {
-      // The thrown value is a NextResponse
-      expect(e).toBeInstanceOf(Response)
-      const res = e as Response
-      expect(res.status).toBe(400)
-      const data = await res.json()
-      expect(data.error).toMatch(/calendlyUrl/)
-    }
+    // Must be returned, not thrown: a thrown Response becomes a 500 in a route handler
+    const res = await PATCH(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toMatch(/calendlyUrl/)
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
   })
 
   it("saves valid Calendly URL", async () => {
@@ -412,16 +427,12 @@ describe("PATCH /api/profile", () => {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ publicName: "Test", instagramUrl: "https://twitter.com/user" }),
     })
-    try {
-      await PATCH(req)
-      expect(true).toBe(false) // Should not reach here
-    } catch (e) {
-      expect(e).toBeInstanceOf(Response)
-      const res = e as Response
-      expect(res.status).toBe(400)
-      const data = await res.json()
-      expect(data.error).toMatch(/instagramUrl/)
-    }
+    // Must be returned, not thrown: a thrown Response becomes a 500 in a route handler
+    const res = await PATCH(req)
+    expect(res.status).toBe(400)
+    const data = await res.json()
+    expect(data.error).toMatch(/instagramUrl/)
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
   })
 
   it("saves valid Instagram URL with www prefix", async () => {
