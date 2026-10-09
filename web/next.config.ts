@@ -17,6 +17,8 @@ const nextConfig: NextConfig = {
   output: "standalone",
   serverExternalPackages: ["geoip-lite"],
   poweredByHeader: false,
+  // Dev only: hosts (e.g. a tunnel for webhook testing) allowed to load /_next dev resources.
+  allowedDevOrigins: process.env.DEV_ALLOWED_ORIGINS?.split(",").map((h) => h.trim()).filter(Boolean),
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

@@ -15,6 +15,7 @@ Nunca use a chave de produção aqui. Sandbox: `https://api-sandbox.asaas.com/v3
 ## 2. Webhook até a máquina local
 ```bash
 cloudflared tunnel --url http://localhost:3000     # anote a URL https://<x>.trycloudflare.com
+# o dev server bloqueia /_next vindo do túnel: exporte DEV_ALLOWED_ORIGINS=<x>.trycloudflare.com antes do `npm run dev`
 node --env-file=web/.env.local web/scripts/asaas/register-webhook.ts \
   --name advlink-dev --url https://<x>.trycloudflare.com/api/webhooks/asaas
 ```

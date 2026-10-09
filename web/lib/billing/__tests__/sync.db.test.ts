@@ -93,6 +93,19 @@ describe.skipIf(!TEST_URL)("billing sync (Postgres)", () => {
     expect(await db.billingPayment.count()).toBe(1)
   })
 
+  it("concurrent webhooks fire the transition once (seen in the sandbox: PAYMENT_CONFIRMED + SUBSCRIPTION_CREATED)", async () => {
+    const link = await createLink()
+    const { payment, subscription } = asaas.simulatePayment(link, { status: "CONFIRMED", dueDate: "2026-10-06" })
+    await Promise.all([
+      paymentEvent(payment.id),
+      paymentEvent(payment.id, "PAYMENT_CREATED"),
+      deliver({ event: "SUBSCRIPTION_CREATED", subscription: { object: "subscription", id: subscription.id } }),
+    ])
+    expect(await profile()).toMatchObject({ billingStatus: "ACTIVE", isActive: true })
+    expect(notified.map((n) => n.notice)).toEqual(["activated"])
+    expect(trackEventMock.mock.calls.map((c) => c[0])).toEqual(["subscription_started", "site_published"])
+  })
+
   it("an unpaid boleto does not publish (BIL-7)", async () => {
     const link = await createLink()
     const { payment } = asaas.simulatePayment(link, { status: "PENDING", dueDate: "2026-10-09", billingType: "BOLETO" })

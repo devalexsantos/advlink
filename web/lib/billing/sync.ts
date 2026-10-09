@@ -114,7 +114,7 @@ export async function syncSubscription(deps: BillingDeps, subscriptionId: string
 }
 
 /** Recomputes billing status and applies its effects. Safe to repeat. */
-export async function recomputeProfile(deps: BillingDeps, profileId: string): Promise<BillingStatus | null> {
+export async function recomputeProfile(deps: BillingDeps, profileId: string, attempt = 1): Promise<BillingStatus | null> {
   const now = deps.now?.() ?? new Date()
   const today = civilDateOf(now)
   const env = deps.asaas.environment
@@ -182,8 +182,10 @@ export async function recomputeProfile(deps: BillingDeps, profileId: string): Pr
   }
 
   const published = isPublishedStatus(status) && !profile.suspendedByAdmin
-  await prisma.profile.update({
-    where: { id: profileId },
+  // Compare-and-set on the status we read: concurrent webhooks (PAYMENT_CONFIRMED + SUBSCRIPTION_CREATED arrive
+  // together) must not both fire the same transition's events/e-mail. The loser recomputes from the new state.
+  const { count } = await prisma.profile.updateMany({
+    where: { id: profileId, billingStatus: profile.billingStatus, suspendedByAdmin: profile.suspendedByAdmin },
     data: {
       billingStatus: status,
       paidUntil: civilToDbDate(entitlement.coveredUntil),
@@ -193,6 +195,10 @@ export async function recomputeProfile(deps: BillingDeps, profileId: string): Pr
       ...(isPublishedStatus(status) && profile.churnedAt ? { churnedAt: null } : {}),
     },
   })
+  if (count === 0) {
+    if (attempt >= 3) throw new Error(`recomputeProfile: perfil ${profileId} mudou durante o cálculo 3 vezes seguidas`)
+    return recomputeProfile(deps, profileId, attempt + 1)
+  }
 
   const effects = transitionEffects(profile.billingStatus, status)
   for (const type of effects.events) {
