@@ -48,6 +48,17 @@ describe("Public Profile Page (/adv/[slug])", () => {
     vi.unstubAllEnvs()
   })
 
+  it("emits LegalService JSON-LD for active profiles", async () => {
+    prismaMock.profile.findFirst.mockResolvedValue({
+      id: "p1", slug: "joao", userId: "u1", isActive: true, theme: "classic", publicName: "Dr. João", address: null,
+    })
+    prismaMock.activityAreas.findMany.mockResolvedValueOnce([{ title: "Trabalhista" }])
+    const rendered = JSON.stringify(await PublicProfilePage({ params: Promise.resolve({ slug: "joao" }) }))
+    expect(rendered).toContain("application/ld+json")
+    expect(rendered).toContain("LegalService")
+    expect(rendered).toContain("Trabalhista")
+  })
+
   it("falls back to the classic theme for unknown theme values", async () => {
     prismaMock.profile.findFirst.mockResolvedValue({ id: "p1", slug: "x", userId: "u1", isActive: true, theme: null, address: null })
     const result = (await PublicProfilePage({ params: Promise.resolve({ slug: "x" }) })) as {

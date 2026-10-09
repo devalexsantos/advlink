@@ -8,6 +8,7 @@ import { Wrench } from "lucide-react"
 import { ProfileTracker } from "@/components/analytics/ProfileTracker"
 import { notFound } from "next/navigation"
 import { getAppOrigin, getProfileUrl } from "@/lib/site-url"
+import { buildProfileJsonLd, jsonLdScript } from "@/lib/profile-jsonld"
 
 const THEMES = ["modern", "classic", "corporate"] as const
 type ThemeName = (typeof THEMES)[number]
@@ -100,8 +101,14 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
   const theme: ThemeName = THEMES.includes(profile.theme as ThemeName) ? (profile.theme as ThemeName) : "classic"
   // Re-checked here for rows saved before the API validated it: the ID is interpolated into a script
   const gtmId = profile.gtmContainerId && /^GTM-[A-Z0-9]{4,10}$/.test(profile.gtmContainerId) ? profile.gtmContainerId : null
+  const jsonLd = buildProfileJsonLd(
+    { ...profile, slug: profile.slug ?? slug },
+    address,
+    areas.map((a) => a.title)
+  )
   return (
     <div>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
       {gtmId && (
         <>
           <Script
