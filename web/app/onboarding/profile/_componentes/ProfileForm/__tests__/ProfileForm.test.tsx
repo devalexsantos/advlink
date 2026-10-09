@@ -129,6 +129,22 @@ describe("ProfileForm", () => {
       expect(body.get("calendlyUrl")).toBe("https://calendly.com/joao")
       expect(mockShowToast).not.toHaveBeenCalled()
     })
+
+    it("fires the CompleteRegistration pixel event only after a successful save", async () => {
+      const fbq = vi.fn()
+      window.fbq = fbq
+      mockFetch.mockResolvedValueOnce(jsonResponse(false, 500, { error: "x" }))
+      render(<ProfileForm />)
+      await goToStep5()
+      await finish()
+      await screen.findByRole("alert")
+      expect(fbq).not.toHaveBeenCalled()
+
+      mockFetch.mockResolvedValueOnce(jsonResponse(true, 200))
+      await finish()
+      await waitFor(() => expect(fbq).toHaveBeenCalledWith("track", "CompleteRegistration"))
+      delete window.fbq
+    })
   })
 
   describe("failed profile submission", () => {

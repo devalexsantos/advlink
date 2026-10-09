@@ -186,6 +186,12 @@
         if (cls) url.searchParams.set('utm_content', cls);
       }
       link.href = url.toString();
+      // Conversion signal for GA4 (already loaded on this page): a click on any "go to app" CTA
+      link.addEventListener('click', () => {
+        if (typeof window.gtag === 'function') {
+          window.gtag('event', 'generate_lead', { cta: url.searchParams.get('utm_content') || 'app_link' });
+        }
+      });
     });
   })();
 

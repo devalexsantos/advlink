@@ -275,6 +275,8 @@ export function ProfileForm() {
       )
       return
     }
+    // Conversion event for the AdvLink Meta Pixel (loaded only in the app funnel, see MetaPixel)
+    window.fbq?.("track", "CompleteRegistration")
     // Upload gallery files if any; the profile is already saved, so failures don't block the redirect
     if (galleryFiles.length > 0) {
       const results = await Promise.all(
