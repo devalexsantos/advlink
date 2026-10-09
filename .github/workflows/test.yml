@@ -1,4 +1,4 @@
-name: Tests
+name: CI
 
 on:
   push:
@@ -7,28 +7,37 @@ on:
     branches: [main]
 
 jobs:
-  test:
+  web:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: npm
           cache-dependency-path: web/package-lock.json
 
       - name: Install dependencies
-        working-directory: web
         run: npm ci
 
       - name: Generate Prisma client
-        working-directory: web
         run: npx prisma generate
 
+      # TODO: remover continue-on-error quando zerar a dívida (53 erros de lint, ~17 de tsc em 2026-10-09)
+      - name: Lint
+        continue-on-error: true
+        run: npm run lint
+
+      - name: Typecheck
+        continue-on-error: true
+        run: npm run typecheck
+
       - name: Run tests
-        working-directory: web
         run: npm test -- --coverage
 
       - name: Upload coverage

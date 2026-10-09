@@ -8,16 +8,22 @@ This is a monorepo with multiple services.
 
 ```
 /
-├── web/                    ← Next.js app (AdvLink)
-├── lp/                     ← Static landing page (HTML/CSS/Nginx, Dockerized)
-├── docker-compose.yml      ← shared infrastructure (Postgres)
-├── CLAUDE.md               ← project instructions
-└── (future services)
+├── web/                    ← Next.js 16 app (AdvLink) — app.advlink.site + *.advlink.site
+├── lp/                     ← Static landing page (HTML/CSS/Nginx, Dockerized) — advlink.site
+├── blog/                   ← Next.js 16 + MDX blog — blog.advlink.site (has its own CLAUDE.md)
+├── docs/                   ← planning docs and audit reports
+├── .claude/                ← agents, skills, workflows and settings for Claude Code
+├── docker-compose.yml      ← local infrastructure (Postgres 16)
+└── CLAUDE.md               ← project instructions
 ```
+
+**Production:** VPS with Docker managed by **Easypanel**. Each service (`web`, `lp`, `blog`) is built from its own Dockerfile. `web` runs `prisma migrate deploy` on container boot. `blog` needs a persistent volume at `/app/data`. See the `release` skill.
+
+**Status (Oct 2026):** in production, no paying customers yet. Priorities: stabilize and secure → validate the full funnel → growth/marketing.
 
 ## Project Overview
 
-AdvLink is a platform for Brazilian lawyers to create professional profile websites. Built with Next.js 15 (App Router), it includes authentication, multi-step onboarding, a sidebar-based dashboard for profile editing, dynamic public profile pages served via subdomains, an internal admin panel, analytics, and a support ticket system.
+AdvLink is a platform for Brazilian lawyers to create professional profile websites. Built with Next.js 16 (App Router, React 19), it includes authentication, multi-step onboarding, a sidebar-based dashboard for profile editing, dynamic public profile pages served via subdomains, an internal admin panel, analytics, and a support ticket system.
 
 **Language/locale:** Brazilian Portuguese (pt-BR) throughout UI and content.
 
@@ -30,21 +36,27 @@ cd web
 npm run dev          # Start dev server (localhost:3000)
 npm run build        # Production build
 npm run lint         # ESLint
-npm run db:push      # Push Prisma schema to database
+npm run typecheck    # tsc --noEmit
+npm test             # Vitest (run once); test:watch / test:coverage / test:ui
 npm run db:studio    # Open Prisma Studio GUI
 npx prisma generate  # Regenerate Prisma client after schema changes
+npx prisma migrate dev --create-only --name <name>   # schema change → versioned migration
 ```
+
+Never use `npm run db:push` against a shared/production DB — schema changes go through migrations (see `db-migration` skill). Env vars are documented in `web/.env.example`. Local setup: `dev-env` skill.
 
 Deploy build (`npm run build:deploy`) runs `prisma generate`, conditionally runs `prisma migrate deploy` in production, then `next build`. Output mode is `standalone`.
 
-No test framework is configured.
+### Testing
+
+Vitest + Testing Library (`web/vitest.config.ts`, jsdom by default, setup in `web/test/setup.ts`, shared mocks in `web/test/mocks/`). ~110 test files in `__tests__/` folders next to the code; every API route has one. API route tests start with `// @vitest-environment node` and declare mocks via `vi.hoisted()` before `vi.mock()`, importing the handler afterwards. CI (`.github/workflows/test.yml`) runs lint, typecheck and tests on push/PR to `main` (lint/typecheck are non-blocking until the existing debt is cleared).
 
 ## Architecture
 
 ### Routing & Middleware
 
 - **App Router** with server components by default; client components marked `"use client"`
-- **Middleware** (`web/middleware.ts`): gates `/`, `/onboarding`, and `/profile` behind auth; handles subdomain routing (`*.advlink.site` → `/adv/[subdomain]`). `ROOT_DOMAIN` env var controls the domain.
+- **Proxy** (`web/proxy.ts` — Next 16's replacement for `middleware.ts`): gates `/`, `/onboarding`, and `/profile` behind auth; handles subdomain routing (`*.advlink.site` → `/adv/[subdomain]`, only for path `/`) and guards `/admin` with the admin JWT. `ROOT_DOMAIN` env var controls the domain (compared against the `host` header including port).
 - **Key routes:**
   - `/` — Redirects to `/profile/edit` (protected)
   - `/login` — Auth (magic link, Google OAuth)
@@ -61,12 +73,12 @@ No test framework is configured.
 
 - **Light theme** with semantic Tailwind CSS variables (`bg-background`, `text-foreground`, `border-border`, etc.)
 - **Sidebar** (`web/app/profile/AppSidebar.tsx`): Shadcn sidebar with collapsible icon mode on desktop, sheet fullscreen on mobile. Three groups:
-  1. **Editor** — 9 tabs (estilo, perfil, endereço, áreas, galeria, links, seções extras, reordenar, SEO)
+  1. **Editor** — 10 tabs (estilo, perfil, endereço, áreas, equipe, galeria, links, seções extras, reordenar, SEO)
   2. **Dados** — Analytics link (`/profile/analytics`)
   3. **Ajuda** — Support tickets link (`/profile/tickets`)
-- **Editor** uses client-side tab routing via `?tab=X` search params (estilo, perfil, endereco, areas, galeria, links, secoes-extras, reordenar, seo)
+- **Editor** uses client-side tab routing via `?tab=X` search params (estilo, perfil, endereco, areas, equipe, galeria, links, secoes-extras, reordenar, seo)
 - **EditFormContext** (`web/app/profile/edit/EditFormContext.tsx`): Central provider with shared form state, mutations, custom sections, section config (order/labels/icons), avatar/cover cropping, and about markdown state
-- **Section components** in `web/app/profile/edit/sections/` — one per tab (9 total)
+- **Section components** in `web/app/profile/edit/sections/` — one per tab (10 total)
 - **SectionRenderer** reads `?tab` and renders the corresponding section; also exports `PublicSectionHeader` for inline title/icon editing
 - **Preview** always visible on desktop (right column); on mobile, toggled via `MobilePreviewContext`/`MobilePreviewToggle` (Eye/Pencil button in header)
 - **PublishedCTA** / **SubscribeCTA** — banners shown based on subscription status
@@ -86,11 +98,15 @@ Separate internal admin app with its own JWT cookie auth (`admin-token`) via `jo
 
 NextAuth v4 with JWT strategy, Prisma adapter. Three providers: Email (magic links via nodemailer), Credentials (bcrypt), Google OAuth. Session callback injects `userId`.
 
+### Multi-site (1 User : N Profiles)
+
+A `User` can own several sites (`Profile`). The active one is resolved by `getActiveSiteId(userId)` in `web/lib/active-site.ts` (cookie, falling back to the first profile); the dashboard switches sites via `SiteSwitcher.tsx` / `SiteContext.tsx`, and new sites are created at `/onboarding/new-site` (`/api/sites`). **Every authenticated route must scope reads/writes by that `profileId`**, never by `userId` alone. Publication and billing are per site: `Profile.isActive` + `Profile.stripeSubscriptionId` (checkout metadata carries `profileId`).
+
 ### Database (Prisma + PostgreSQL)
 
 Schema in `web/prisma/schema.prisma`. Key models:
 
-- **Core**: `User`, `Profile` (public info, slug, theme, colors, SEO fields, `sectionOrder`/`sectionLabels`/`sectionIcons` JSON fields), `ActivityAreas`, `Links`, `Gallery`, `Address`, `CustomSection`
+- **Core**: `User`, `Profile` (N per user) (public info, slug, theme, colors, SEO fields, `sectionOrder`/`sectionLabels`/`sectionIcons` JSON fields), `ActivityAreas`, `Links`, `Gallery`, `Address`, `CustomSection`, `TeamMember`
 - **Analytics**: `PageView` (path, referrer, device, geo, visitorHash)
 - **Admin**: `AdminUser` (email, role: admin/super_admin)
 - **Support**: `Ticket` (auto-increment number, status, priority, category), `TicketMessage` (user/admin sender)
@@ -100,7 +116,7 @@ Profile has a unique `slug` used for public URLs.
 
 ### Key Integrations
 
-- **Stripe** (`web/lib/stripe.ts`, `/api/stripe/webhook`): Subscription billing. `User.isActive` controls profile visibility. Webhook handles `checkout.session.completed`, subscription created/updated/deleted.
+- **Stripe** (`web/lib/stripe.ts`, `/api/stripe/webhook`): Per-site subscription billing. `Profile.isActive` controls profile visibility. Webhook handles `checkout.session.completed`, subscription created/updated/deleted.
 - **AWS S3** (`web/lib/s3.ts`): Avatar, cover, and gallery image uploads with cropping support (`react-easy-crop`).
 - **OpenAI** (`web/lib/openai.ts`): Generates practice area descriptions using gpt-4o-mini, optimized for Brazilian legal context.
 - **Resend** (`web/lib/resend.ts`): Transactional emails (auth, ticket notifications).
@@ -136,7 +152,7 @@ Profile has a unique `slug` used for public URLs.
     - `SectionRenderer.tsx` — Tab-to-component router + `PublicSectionHeader`
     - `types.ts` — Shared types and Zod schema
     - `api.ts` — API functions
-    - `sections/` — 9 section components (Estilo, PerfilContato, Endereco, AreasServicos, Galeria, Links, SecoesExtras, Reordenar, SEO)
+    - `sections/` — 10 section components (Estilo, PerfilContato, Endereco, AreasServicos, Equipe, Galeria, Links, SecoesExtras, Reordenar, SEO)
     - `Preview.tsx`, `Preview02.tsx`, `Preview03.tsx`, `Preview04.tsx` — Live previews per theme
     - `PublishedCTA.tsx` / `SubscribeCTA.tsx` — Status banners
   - `analytics/` — Analytics dashboard (recharts)
@@ -163,3 +179,22 @@ Profile has a unique `slug` used for public URLs.
 - **Rich text**: Tiptap editor with markdown conversion (`marked` + `turndown`); `renderContent()` in `web/lib/render-content.ts`
 - **Admin auth**: Separate JWT flow via `jose`, cookie-based, independent from NextAuth
 - **Path alias**: `@/*` maps to `web/` root (via tsconfig)
+
+## Claude Code setup (`.claude/`)
+
+**Agents** (`.claude/agents/`, delegate by domain):
+| Agent | Use for |
+|---|---|
+| `backend-engineer` | API routes, Prisma/migrations, server logic, integrations |
+| `frontend-engineer` | dashboard/onboarding/admin UI, components (not public themes) |
+| `ux-analyst` | read-only usability analysis |
+| `test-engineer` | Vitest tests, regression tests, broken tests |
+| `email-engineer` | transactional/lifecycle emails (Resend) |
+| `billing-specialist` | Stripe checkout, webhook, subscription lifecycle per site |
+| `security-auditor` | read-only security review (auth, IDOR, XSS, uploads, secrets) |
+| `seo-growth` | technical SEO for profiles, LP and blog; acquisition funnel |
+| `legal-content-writer` | blog posts and marketing copy compliant with OAB Provimento 205/2021 |
+
+**Skills** (`.claude/skills/`): `verify` (lint+typecheck+tests+build gate), `dev-env`, `db-migration`, `api-route`, `stripe-local`, `prod-smoke`, `blog-post`, `release`.
+
+**Workflows** (`.claude/workflows/`, multi-agent orchestration — run only when asked): `audit` (parallel read-only audit → verified report in `docs/`), `feature` (plan → implement → test → verify → review), `launch-readiness` (go-live checklist).
