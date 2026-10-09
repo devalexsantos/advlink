@@ -1,219 +1,177 @@
 // @vitest-environment node
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
-const { getAdminSessionMock, prismaMock, stripeMock } = vi.hoisted(() => ({
+const { getAdminSessionMock, prismaMock, getBillingDepsMock } = vi.hoisted(() => ({
   getAdminSessionMock: vi.fn(),
   prismaMock: {
-    user: {
-      count: vi.fn(),
-    },
+    profile: { groupBy: vi.fn(), count: vi.fn() },
+    billingSubscription: { aggregate: vi.fn(), findMany: vi.fn(), count: vi.fn() },
+    billingPayment: { aggregate: vi.fn() },
   },
-  stripeMock: {
-    subscriptions: {
-      list: vi.fn(),
-    },
-  },
+  getBillingDepsMock: vi.fn(),
 }))
 
 vi.mock("@/lib/admin-auth", () => ({ getAdminSession: getAdminSessionMock }))
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
-vi.mock("@/lib/stripe", () => ({ stripe: stripeMock }))
+vi.mock("@/lib/billing/deps", () => ({ getBillingDeps: getBillingDepsMock }))
 
 import { GET } from "@/app/api/admin/financial/route"
 
 const adminSession = { id: "admin-1", role: "admin" }
 
+function get(query = "") {
+  return GET(new Request(`http://localhost/api/admin/financial${query}`))
+}
+
 describe("GET /api/admin/financial", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     getAdminSessionMock.mockResolvedValue(adminSession)
-    // Default DB counts: paying=5, trial=3, recentlyCancelled=1
-    prismaMock.user.count
-      .mockResolvedValueOnce(5)  // paying (isActive: true, stripeCustomerId: { not: null })
-      .mockResolvedValueOnce(3)  // trial (isActive: false, stripeCustomerId: null)
-      .mockResolvedValueOnce(1)  // recentlyCancelled (isActive: false, stripeCustomerId: { not: null })
-    stripeMock.subscriptions.list.mockResolvedValue({ data: [] })
+    getBillingDepsMock.mockReturnValue(null)
+    prismaMock.profile.groupBy.mockResolvedValue([
+      { billingStatus: "ACTIVE", _count: { _all: 5 } },
+      { billingStatus: "GRACE", _count: { _all: 2 } },
+      { billingStatus: "SUSPENDED", _count: { _all: 1 } },
+      { billingStatus: "PENDING", _count: { _all: 4 } },
+      { billingStatus: "NONE", _count: { _all: 30 } },
+    ])
+    prismaMock.profile.count.mockResolvedValue(3)
+    prismaMock.billingSubscription.aggregate.mockResolvedValue({ _sum: { valueCents: 34300 } })
+    prismaMock.billingPayment.aggregate.mockResolvedValue({
+      _sum: { valueCents: 14700, netValueCents: 13900 },
+      _count: { _all: 3 },
+    })
+    prismaMock.billingSubscription.findMany.mockResolvedValue([])
+    prismaMock.billingSubscription.count.mockResolvedValue(0)
   })
+
+  afterEach(() => vi.useRealTimers())
 
   it("returns 401 without admin session", async () => {
     getAdminSessionMock.mockResolvedValue(null)
-    const res = await GET()
+    const res = await get()
     expect(res.status).toBe(401)
     const data = await res.json()
     expect(data.error).toBe("Não autorizado")
+    expect(prismaMock.profile.groupBy).not.toHaveBeenCalled()
   })
 
-  it("returns DB counts for paying, trial, and recentlyCancelled", async () => {
-    const res = await GET()
+  it("counts sites per billing status (paying = ACTIVE + GRACE)", async () => {
+    const res = await get()
     const data = await res.json()
 
     expect(res.status).toBe(200)
-    expect(data.paying).toBe(5)
-    expect(data.trial).toBe(3)
-    expect(data.recentlyCancelled).toBe(1)
+    expect(data.paying).toBe(7)
+    expect(data.overdue).toBe(2)
+    expect(data.delinquent).toBe(1)
+    expect(data.pending).toBe(4)
+    expect(data.recentlyCancelled).toBe(3)
+    expect(data.mrrCents).toBe(34300)
+    expect(data.monthRevenueCents).toBe(14700)
+    expect(data.monthNetRevenueCents).toBe(13900)
+    expect(data.monthPayments).toBe(3)
+    expect(data.environment).toBe("PRODUCTION")
   })
 
-  it("queries paying users with correct prisma filter", async () => {
-    await GET()
-    expect(prismaMock.user.count).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { isActive: true, stripeCustomerId: { not: null } },
-      })
-    )
+  it("returns zeros when there is no billing data", async () => {
+    prismaMock.profile.groupBy.mockResolvedValue([])
+    prismaMock.profile.count.mockResolvedValue(0)
+    prismaMock.billingSubscription.aggregate.mockResolvedValue({ _sum: { valueCents: null } })
+    prismaMock.billingPayment.aggregate.mockResolvedValue({ _sum: { valueCents: null, netValueCents: null }, _count: { _all: 0 } })
+
+    const data = await (await get()).json()
+
+    expect(data).toMatchObject({ paying: 0, overdue: 0, delinquent: 0, recentlyCancelled: 0, mrrCents: 0, monthRevenueCents: 0 })
   })
 
-  it("queries trial users with correct prisma filter", async () => {
-    await GET()
-    expect(prismaMock.user.count).toHaveBeenCalledWith(
-      expect.objectContaining({
-        where: { isActive: false, stripeCustomerId: null },
-      })
-    )
-  })
-
-  it("queries recently cancelled users with correct prisma filter including date range", async () => {
-    await GET()
-    const calls = prismaMock.user.count.mock.calls
-    const cancelledCall = calls[2][0]
-    expect(cancelledCall.where.isActive).toBe(false)
-    expect(cancelledCall.where.stripeCustomerId).toEqual({ not: null })
-    expect(cancelledCall.where.updatedAt.gte).toBeInstanceOf(Date)
-    // Verify the date is approximately 30 days ago
-    const thirtyDaysAgo = Date.now() - 30 * 24 * 60 * 60 * 1000
-    const diff = Math.abs(cancelledCall.where.updatedAt.gte.getTime() - thirtyDaysAgo)
-    expect(diff).toBeLessThan(5000) // within 5 seconds tolerance
-  })
-
-  it("calculates MRR by summing active subscription amounts", async () => {
-    stripeMock.subscriptions.list.mockResolvedValue({
-      data: [
-        {
-          id: "sub_1",
-          status: "active",
-          current_period_end: 1700000000,
-          customer: { email: "user1@test.com" },
-          items: { data: [{ price: { unit_amount: 4990 } }] },
-        },
-        {
-          id: "sub_2",
-          status: "active",
-          current_period_end: 1700000000,
-          customer: { email: "user2@test.com" },
-          items: { data: [{ price: { unit_amount: 4990 } }] },
-        },
-      ],
+  it("MRR sums ACTIVE subscriptions of paid sites in the configured environment", async () => {
+    getBillingDepsMock.mockReturnValue({ asaas: { environment: "SANDBOX" } })
+    await get()
+    expect(prismaMock.billingSubscription.aggregate).toHaveBeenCalledWith({
+      where: { environment: "SANDBOX", status: "ACTIVE", profile: { billingStatus: { in: ["ACTIVE", "GRACE"] } } },
+      _sum: { valueCents: true },
     })
-
-    const res = await GET()
-    const data = await res.json()
-
-    expect(res.status).toBe(200)
-    // MRR is sum of unit_amounts divided by 100: (4990 + 4990) / 100 = 99.8
-    expect(data.mrr).toBe(99.8)
   })
 
-  it("returns subscription list with correct shape", async () => {
-    stripeMock.subscriptions.list.mockResolvedValue({
-      data: [
-        {
-          id: "sub_abc",
-          status: "active",
-          current_period_end: 1750000000,
-          customer: { email: "lawyer@example.com" },
-          items: { data: [{ price: { unit_amount: 9900 } }] },
-        },
-      ],
-    })
+  it("month revenue sums paid, non-revoked payments with paymentDate in the current month (São Paulo)", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] })
+    // 2026-11-01 01:00 UTC is still 2026-10-31 in São Paulo
+    vi.setSystemTime(new Date("2026-11-01T01:00:00.000Z"))
 
-    const res = await GET()
-    const data = await res.json()
+    await get()
+
+    const where = prismaMock.billingPayment.aggregate.mock.calls[0][0].where
+    expect(where).toEqual({
+      environment: "PRODUCTION",
+      status: { in: ["CONFIRMED", "RECEIVED", "RECEIVED_IN_CASH"] },
+      revoked: false,
+      paymentDate: { gte: "2026-10-01", lte: "2026-10-31" },
+    })
+  })
+
+  it("recently cancelled = sites with a churn cancellation in 30 days and no open subscription", async () => {
+    await get()
+    const where = prismaMock.profile.count.mock.calls[0][0].where
+    const some = where.billingSubscriptions.some
+    expect(some.environment).toBe("PRODUCTION")
+    expect(some.canceledAt.gte).toBeInstanceOf(Date)
+    expect(Math.abs(some.canceledAt.gte.getTime() - (Date.now() - 30 * 24 * 60 * 60 * 1000))).toBeLessThan(5000)
+    expect(some.OR).toEqual([
+      { cancelReason: null },
+      { cancelReason: { notIn: ["duplicada", "trocou a forma de pagamento"] } },
+    ])
+    expect(where.billingSubscriptions.none).toEqual({ environment: "PRODUCTION", status: "ACTIVE" })
+  })
+
+  it("lists subscriptions of the environment with site, owner e-mail and pagination", async () => {
+    const row = {
+      id: "bs-1",
+      status: "ACTIVE",
+      valueCents: 4900,
+      billingType: "PIX",
+      nextDueDate: "2026-11-09",
+      canceledAt: null,
+      createdAt: new Date("2026-10-09T12:00:00Z"),
+      profile: {
+        id: "site-1",
+        slug: "dr-silva",
+        publicName: "Dr. Silva",
+        name: null,
+        billingStatus: "ACTIVE",
+        paidUntil: new Date("2026-11-08T00:00:00Z"),
+        suspendedByAdmin: false,
+        user: { email: "silva@oab.com" },
+      },
+    }
+    prismaMock.billingSubscription.findMany.mockResolvedValue([row])
+    prismaMock.billingSubscription.count.mockResolvedValue(41)
+
+    const data = await (await get("?page=3")).json()
 
     expect(data.subscriptions).toHaveLength(1)
-    expect(data.subscriptions[0]).toMatchObject({
-      id: "sub_abc",
-      customerEmail: "lawyer@example.com",
-      status: "active",
-      amount: 99,
-      currentPeriodEnd: 1750000000,
-    })
+    expect(data.subscriptions[0]).toMatchObject({ id: "bs-1", valueCents: 4900, profile: { slug: "dr-silva", user: { email: "silva@oab.com" } } })
+    expect(data).toMatchObject({ total: 41, page: 3, perPage: 20 })
+    const query = prismaMock.billingSubscription.findMany.mock.calls[0][0]
+    expect(query.where).toEqual({ environment: "PRODUCTION" })
+    expect(query.skip).toBe(40)
+    expect(query.take).toBe(20)
+    expect(query.select.profile.select.user).toEqual({ select: { email: true } })
   })
 
-  it("sets customerEmail to null when customer is a plain string ID", async () => {
-    stripeMock.subscriptions.list.mockResolvedValue({
-      data: [
-        {
-          id: "sub_str",
-          status: "active",
-          current_period_end: 1700000000,
-          customer: "cus_xyz", // unexpanded string
-          items: { data: [{ price: { unit_amount: 4990 } }] },
-        },
-      ],
-    })
-
-    const res = await GET()
-    const data = await res.json()
-    expect(data.subscriptions[0].customerEmail).toBeNull()
+  it("falls back to page 1 for an invalid page param", async () => {
+    const data = await (await get("?page=abc")).json()
+    expect(data.page).toBe(1)
+    expect(prismaMock.billingSubscription.findMany.mock.calls[0][0].skip).toBe(0)
   })
 
-  it("sets customerEmail to null when customer object has no email", async () => {
-    stripeMock.subscriptions.list.mockResolvedValue({
-      data: [
-        {
-          id: "sub_noemail",
-          status: "active",
-          current_period_end: 1700000000,
-          customer: { email: null },
-          items: { data: [{ price: { unit_amount: 4990 } }] },
-        },
-      ],
+  it("defaults to PRODUCTION when the Asaas client is misconfigured", async () => {
+    getBillingDepsMock.mockImplementation(() => {
+      throw new Error("chave do Asaas não combina")
     })
-
-    const res = await GET()
-    const data = await res.json()
-    expect(data.subscriptions[0].customerEmail).toBeNull()
-  })
-
-  it("handles subscription item with null unit_amount as zero", async () => {
-    stripeMock.subscriptions.list.mockResolvedValue({
-      data: [
-        {
-          id: "sub_free",
-          status: "active",
-          current_period_end: 1700000000,
-          customer: { email: "free@test.com" },
-          items: { data: [{ price: { unit_amount: null } }] },
-        },
-      ],
-    })
-
-    const res = await GET()
-    const data = await res.json()
-    expect(data.mrr).toBe(0)
-    expect(data.subscriptions[0].amount).toBe(0)
-  })
-
-  it("returns mrr=0 and empty subscriptions when Stripe throws an error", async () => {
-    stripeMock.subscriptions.list.mockRejectedValue(new Error("Stripe not configured"))
-
-    const res = await GET()
-    const data = await res.json()
-
-    // Route catches Stripe errors gracefully
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    const res = await get()
     expect(res.status).toBe(200)
-    expect(data.mrr).toBe(0)
-    expect(data.subscriptions).toEqual([])
-    // DB counts should still be present
-    expect(data.paying).toBe(5)
-    expect(data.trial).toBe(3)
-  })
-
-  it("calls Stripe with status active, limit 100, and expanded customer", async () => {
-    await GET()
-    expect(stripeMock.subscriptions.list).toHaveBeenCalledWith({
-      status: "active",
-      limit: 100,
-      expand: ["data.customer"],
-    })
+    expect((await res.json()).environment).toBe("PRODUCTION")
+    errorSpy.mockRestore()
   })
 })

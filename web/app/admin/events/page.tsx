@@ -30,16 +30,33 @@ const eventLabels: Record<string, string> = {
   site_published: "Site publicado",
   custom_domain_connected: "Domínio conectado",
   ticket_created: "Ticket criado",
+  checkout_started: "Checkout iniciado",
+  checkout_failed: "Falha no checkout",
   subscription_started: "Assinatura iniciada",
+  subscription_reactivated: "Assinatura reativada",
+  payment_overdue: "Pagamento em atraso",
+  payment_recovered: "Pagamento regularizado",
+  site_unpublished: "Site despublicado",
+  subscription_cancel_requested: "Cancelamento solicitado",
+  subscription_canceled: "Assinatura cancelada",
 }
 
+// default = good news, secondary = neutral step, outline = support, destructive = needs attention
 const eventColors: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   user_signed_up: "secondary",
   site_created: "default",
   site_published: "default",
   custom_domain_connected: "default",
   ticket_created: "outline",
-  subscription_started: "destructive",
+  checkout_started: "secondary",
+  checkout_failed: "destructive",
+  subscription_started: "default",
+  subscription_reactivated: "default",
+  payment_overdue: "destructive",
+  payment_recovered: "default",
+  site_unpublished: "destructive",
+  subscription_cancel_requested: "destructive",
+  subscription_canceled: "destructive",
 }
 
 interface EventUser {

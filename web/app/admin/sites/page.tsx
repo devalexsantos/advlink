@@ -13,6 +13,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { billingStatusLabel, billingStatusVariant } from "@/app/admin/_lib/billing-labels"
 
 interface SiteRow {
   id: string
@@ -23,6 +24,8 @@ interface SiteRow {
   theme: string | null
   createdAt: string
   updatedAt: string
+  billingStatus: string
+  suspendedByAdmin: boolean
   user: {
     id: string
     name: string | null
@@ -72,6 +75,7 @@ export default function AdminSitesPage() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Owner</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Cobrança</TableHead>
                 <TableHead>Tema</TableHead>
                 <TableHead>Criado em</TableHead>
               </TableRow>
@@ -94,6 +98,14 @@ export default function AdminSitesPage() {
                     <Badge variant={s.isActive ? "default" : "secondary"}>
                       {s.isActive ? "Ativo" : "Inativo"}
                     </Badge>
+                    {s.suspendedByAdmin && (
+                      <Badge variant="destructive" className="ml-1">Suspenso pela equipe</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={billingStatusVariant(s.billingStatus)}>
+                      {billingStatusLabel(s.billingStatus)}
+                    </Badge>
                   </TableCell>
                   <TableCell className="text-sm">{s.theme || "—"}</TableCell>
                   <TableCell className="text-sm">
@@ -103,7 +115,7 @@ export default function AdminSitesPage() {
               ))}
               {sites.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                     Nenhum site encontrado
                   </TableCell>
                 </TableRow>

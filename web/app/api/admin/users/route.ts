@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { getAdminSession } from "@/lib/admin-auth"
+import { withPaidSites } from "@/app/api/admin/_lib/billing"
 
 export async function GET(req: Request) {
   const admin = await getAdminSession()
@@ -30,10 +31,9 @@ export async function GET(req: Request) {
         name: true,
         email: true,
         isActive: true,
-        stripeCustomerId: true,
         createdAt: true,
         _count: { select: { tickets: true } },
-        profiles: { select: { id: true, name: true, slug: true, isActive: true } },
+        profiles: { select: { id: true, name: true, slug: true, isActive: true, billingStatus: true } },
       },
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * perPage,
@@ -42,5 +42,5 @@ export async function GET(req: Request) {
     prisma.user.count({ where }),
   ])
 
-  return NextResponse.json({ users, total, page, perPage })
+  return NextResponse.json({ users: users.map(withPaidSites), total, page, perPage })
 }
