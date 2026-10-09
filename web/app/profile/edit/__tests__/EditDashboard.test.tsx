@@ -10,6 +10,9 @@ const { editFormState } = vi.hoisted(() => ({
 vi.mock("../SubscribeCTA", () => ({
   default: () => <div data-testid="subscribe-cta">Sua página ainda não está publicada.</div>,
 }))
+vi.mock("@/components/billing/OverdueAlert", () => ({
+  default: () => <div data-testid="overdue-alert">OverdueAlert</div>,
+}))
 vi.mock("../PublishedCTA", () => ({
   default: ({ slug }: { slug?: string }) => <div data-testid="published-cta">Seu site está publicado! Link: {slug}</div>,
 }))
@@ -66,6 +69,16 @@ describe("EditDashboard", () => {
     render(<EditDashboard isActive={true} slug="teste" />)
     expect(screen.getByTestId("published-cta")).toBeInTheDocument()
     expect(screen.queryByTestId("subscribe-cta")).not.toBeInTheDocument()
+  })
+
+  it("renders the overdue payment alert for a published site", () => {
+    render(<EditDashboard isActive={true} slug="teste" />)
+    expect(screen.getByTestId("overdue-alert")).toBeInTheDocument()
+  })
+
+  it("does not render the overdue payment alert for an unpublished site", () => {
+    render(<EditDashboard isActive={false} />)
+    expect(screen.queryByTestId("overdue-alert")).not.toBeInTheDocument()
   })
 
   it("passes slug to PublishedCTA", () => {

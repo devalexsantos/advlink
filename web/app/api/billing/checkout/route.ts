@@ -104,7 +104,17 @@ export async function POST(req: Request) {
     orderBy: { createdAt: "desc" },
   })
   if (!link) {
-    const created = await deps.asaas.createPaymentLink({ billingType, externalReference: profileId })
+    let created: { id: string; url: string }
+    try {
+      created = await deps.asaas.createPaymentLink({ billingType, externalReference: profileId })
+    } catch (err) {
+      console.error("[billing] falha ao criar link de pagamento", { profileId, method, err: String(err) })
+      trackEvent("checkout_failed", { userId, siteId: profileId, meta: { method, error: String(err).slice(0, 300) } }).catch(() => {})
+      return NextResponse.json(
+        { code: "GATEWAY_ERROR", error: "Não foi possível abrir o pagamento agora. Tente novamente em alguns minutos." },
+        { status: 502 }
+      )
+    }
     link = await prisma.billingPaymentLink.create({
       data: { environment: env, asaasId: created.id, profileId, billingType, url: created.url },
     })

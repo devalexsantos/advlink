@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
@@ -18,30 +19,51 @@ const CANCEL_REASONS = [
   "Outro",
 ]
 
+function formatDate(date: string) {
+  const [y, m, d] = date.split("-")
+  return `${d}/${m}/${y}`
+}
+
 export default function CancelSubscriptionButton() {
+  const router = useRouter()
   const [loading, setLoading] = useState(false)
-  const [done, setDone] = useState(false)
+  const [done, setDone] = useState<{ activeUntil: string | null } | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [reason, setReason] = useState("")
   const [details, setDetails] = useState("")
 
   async function cancel() {
+    setError(null)
     try {
       setLoading(true)
-      const res = await fetch("/api/stripe/cancel-subscription", {
+      const res = await fetch("/api/billing/cancel", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason, details }),
+        body: JSON.stringify({ reason, details: details || undefined }),
       })
-      if (res.ok) setDone(true)
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setError(data?.error ?? "Não foi possível cancelar agora. Tente novamente ou fale com o suporte.")
+        return
+      }
+      setDone({ activeUntil: data.activeUntil ?? null })
+      setOpen(false)
+      router.refresh()
+    } catch {
+      setError("Não foi possível conectar. Verifique sua internet e tente novamente.")
     } finally {
       setLoading(false)
-      setOpen(false)
     }
   }
 
   if (done) {
-    return <p className="text-sm text-amber-400">Sua assinatura será cancelada ao final do período atual.</p>
+    return (
+      <p role="status" className="text-sm text-amber-700">
+        Assinatura cancelada.{" "}
+        {done.activeUntil ? `Seu site continua no ar até ${formatDate(done.activeUntil)}.` : "Seu site saiu do ar."}
+      </p>
+    )
   }
 
   return (
@@ -63,7 +85,7 @@ export default function CancelSubscriptionButton() {
           </DialogHeader>
           <div className="space-y-3 text-zinc-300">
             <p className="text-sm">
-              Antes de continuar, poderia nos dizer o motivo do cancelamento? Sua resposta nos ajuda a melhorar. Você manterá o acesso até o fim do período atual.
+              Antes de continuar, poderia nos dizer o motivo do cancelamento? Sua resposta nos ajuda a melhorar. Seu site continua no ar até o fim do período já pago.
             </p>
             <div>
               <Label className="mb-2 block">Motivo do cancelamento</Label>
@@ -88,6 +110,11 @@ export default function CancelSubscriptionButton() {
               />
             </div>
           </div>
+          {error && (
+            <p role="alert" className="text-sm text-destructive">
+              {error}
+            </p>
+          )}
           <DialogFooter>
             <Button type="button" variant="ghost" onClick={() => setOpen(false)} className="cursor-pointer">Fechar</Button>
             <Button

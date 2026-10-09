@@ -8,6 +8,7 @@ import SectionRenderer from "./SectionRenderer"
 import Preview from "./Preview"
 import SubscribeCTA from "./SubscribeCTA"
 import PublishedCTA from "./PublishedCTA"
+import OverdueAlert from "@/components/billing/OverdueAlert"
 import { useMobilePreview } from "../MobilePreviewContext"
 
 function PreviewBanner({ className }: { className?: string }) {
@@ -64,6 +65,7 @@ function EditDashboardInner({ isActive, slug }: { isActive: boolean; slug?: stri
     <div className="space-y-4">
       {/* CTA bar */}
       {!isActive ? <SubscribeCTA /> : <PublishedCTA slug={slug} />}
+      {isActive && <OverdueAlert />}
 
       {/* Desktop: 2 columns */}
       <div className="hidden lg:grid grid-cols-[1fr_1fr] gap-6 items-start">

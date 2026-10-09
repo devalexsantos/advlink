@@ -123,6 +123,16 @@ describe.skipIf(!TEST_URL)("billing routes (Postgres)", () => {
       expect((await checkout(post({ method: "pix" }))).status).toBe(403)
     })
 
+    it("502 with a friendly message when Asaas fails to create the link (UX-7)", async () => {
+      asaas.createPaymentLink = async () => {
+        throw new Error("Asaas 500")
+      }
+      const res = await checkout(post({ method: "pix" }))
+      expect(res.status).toBe(502)
+      expect((await res.json()).code).toBe("GATEWAY_ERROR")
+      expect(await db.billingPaymentLink.count()).toBe(0)
+    })
+
     it("503 when Asaas isn't configured", async () => {
       setAsaasForTests(null)
       expect((await checkout(post({ method: "pix" }))).status).toBe(503)
