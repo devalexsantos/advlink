@@ -24,6 +24,9 @@ vi.mock("@/lib/product-events", () => ({ trackEvent: trackEventMock }))
 vi.mock("@/lib/reserved-slugs", async (importOriginal) => importOriginal())
 vi.mock("@/lib/active-site", () => ({ getActiveSiteId: getActiveSiteIdMock }))
 
+const { attributionMock } = vi.hoisted(() => ({ attributionMock: vi.fn().mockResolvedValue(null) }))
+vi.mock("@/lib/attribution-server", () => ({ getRequestAttribution: attributionMock }))
+
 import { POST } from "@/app/api/onboarding/profile/route"
 import { resetRateLimiters } from "@/lib/rate-limit"
 
@@ -130,6 +133,20 @@ describe("POST /api/onboarding/profile", () => {
     const res = await POST(req)
     expect(res.status).toBe(400)
     expect(prismaMock.profile.update).not.toHaveBeenCalled()
+  })
+
+  it("attaches first-touch attribution to the site_created event", async () => {
+    attributionMock.mockResolvedValueOnce({ utm_source: "blog", utm_medium: "post_cta" })
+    const req = new Request("http://localhost/api/onboarding/profile", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ displayName: "Test", email: "t@t.com" }),
+    })
+    await POST(req)
+    expect(trackEventMock).toHaveBeenCalledWith(
+      "site_created",
+      expect.objectContaining({ meta: expect.objectContaining({ attribution: { utm_source: "blog", utm_medium: "post_cta" } }) })
+    )
   })
 
   it("marks onboarding as completed", async () => {

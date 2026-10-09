@@ -14,6 +14,8 @@ const { prismaMock, bcryptMock, trackEventMock, nodemailerMock, createSignInEmai
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
 vi.mock("bcryptjs", () => ({ default: bcryptMock }))
 vi.mock("@/lib/product-events", () => ({ trackEvent: trackEventMock }))
+const { attributionMock } = vi.hoisted(() => ({ attributionMock: vi.fn().mockResolvedValue(null) }))
+vi.mock("@/lib/attribution-server", () => ({ getRequestAttribution: attributionMock }))
 vi.mock("nodemailer", () => ({ default: nodemailerMock }))
 vi.mock("@/lib/emails/authEmail", () => ({
   createSignInEmailHtml: createSignInEmailHtmlMock,
@@ -117,6 +119,19 @@ describe("auth.ts", () => {
     it("tracks user_signed_up event", async () => {
       await authOptions.events!.createUser!({ user: { id: "u1", email: "a@b.com" } } as any)
       expect(trackEventMock).toHaveBeenCalledWith("user_signed_up", { userId: "u1", meta: { email: "a@b.com" } })
+    })
+
+    it("includes first-touch attribution when the cookie exists", async () => {
+      attributionMock.mockResolvedValueOnce({ utm_source: "blog" })
+      await authOptions.events!.createUser!({ user: { id: "u2", email: "c@d.com" } } as any)
+      expect(trackEventMock).toHaveBeenCalledWith("user_signed_up", {
+        userId: "u2",
+        meta: { email: "c@d.com", attribution: { utm_source: "blog" } },
+      })
+    })
+
+    it("uses /login as the error page (pt-BR messages)", () => {
+      expect(authOptions.pages?.error).toBe("/login")
     })
   })
 

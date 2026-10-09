@@ -9,6 +9,7 @@ import { uploadToS3 } from "@/lib/s3"
 import { MAX_IMAGE_BYTES, imageUploadErrorResponse, rejectOversizedRequest, validateImageUpload, type ValidatedImage } from "@/lib/upload-validation"
 import { isReservedSlug } from "@/lib/reserved-slugs"
 import { trackEvent } from "@/lib/product-events"
+import { getRequestAttribution } from "@/lib/attribution-server"
 import { getActiveSiteId } from "@/lib/active-site"
 import { MAX_AREA_TITLE_LENGTH, MAX_ONBOARDING_AREAS } from "@/lib/activity-area-limits"
 import { rateLimitResponse, rateLimiters } from "@/lib/rate-limit"
@@ -207,7 +208,8 @@ export async function POST(req: Request) {
     })
 
     // Track product event
-    trackEvent("site_created", { userId, meta: { slug, profileId } }).catch(() => {})
+    const attribution = await getRequestAttribution()
+    trackEvent("site_created", { userId, meta: { slug, profileId, ...(attribution ? { attribution } : {}) } }).catch(() => {})
 
     return NextResponse.json({ ok: true })
   } catch (err: unknown) {

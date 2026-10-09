@@ -4,6 +4,7 @@ import { getToken } from "next-auth/jwt"
 import { jwtVerify } from "jose"
 import { RESERVED_SLUGS } from "@/lib/reserved-slugs"
 import { getAdminJwtSecret } from "@/lib/admin-secret"
+import { ATTRIBUTION_COOKIE, ATTRIBUTION_MAX_AGE, attributionFromRequest } from "@/lib/attribution"
 
 
 // Subdomain rewrite to /adv/[slug] for *.advlink.site
@@ -83,12 +84,28 @@ export async function proxy(req: NextRequest) {
     if (!token && !isLoginRoute) {
       const signInUrl = new URL("/login", nextUrl.origin)
       signInUrl.searchParams.set("callbackUrl", nextUrl.href)
-      return NextResponse.redirect(signInUrl)
+      return withAttribution(req, NextResponse.redirect(signInUrl))
     }
-    return NextResponse.next()
+    return withAttribution(req, NextResponse.next())
   }
 
-  return NextResponse.next()
+  return withAttribution(req, NextResponse.next())
+}
+
+// First-touch attribution for app pages (login, onboarding, dashboard): kept for 90 days and
+// attached to the user_signed_up / site_created events. Never overwritten once set.
+function withAttribution(req: NextRequest, res: NextResponse) {
+  if (req.method !== "GET" || req.cookies.has(ATTRIBUTION_COOKIE)) return res
+  const data = attributionFromRequest(req.nextUrl, req.headers.get("referer"))
+  if (!data) return res
+  res.cookies.set(ATTRIBUTION_COOKIE, JSON.stringify(data), {
+    path: "/",
+    httpOnly: true,
+    sameSite: "lax",
+    secure: req.nextUrl.protocol === "https:" || req.headers.get("x-forwarded-proto") === "https",
+    maxAge: ATTRIBUTION_MAX_AGE,
+  })
+  return res
 }
 
 function isUnsafeMethod(method: string) {

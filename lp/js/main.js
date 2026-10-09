@@ -166,6 +166,29 @@
       }
     });
   });
+  // ========== Attribution: carry UTMs to the app ==========
+  // The app stores them as first-touch attribution on sign-up. Visitors without UTMs are
+  // tagged as coming from the landing page so the channel is never "unknown".
+  (function propagateUtm() {
+    const keys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+    const current = new URLSearchParams(window.location.search);
+    const incoming = keys.filter((k) => current.get(k));
+    document.querySelectorAll('a[href^="https://app.advlink.site"]').forEach((link) => {
+      const url = new URL(link.href);
+      if (incoming.length) {
+        incoming.forEach((k) => url.searchParams.set(k, current.get(k)));
+      } else {
+        url.searchParams.set('utm_source', 'landing');
+        url.searchParams.set('utm_medium', 'cta');
+      }
+      if (!url.searchParams.get('utm_content')) {
+        const cls = (link.className || '').split(' ')[0];
+        if (cls) url.searchParams.set('utm_content', cls);
+      }
+      link.href = url.toString();
+    });
+  })();
+
   // ========== Cookie Consent ==========
   const banner = document.getElementById('cookieBanner');
   const acceptBtn = document.getElementById('cookieAccept');

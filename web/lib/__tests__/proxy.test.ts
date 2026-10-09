@@ -112,4 +112,34 @@ describe("proxy", () => {
       expect(res.headers.get("location")).toBeNull()
     })
   })
+
+  describe("first-touch attribution cookie", () => {
+    it("stores UTM params from an app landing", async () => {
+      const res = await proxy(makeReq("https://app.advlink.site/login?utm_source=blog&utm_medium=footer"))
+      const cookie = res.cookies.get("advlink_attribution")
+      expect(cookie).toBeDefined()
+      expect(JSON.parse(cookie!.value)).toMatchObject({ utm_source: "blog", utm_medium: "footer", landingPath: "/login" })
+    })
+
+    it("keeps the first touch (does not overwrite an existing cookie)", async () => {
+      const res = await proxy(
+        makeReq("https://app.advlink.site/login?utm_source=google", {
+          headers: { cookie: 'advlink_attribution={"utm_source":"blog"}' },
+        })
+      )
+      expect(res.cookies.get("advlink_attribution")).toBeUndefined()
+    })
+
+    it("keeps the attribution when an anonymous visitor is redirected to login", async () => {
+      getTokenMock.mockResolvedValue(null)
+      const res = await proxy(makeReq("https://app.advlink.site/profile/edit?utm_source=email"))
+      expect(res.status).toBe(307)
+      expect(JSON.parse(res.cookies.get("advlink_attribution")!.value)).toMatchObject({ utm_source: "email" })
+    })
+
+    it("does not set a cookie without UTM or external referrer", async () => {
+      const res = await proxy(makeReq("https://app.advlink.site/login"))
+      expect(res.cookies.get("advlink_attribution")).toBeUndefined()
+    })
+  })
 })
