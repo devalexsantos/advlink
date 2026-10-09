@@ -4,15 +4,30 @@ import { Lock, ShieldCheck } from "lucide-react"
 import { GoogleLoginButton } from "@/app/login/_components/GoogleLoginButton"
 import { MagicLinkForm } from "@/app/login/_components/MagicLinkForm"
 import blackLogo from "@/public/images/advlink-logo-black.svg"
+import { getSafeCallbackUrl } from "@/lib/safe-callback"
+
+// NextAuth sends errors back here (pages.error) as ?error=<code>
+const ERROR_MESSAGES: Record<string, string> = {
+  Verification: "Este link de acesso expirou ou já foi usado. Peça um novo link abaixo.",
+  EmailSignin: "Não conseguimos enviar o e-mail de acesso. Confira o endereço e tente novamente.",
+  AccessDenied: "Acesso negado. Se o problema continuar, fale com o suporte.",
+  OAuthSignin: "Não foi possível entrar com o Google. Tente novamente ou use o acesso por e-mail.",
+  OAuthCallback: "Não foi possível entrar com o Google. Tente novamente ou use o acesso por e-mail.",
+  Callback: "Não foi possível concluir o login. Tente novamente.",
+  SessionRequired: "Entre na sua conta para continuar.",
+}
+const DEFAULT_ERROR = "Não foi possível entrar. Tente novamente."
 
 export default async function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
-  const { error: rawError } = await searchParams
-  const error = (rawError as string | undefined) ?? undefined
+  const { error: rawError, callbackUrl: rawCallback } = await searchParams
+  const error = typeof rawError === "string" ? rawError : undefined
   const isOAuthAccountNotLinked = error === "OAuthAccountNotLinked"
+  const errorMessage = error && !isOAuthAccountNotLinked ? (ERROR_MESSAGES[error] ?? DEFAULT_ERROR) : null
+  const callbackUrl = getSafeCallbackUrl(rawCallback)
   return (
     <div className="relative min-h-screen overflow-hidden bg-background text-foreground">
       {/* Background blobs */}
@@ -62,9 +77,15 @@ export default async function LoginPage({
             </div>
           )}
 
+          {errorMessage && (
+            <div role="alert" className="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-destructive">
+              <p className="text-sm">{errorMessage}</p>
+            </div>
+          )}
+
           {/* Acessar com E-mail */}
           <Suspense>
-            <MagicLinkForm />
+            <MagicLinkForm callbackUrl={callbackUrl} />
           </Suspense>
 
           {/* Divider */}
@@ -76,7 +97,7 @@ export default async function LoginPage({
 
           {/* Social providers */}
           <div className="flex justify-center">
-            <GoogleLoginButton />
+            <GoogleLoginButton callbackUrl={callbackUrl} />
           </div>
 
           {/* Security footnote */}

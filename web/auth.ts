@@ -104,6 +104,8 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/login",
+    // Expired magic links etc. land on our pt-BR login page instead of NextAuth's English one
+    error: "/login",
   },
   secret: process.env.NEXTAUTH_SECRET,
 }
