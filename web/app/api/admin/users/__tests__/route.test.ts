@@ -60,7 +60,6 @@ describe("GET /api/admin/users", () => {
     expect(data.users[0].paidSites).toBe(2)
     expect(data.users[1].paidSites).toBe(0)
     const select = prismaMock.user.findMany.mock.calls[0][0].select
-    expect(select.stripeCustomerId).toBeUndefined()
     expect(select.profiles.select.billingStatus).toBe(true)
   })
 

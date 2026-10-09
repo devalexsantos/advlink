@@ -16,7 +16,6 @@ model User {
   emailVerified        DateTime?
   image                String?
   isActive             Boolean   @default(true)
-  stripeCustomerId     String?
   passwordHash         String?
   completed_onboarding Boolean   @default(false) @map("completed_onboarding")
 
@@ -72,10 +71,9 @@ model Profile {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  name                 String?
-  setupComplete        Boolean @default(false)
-  isActive             Boolean @default(false)
-  stripeSubscriptionId String?
+  name          String?
+  setupComplete Boolean @default(false)
+  isActive      Boolean @default(false)
 
   // Billing (Asaas). isActive = published = billing ACTIVE|GRACE && !suspendedByAdmin (lib/billing).
   billingStatus    BillingStatus @default(NONE)

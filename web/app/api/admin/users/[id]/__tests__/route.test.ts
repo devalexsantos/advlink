@@ -94,8 +94,6 @@ describe("GET /api/admin/users/[id]", () => {
     const query = prismaMock.user.findUnique.mock.calls[0][0]
     expect(query.include).toBeUndefined()
     expect(query.select.passwordHash).toBeUndefined()
-    expect(query.select.stripeCustomerId).toBeUndefined()
-    expect(query.select.profiles.select.stripeSubscriptionId).toBeUndefined()
     expect(query.select.profiles.select).toMatchObject({ billingStatus: true, paidUntil: true, suspendedByAdmin: true })
   })
 })

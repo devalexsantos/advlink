@@ -91,8 +91,6 @@ describe("GET /api/admin/sites/[id]", () => {
     const query = prismaMock.profile.findUnique.mock.calls[0][0]
     expect(query.where).toEqual({ id: "site-1" })
     expect(query.include).toBeUndefined()
-    expect(query.select.stripeSubscriptionId).toBeUndefined()
-    expect(query.select.user.select.stripeCustomerId).toBeUndefined()
     expect(query.select.billingSubscriptions.where).toEqual({ environment: "PRODUCTION" })
   })
 
