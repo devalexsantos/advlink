@@ -68,6 +68,8 @@ type EditFormContextType = {
   form: UseFormReturn<ProfileEditValues>
   data: FetchProfileResponse | undefined
   isLoading: boolean
+  isError: boolean
+  refetchProfile: () => void
   // States
   areas: Area[]
   setAreas: React.Dispatch<React.SetStateAction<Area[]>>
@@ -214,7 +216,7 @@ export function useEditForm() {
 export function EditFormProvider({ children }: { children: ReactNode }) {
   const qc = useQueryClient()
   const { showToast } = useToast()
-  const { data, isLoading } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile })
+  const { data, isLoading, isError, refetch } = useQuery({ queryKey: ["profile"], queryFn: fetchProfile })
 
   const form = useForm<ProfileEditValues>({
     resolver: zodResolver(profileEditSchema),
@@ -632,10 +634,24 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     showToast("Salvo com sucesso!")
   }
 
+  // Warn before closing/reloading the tab with unsaved profile changes
+  const isDirty = form.formState.isDirty
+  useEffect(() => {
+    if (!isDirty) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ""
+    }
+    window.addEventListener("beforeunload", handler)
+    return () => window.removeEventListener("beforeunload", handler)
+  }, [isDirty])
+
   const value: EditFormContextType = {
     form,
     data,
     isLoading,
+    isError,
+    refetchProfile: () => void refetch(),
     areas, setAreas,
     links, setLinks,
     gallery, setGallery,

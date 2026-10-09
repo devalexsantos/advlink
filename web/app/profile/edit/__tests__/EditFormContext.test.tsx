@@ -463,6 +463,31 @@ describe("EditFormContext", () => {
   // ---- Mutations are exposed ------------------------------------------------
 
   describe("mutations are exposed", () => {
+    it("warns before unload only while the form has unsaved changes", async () => {
+      const { result } = renderHook(() => useEditForm(), { wrapper: makeWrapper(queryClient) })
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+
+      const clean = new Event("beforeunload", { cancelable: true })
+      window.dispatchEvent(clean)
+      expect(clean.defaultPrevented).toBe(false)
+
+      act(() => {
+        result.current.form.setValue("publicName", "Nome alterado", { shouldDirty: true })
+      })
+      await waitFor(() => expect(result.current.form.formState.isDirty).toBe(true))
+
+      const dirty = new Event("beforeunload", { cancelable: true })
+      window.dispatchEvent(dirty)
+      expect(dirty.defaultPrevented).toBe(true)
+    })
+
+    it("exposes isError and refetchProfile", async () => {
+      const { result } = renderHook(() => useEditForm(), { wrapper: makeWrapper(queryClient) })
+      await waitFor(() => expect(result.current.isLoading).toBe(false))
+      expect(result.current.isError).toBe(false)
+      expect(typeof result.current.refetchProfile).toBe("function")
+    })
+
     it("saveProfileMutation is available on context", async () => {
       const { result } = renderHook(() => useEditForm(), { wrapper: makeWrapper(queryClient) })
       await waitFor(() => expect(result.current.isLoading).toBe(false))
