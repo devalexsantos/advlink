@@ -112,6 +112,8 @@ export const rateLimiters = {
   aiDescriptionByUser: named("ai-description:user", 30, HOUR),
   /** OpenAI: onboarding submission (up to MAX_ONBOARDING_AREAS descriptions per call), per user. */
   onboardingByUser: named("onboarding:user", 10, HOUR),
+  /** Public page-view beacon: per IP+slug, so one client can't inflate a profile's analytics. */
+  analyticsByIpSlug: named("analytics:ip-slug", 60, HOUR),
 }
 
 /**
