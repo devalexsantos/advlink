@@ -31,6 +31,12 @@ vi.mock("next/link", () => ({
   ),
 }))
 
+// Covered by components/__tests__/BackToDashboardLink.test.tsx; stubbed so its mount-time
+// fetch doesn't interfere with the fetch assertions below.
+vi.mock("@/components/BackToDashboardLink", () => ({
+  default: () => <button type="button">Voltar ao dashboard</button>,
+}))
+
 import NewSitePage from "@/app/onboarding/new-site/page"
 
 describe("NewSitePage", () => {
@@ -61,11 +67,9 @@ describe("NewSitePage", () => {
       expect(screen.getByRole("button", { name: "Continuar" })).toBeInTheDocument()
     })
 
-    it("renders the 'Voltar ao dashboard' link pointing to /profile/edit", () => {
+    it("renders the 'Voltar ao dashboard' action", () => {
       render(<NewSitePage />)
-      const link = screen.getByRole("link", { name: /voltar ao dashboard/i })
-      expect(link).toBeInTheDocument()
-      expect(link).toHaveAttribute("href", "/profile/edit")
+      expect(screen.getByRole("button", { name: /voltar ao dashboard/i })).toBeInTheDocument()
     })
 
     it("does not show any error message on first render", () => {

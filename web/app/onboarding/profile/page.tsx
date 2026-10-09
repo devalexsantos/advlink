@@ -5,7 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/auth";
 import { getActiveSiteId } from "@/lib/active-site";
 import LogoutButton from "@/components/LogoutButton";
-import Link from "next/link";
+import BackToDashboardLink from "@/components/BackToDashboardLink";
 
 export default async function Profile() {
   const session = await getServerSession(authOptions)
@@ -30,10 +30,12 @@ export default async function Profile() {
   }
 
   // Check if user has other completed sites (additional site flow)
-  const completedSites = await prisma.profile.count({
+  const completedSite = await prisma.profile.findFirst({
     where: { userId, setupComplete: true },
+    orderBy: { createdAt: "asc" },
+    select: { id: true },
   })
-  const isAdditionalSite = completedSites > 0
+  const isAdditionalSite = !!completedSite
 
   return (
       <div className="flex flex-col gap-8 items-center justify-center w-full h-full min-h-screen bg-background text-foreground p-6">
@@ -47,14 +49,7 @@ export default async function Profile() {
         </div>
         <ProfileForm />
         <div className="flex items-center gap-4">
-          {isAdditionalSite && (
-            <Link
-              href="/profile/edit"
-              className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4"
-            >
-              Voltar ao dashboard
-            </Link>
-          )}
+          {completedSite && <BackToDashboardLink siteId={completedSite.id} />}
           <LogoutButton variant="ghost" size="sm" className="inline-flex items-center gap-2 cursor-pointer">
             Sair
           </LogoutButton>

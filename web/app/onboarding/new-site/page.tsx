@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import Link from "next/link"
+import BackToDashboardLink from "@/components/BackToDashboardLink"
 
 export default function NewSitePage() {
   const router = useRouter()
@@ -72,12 +72,7 @@ export default function NewSitePage() {
         </form>
 
         <div className="text-center">
-          <Link
-            href="/profile/edit"
-            className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4"
-          >
-            Voltar ao dashboard
-          </Link>
+          <BackToDashboardLink />
         </div>
       </div>
     </div>
