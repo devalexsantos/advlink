@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { jpegFile, pngFile, spoofedHtmlFile } from "@/test/fixtures/images"
 
 const { getAdminSessionMock, prismaMock, uploadToS3Mock, sendTicketReplyEmailMock } = vi.hoisted(
   () => ({
@@ -114,6 +115,19 @@ describe("POST /api/admin/tickets/[id]/messages", () => {
     )
   })
 
+  it("rejects a spoofed attachment with 400 and does not upload", async () => {
+    getAdminSessionMock.mockResolvedValue(adminSession)
+    prismaMock.ticket.findUnique.mockResolvedValue(openTicket)
+    const form = new FormData()
+    form.append("images", spoofedHtmlFile("evil.jpg"))
+    const res = await POST(new Request("http://localhost", { method: "POST", body: form }), {
+      params: Promise.resolve({ id: "ticket-1" }),
+    })
+    expect(res.status).toBe(400)
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+    expect(prismaMock.ticketMessage.create).not.toHaveBeenCalled()
+  })
+
   it("uploads each image file to S3 and stores URLs", async () => {
     getAdminSessionMock.mockResolvedValue(adminSession)
     prismaMock.ticket.findUnique.mockResolvedValue(openTicket)
@@ -130,8 +144,8 @@ describe("POST /api/admin/tickets/[id]/messages", () => {
     })
 
     const form = new FormData()
-    form.append("images", new File(["content1"], "photo1.png", { type: "image/png" }))
-    form.append("images", new File(["content2"], "photo2.jpg", { type: "image/jpeg" }))
+    form.append("images", pngFile("photo1.png"))
+    form.append("images", jpegFile("photo2.jpg"))
     const req = new Request("http://localhost", { method: "POST", body: form })
     const res = await POST(req, { params: Promise.resolve({ id: "ticket-1" }) })
 
@@ -225,7 +239,7 @@ describe("POST /api/admin/tickets/[id]/messages", () => {
     })
 
     const form = new FormData()
-    form.append("images", new File(["img"], "photo.png", { type: "image/png" }))
+    form.append("images", pngFile("photo.png"))
     const req = new Request("http://localhost", { method: "POST", body: form })
     await POST(req, { params: Promise.resolve({ id: "ticket-1" }) })
 

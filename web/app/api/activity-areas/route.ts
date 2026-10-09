@@ -5,6 +5,7 @@ import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { sanitizeOptionalRichText } from "@/lib/sanitize-rich-text"
 import { uploadToS3 } from "@/lib/s3"
+import { MAX_IMAGE_BYTES, imageUploadErrorResponse, rejectOversizedRequest, validateImageUpload } from "@/lib/upload-validation"
 import { getActiveSiteId } from "@/lib/active-site"
 
 export async function POST(req: Request) {
@@ -68,6 +69,8 @@ export async function PATCH(req: Request) {
   }
 
   if (contentType.includes("multipart/form-data")) {
+    const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES)
+    if (tooLarge) return tooLarge
     const form = await req.formData()
     const id = String(form.get("id") ?? "")
     const title = String(form.get("title") ?? "")
@@ -79,13 +82,13 @@ export async function PATCH(req: Request) {
 
     let coverImageUrl: string | undefined
     if (cover && cover instanceof File) {
-      const arrayBuffer = await cover.arrayBuffer()
-      const ext = cover.type.split("/")[1] || "jpg"
-      const key = `coverAreas/${profileId}.${Date.now()}.${id}.${ext}`
+      const image = await validateImageUpload(cover)
+      if (!image.ok) return imageUploadErrorResponse(image)
+      const key = `coverAreas/${profileId}.${Date.now()}.${id}.${image.image.ext}`
       const uploaded = await uploadToS3({
         key,
-        contentType: cover.type || "image/jpeg",
-        body: Buffer.from(arrayBuffer),
+        contentType: image.image.contentType,
+        body: image.image.buffer,
         cacheControl: "public, max-age=604800, immutable",
       })
       coverImageUrl = uploaded.url

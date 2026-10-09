@@ -14,10 +14,20 @@ vi.mock("@/lib/admin-auth", () => ({
 }))
 
 import { POST } from "@/app/api/admin/auth/login/route"
+import { resetRateLimiters } from "@/lib/rate-limit"
+
+function loginReq(email: string, password: string, ip = "1.2.3.4") {
+  return new Request("http://localhost/api/admin/auth/login", {
+    method: "POST",
+    headers: { "content-type": "application/json", "x-real-ip": ip },
+    body: JSON.stringify({ email, password }),
+  })
+}
 
 describe("POST /api/admin/auth/login", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    resetRateLimiters()
   })
 
   it("returns 400 without email/password", async () => {
@@ -82,5 +92,49 @@ describe("POST /api/admin/auth/login", () => {
     expect(res.status).toBe(200)
     expect(data.email).toBe("admin@test.com")
     expect(res.headers.getSetCookie().some((c: string) => c.includes("admin-token"))).toBe(true)
+  })
+
+  describe("rate limiting", () => {
+    beforeEach(() => {
+      prismaMock.adminUser.findUnique.mockResolvedValue({
+        id: "a1", email: "admin@test.com", name: "Admin", role: "admin", isActive: true, passwordHash: "hash",
+      })
+      bcryptMock.compare.mockResolvedValue(false)
+    })
+
+    it("returns 429 with Retry-After after 5 attempts for the same IP+email, without checking the password", async () => {
+      for (let i = 0; i < 5; i++) {
+        expect((await POST(loginReq("admin@test.com", "wrong"))).status).toBe(401)
+      }
+      bcryptMock.compare.mockClear()
+      const res = await POST(loginReq("Admin@Test.com ", "wrong"))
+      expect(res.status).toBe(429)
+      expect(Number(res.headers.get("Retry-After"))).toBeGreaterThan(0)
+      expect((await res.json()).error).toMatch(/Muitas tentativas/)
+      expect(bcryptMock.compare).not.toHaveBeenCalled()
+    })
+
+    it("does not block another IP for the same email", async () => {
+      for (let i = 0; i < 6; i++) await POST(loginReq("admin@test.com", "wrong", "1.1.1.1"))
+      expect((await POST(loginReq("admin@test.com", "wrong", "2.2.2.2"))).status).toBe(401)
+    })
+
+    it("blocks an IP spraying many emails after 20 attempts", async () => {
+      prismaMock.adminUser.findUnique.mockResolvedValue(null)
+      for (let i = 0; i < 20; i++) {
+        expect((await POST(loginReq(`user${i}@test.com`, "x"))).status).toBe(401)
+      }
+      expect((await POST(loginReq("other@test.com", "x"))).status).toBe(429)
+    })
+
+    it("resets the IP+email counter after a successful login", async () => {
+      for (let i = 0; i < 4; i++) await POST(loginReq("admin@test.com", "wrong"))
+      bcryptMock.compare.mockResolvedValue(true)
+      expect((await POST(loginReq("admin@test.com", "right"))).status).toBe(200)
+      bcryptMock.compare.mockResolvedValue(false)
+      for (let i = 0; i < 5; i++) {
+        expect((await POST(loginReq("admin@test.com", "wrong"))).status).toBe(401)
+      }
+    })
   })
 })

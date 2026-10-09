@@ -32,8 +32,9 @@ const profileSchema = z.object({
     .optional()
     .or(z.literal("").transform(() => undefined)),
   areas: z
-    .array(z.string().min(1))
-    .min(1, { message: "Adicione pelo menos uma área de atuação." }),
+    .array(z.string().min(1).max(120, { message: "Máximo de 120 caracteres por área." }))
+    .min(1, { message: "Adicione pelo menos uma área de atuação." })
+    .max(20, { message: "Selecione no máximo 20 áreas de atuação." }),
   about: z
     .string()
     .max(600, { message: "Máximo de 600 caracteres." })

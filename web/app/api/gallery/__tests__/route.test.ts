@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { bigJpegFile, jpegFile, spoofedHtmlFile } from "@/test/fixtures/images"
 
 const { prismaMock, getServerSessionMock, uploadToS3Mock, getActiveSiteIdMock } = vi.hoisted(() => ({
   prismaMock: {
@@ -39,7 +40,7 @@ describe("POST /api/gallery", () => {
   it("returns 401 without session", async () => {
     getServerSessionMock.mockResolvedValue(null)
     const form = new FormData()
-    form.append("cover", new File(["img"], "photo.jpg", { type: "image/jpeg" }))
+    form.append("cover", jpegFile("photo.jpg"))
     const req = new Request("http://localhost/api/gallery", { method: "POST", body: form })
     const res = await POST(req)
     expect(res.status).toBe(401)
@@ -47,12 +48,41 @@ describe("POST /api/gallery", () => {
 
   it("uploads image and creates gallery item", async () => {
     const form = new FormData()
-    form.append("cover", new File(["img"], "photo.jpg", { type: "image/jpeg" }))
+    form.append("cover", jpegFile("photo.jpg"))
     const req = new Request("http://localhost/api/gallery", { method: "POST", body: form })
     const res = await POST(req)
     expect(res.status).toBe(200)
     expect(uploadToS3Mock).toHaveBeenCalled()
     expect(prismaMock.gallery.create).toHaveBeenCalled()
+  })
+
+  it("rejects a spoofed image (HTML sent as image/jpeg) with 400 and does not upload", async () => {
+    const form = new FormData()
+    form.append("cover", spoofedHtmlFile())
+    const res = await POST(new Request("http://localhost/api/gallery", { method: "POST", body: form }))
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toContain("JPG, PNG ou WebP")
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+    expect(prismaMock.gallery.create).not.toHaveBeenCalled()
+  })
+
+  it("rejects an image above 10 MB with 413 and does not upload", async () => {
+    const form = new FormData()
+    form.append("cover", bigJpegFile(10 * 1024 * 1024 + 1))
+    const res = await POST(new Request("http://localhost/api/gallery", { method: "POST", body: form }))
+    expect(res.status).toBe(413)
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+  })
+
+  it("rejects early with 413 when Content-Length exceeds the limit", async () => {
+    const req = new Request("http://localhost/api/gallery", {
+      method: "POST",
+      headers: { "content-type": "multipart/form-data; boundary=x", "content-length": String(50 * 1024 * 1024) },
+      body: "--x--",
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(413)
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
   })
 
   it("returns 415 when content-type is not multipart/form-data", async () => {

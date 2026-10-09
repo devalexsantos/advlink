@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { jpegFile, pngFile, spoofedHtmlFile } from "@/test/fixtures/images"
 
 const { prismaMock, getServerSessionMock, uploadToS3Mock, getActiveSiteIdMock } = vi.hoisted(() => ({
   prismaMock: {
@@ -299,9 +300,19 @@ describe("PATCH /api/profile", () => {
     expect(updateCall.data.whatsappIsFixed).toBeUndefined()
   })
 
+  it("rejects a spoofed cover (HTML sent as image/jpeg) with 400 before any upload", async () => {
+    const form = new FormData()
+    form.append("publicName", "Test")
+    form.append("photo", pngFile("avatar.png"))
+    form.append("cover", spoofedHtmlFile("cover.jpg"))
+    const res = await PATCH(new Request("http://localhost/api/profile", { method: "PATCH", body: form }))
+    expect(res.status).toBe(400)
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
+  })
+
   it("uploads avatar via FormData photo field", async () => {
-    const fileContent = new Uint8Array([0x89, 0x50, 0x4e, 0x47])
-    const file = new File([fileContent], "avatar.png", { type: "image/png" })
+    const file = pngFile("avatar.png")
     const form = new FormData()
     form.append("publicName", "Test")
     form.append("photo", file)
@@ -324,8 +335,7 @@ describe("PATCH /api/profile", () => {
   })
 
   it("uploads cover via FormData cover field", async () => {
-    const fileContent = new Uint8Array([0xff, 0xd8, 0xff, 0xe0])
-    const file = new File([fileContent], "cover.jpg", { type: "image/jpeg" })
+    const file = jpegFile("cover.jpg")
     const form = new FormData()
     form.append("publicName", "Test")
     form.append("cover", file)
@@ -339,7 +349,7 @@ describe("PATCH /api/profile", () => {
 
     expect(uploadToS3Mock).toHaveBeenCalledTimes(1)
     const s3Call = uploadToS3Mock.mock.calls[0][0]
-    expect(s3Call.key).toMatch(/^covers\/profile-1\.\d+\.jpeg$/)
+    expect(s3Call.key).toMatch(/^covers\/profile-1\.\d+\.jpg$/)
     expect(s3Call.contentType).toBe("image/jpeg")
 
     const updateCall = prismaMock.profile.update.mock.calls[0][0]

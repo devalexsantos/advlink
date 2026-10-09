@@ -32,7 +32,9 @@ export function MagicLinkForm({ callbackUrl = DEFAULT_CALLBACK }: { callbackUrl?
         redirect: false,
         callbackUrl,
       })
-      if (res?.error) {
+      if (res?.status === 429) {
+        setError("Muitas tentativas. Aguarde alguns minutos e tente novamente.")
+      } else if (res?.error) {
         setError("Não foi possível enviar o link. Verifique o e-mail e tente novamente.")
       } else {
         setSent(true)
