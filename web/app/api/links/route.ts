@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { sanitizeOptionalRichText } from "@/lib/sanitize-rich-text"
 import { uploadToS3 } from "@/lib/s3"
 import { getActiveSiteId } from "@/lib/active-site"
 
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
   const nextPosition = (last?.position ?? 0) + 1
 
   const created = await prisma.links.create({
-    data: { profileId, title, description: description ?? null, url, position: nextPosition },
+    data: { profileId, title, description: sanitizeOptionalRichText(description ?? null), url, position: nextPosition },
   })
   return NextResponse.json({ link: created })
 }
@@ -67,7 +68,7 @@ export async function PATCH(req: Request) {
       where: { id },
       data: {
         title,
-        description: description ?? null,
+        description: sanitizeOptionalRichText(description ?? null),
         url,
         coverImageUrl,
         position: position ?? existing.position,
@@ -103,7 +104,7 @@ export async function PATCH(req: Request) {
 
     const updated = await prisma.links.update({
       where: { id },
-      data: { title, description: description ?? null, url, coverImageUrl },
+      data: { title, description: sanitizeOptionalRichText(description ?? null), url, coverImageUrl },
     })
     return NextResponse.json({ link: updated })
   }

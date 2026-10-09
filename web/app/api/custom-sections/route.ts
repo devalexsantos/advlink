@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { sanitizeOptionalRichText } from "@/lib/sanitize-rich-text"
 import { uploadToS3 } from "@/lib/s3"
 import { getVideoEmbedUrl } from "@/lib/video-embed"
 import { getActiveSiteId } from "@/lib/active-site"
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
   const position = (lastSection?.position ?? -1) + 1
 
   const section = await prisma.customSection.create({
-    data: { profileId, title, description, imageUrl, layout, iconName, position, videoUrl, buttonConfig: buttonConfig ?? Prisma.JsonNull },
+    data: { profileId, title, description: sanitizeOptionalRichText(description), imageUrl, layout, iconName, position, videoUrl, buttonConfig: buttonConfig ?? Prisma.JsonNull },
   })
 
   // Auto-append to profile sectionOrder
@@ -151,7 +152,7 @@ export async function PATCH(req: Request) {
 
   const section = await prisma.customSection.update({
     where: { id },
-    data: { title, description, imageUrl, layout, iconName, videoUrl, buttonConfig: buttonConfig ?? Prisma.JsonNull },
+    data: { title, description: sanitizeOptionalRichText(description), imageUrl, layout, iconName, videoUrl, buttonConfig: buttonConfig ?? Prisma.JsonNull },
   })
 
   return NextResponse.json({ section })

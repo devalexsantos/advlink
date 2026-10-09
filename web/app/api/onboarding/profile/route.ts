@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { sanitizeOptionalRichText } from "@/lib/sanitize-rich-text"
 import { generateActivityDescriptions } from "@/lib/openai"
 import { uploadToS3 } from "@/lib/s3"
 import { isReservedSlug } from "@/lib/reserved-slugs"
@@ -108,7 +109,7 @@ export async function POST(req: Request) {
       where: { id: profileId },
       data: {
         publicName: displayName,
-        aboutDescription: about ?? null,
+        aboutDescription: sanitizeOptionalRichText(about ?? null),
         headline: headline ?? null,
         publicEmail: email,
         publicPhone: phone ?? null,

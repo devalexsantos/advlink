@@ -100,6 +100,21 @@ describe("PATCH /api/profile", () => {
     expect(prismaMock.profile.update).toHaveBeenCalled()
   })
 
+  it("sanitizes aboutDescription HTML before saving (stored XSS)", async () => {
+    const req = new Request("http://localhost/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        publicName: "Updated Name",
+        aboutDescription: '<p>Sobre</p><img src=x onerror="fetch(\'/api/admin/admins\')"><script>alert(1)</script>',
+      }),
+    })
+    const res = await PATCH(req)
+    expect(res.status).toBe(200)
+    const data = prismaMock.profile.update.mock.calls.at(-1)![0].data
+    expect(data.aboutDescription).toBe("<p>Sobre</p>")
+  })
+
   it("handles sectionOrder update", async () => {
     prismaMock.profile.update.mockResolvedValue({ id: "p1", sectionOrder: ["sobre", "servicos"] })
     const req = new Request("http://localhost/api/profile", {

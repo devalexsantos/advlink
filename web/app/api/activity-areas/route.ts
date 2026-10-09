@@ -3,6 +3,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { sanitizeOptionalRichText } from "@/lib/sanitize-rich-text"
 import { uploadToS3 } from "@/lib/s3"
 import { getActiveSiteId } from "@/lib/active-site"
 
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
   const nextPosition = (last?.position ?? 0) + 1
 
   const created = await prisma.activityAreas.create({
-    data: { profileId, title, description: description ?? null, position: nextPosition },
+    data: { profileId, title, description: sanitizeOptionalRichText(description ?? null), position: nextPosition },
   })
   return NextResponse.json({ area: created })
 }
@@ -61,7 +62,7 @@ export async function PATCH(req: Request) {
     const newCoverUrl: string | null | undefined = coverImageUrl
     const updated = await prisma.activityAreas.update({
       where: { id },
-      data: { title, description: description ?? null, coverImageUrl: newCoverUrl, position: position ?? existing.position },
+      data: { title, description: sanitizeOptionalRichText(description ?? null), coverImageUrl: newCoverUrl, position: position ?? existing.position },
     })
     return NextResponse.json({ area: updated })
   }
@@ -92,7 +93,7 @@ export async function PATCH(req: Request) {
 
     const updated = await prisma.activityAreas.update({
       where: { id },
-      data: { title, description: description ?? null, coverImageUrl },
+      data: { title, description: sanitizeOptionalRichText(description ?? null), coverImageUrl },
     })
     return NextResponse.json({ area: updated })
   }

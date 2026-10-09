@@ -13,6 +13,14 @@ export async function proxy(req: NextRequest) {
   const { nextUrl } = req
   const pathname = nextUrl.pathname
 
+  // CSRF: reject cross-origin state-changing API calls (cookies are same-site across *.ROOT_DOMAIN,
+  // so SameSite=Lax alone doesn't stop a script on a profile subdomain).
+  if (pathname.startsWith("/api") && isUnsafeMethod(req.method) && !isCsrfExempt(pathname)) {
+    if (!isSameOriginRequest(req)) {
+      return NextResponse.json({ error: "Origem não permitida" }, { status: 403 })
+    }
+  }
+
   // Skip API and static assets from any rewrite consideration
   const isApi = pathname.startsWith("/api")
   const isNextInternal = pathname.startsWith("/_next")
@@ -47,6 +55,16 @@ export async function proxy(req: NextRequest) {
   const ROOT_DOMAIN = process.env.ROOT_DOMAIN || "advlink.site"
   const suffix = `.${ROOT_DOMAIN}`
 
+  if (host.endsWith(suffix) || host === ROOT_DOMAIN) {
+    // Public profiles live only on their own subdomain: never serve /adv/* on app.* (same origin
+    // as the dashboard/admin APIs) or under another subdomain.
+    const advMatch = pathname.match(/^\/adv\/([a-z0-9-]+)\/?$/i)
+    if (advMatch) {
+      const proto = req.headers.get("x-forwarded-proto") ?? nextUrl.protocol.replace(":", "")
+      return NextResponse.redirect(`${proto}://${advMatch[1].toLowerCase()}.${ROOT_DOMAIN}/`, 301)
+    }
+  }
+
   if (host.endsWith(suffix)) {
     const subdomain = host.slice(0, -suffix.length)
     const isApex = subdomain.length === 0
@@ -75,10 +93,34 @@ export async function proxy(req: NextRequest) {
   return NextResponse.next()
 }
 
+function isUnsafeMethod(method: string) {
+  return !["GET", "HEAD", "OPTIONS"].includes(method.toUpperCase())
+}
+
+// Server-to-server callers (signed webhooks) and NextAuth (has its own CSRF token).
+function isCsrfExempt(pathname: string) {
+  return pathname.startsWith("/api/stripe/webhook") || pathname.startsWith("/api/auth/")
+}
+
+function isSameOriginRequest(req: NextRequest) {
+  const host = req.headers.get("host")
+  const origin = req.headers.get("origin")
+  if (origin) {
+    try {
+      return new URL(origin).host === host
+    } catch {
+      return false
+    }
+  }
+  // No Origin (old browsers / non-browser clients): fall back to Fetch Metadata when present.
+  const site = req.headers.get("sec-fetch-site")
+  return !site || site === "same-origin" || site === "none"
+}
+
 // Run on all paths except Next internals and common static files
 export const config = {
   matcher: [
-    "/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml).*)",
   ],
 }
 

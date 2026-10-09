@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { sanitizeOptionalRichText } from "@/lib/sanitize-rich-text"
 import { uploadToS3 } from "@/lib/s3"
 import { isReservedSlug } from "@/lib/reserved-slugs"
 import { getActiveSiteId } from "@/lib/active-site"
@@ -266,7 +267,7 @@ export async function PATCH(req: Request) {
     where: { id: profileId },
     data: {
       publicName,
-      aboutDescription: nopt(aboutDescription),
+      aboutDescription: sanitizeOptionalRichText(nopt(aboutDescription)),
       publicEmail: nopt(publicEmail),
       publicPhone: nopt(publicPhone),
       headline: nopt(headline),
