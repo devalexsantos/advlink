@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { jpegFile, spoofedHtmlFile } from "@/test/fixtures/images"
 
 const { prismaMock, getServerSessionMock, uploadToS3Mock, generateMock, trackEventMock, getActiveSiteIdMock } = vi.hoisted(() => ({
   prismaMock: {
@@ -195,8 +196,21 @@ describe("POST /api/onboarding/profile", () => {
     )
   })
 
+  it("rejects a spoofed photo with 400 before calling OpenAI or S3", async () => {
+    const form = new FormData()
+    form.append("displayName", "Maria Souza")
+    form.append("areas", JSON.stringify(["Direito Civil"]))
+    form.append("email", "maria@test.com")
+    form.append("photo", spoofedHtmlFile("photo.jpg"))
+    const res = await POST(new Request("http://localhost/api/onboarding/profile", { method: "POST", body: form }))
+    expect(res.status).toBe(400)
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+    expect(generateMock).not.toHaveBeenCalled()
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
+  })
+
   it("uploads avatar when photo file provided via multipart", async () => {
-    const photoFile = new File(["img"], "photo.jpg", { type: "image/jpeg" })
+    const photoFile = jpegFile("photo.jpg")
     const form = new FormData()
     form.append("displayName", "Maria Souza")
     form.append("areas", "[]")

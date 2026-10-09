@@ -5,6 +5,7 @@ import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { sanitizeOptionalRichText } from "@/lib/sanitize-rich-text"
 import { uploadToS3 } from "@/lib/s3"
+import { MAX_IMAGE_BYTES, imageUploadErrorResponse, rejectOversizedRequest, validateImageUpload } from "@/lib/upload-validation"
 import { getVideoEmbedUrl } from "@/lib/video-embed"
 import { getActiveSiteId } from "@/lib/active-site"
 
@@ -16,6 +17,8 @@ export async function POST(req: Request) {
   const profileId = await getActiveSiteId(userId)
   if (!profileId) return NextResponse.json({ error: "No site found" }, { status: 404 })
 
+  const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES)
+  if (tooLarge) return tooLarge
   const form = await req.formData()
   const title = String(form.get("title") ?? "").trim()
   const description = String(form.get("description") ?? "") || null
@@ -59,13 +62,13 @@ export async function POST(req: Request) {
   let imageUrl: string | null = null
   const imageFile = form.get("image")
   if (imageFile && imageFile instanceof File && imageFile.size > 0) {
-    const arrayBuffer = await imageFile.arrayBuffer()
-    const ext = imageFile.type.split("/")[1] || "jpg"
-    const key = `custom-sections/${profileId}.${Date.now()}.${ext}`
+    const image = await validateImageUpload(imageFile)
+    if (!image.ok) return imageUploadErrorResponse(image)
+    const key = `custom-sections/${profileId}.${Date.now()}.${image.image.ext}`
     const uploaded = await uploadToS3({
       key,
-      contentType: imageFile.type || "image/jpeg",
-      body: Buffer.from(arrayBuffer),
+      contentType: image.image.contentType,
+      body: image.image.buffer,
       cacheControl: "public, max-age=604800, immutable",
     })
     imageUrl = uploaded.url
@@ -100,6 +103,8 @@ export async function PATCH(req: Request) {
   const profileId = await getActiveSiteId(userId)
   if (!profileId) return NextResponse.json({ error: "No site found" }, { status: 404 })
 
+  const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES)
+  if (tooLarge) return tooLarge
   const form = await req.formData()
   const id = String(form.get("id") ?? "")
 
@@ -136,13 +141,13 @@ export async function PATCH(req: Request) {
   const removeImage = String(form.get("removeImage") ?? "").toLowerCase() === "true"
   const imageFile = form.get("image")
   if (imageFile && imageFile instanceof File && imageFile.size > 0) {
-    const arrayBuffer = await imageFile.arrayBuffer()
-    const ext = imageFile.type.split("/")[1] || "jpg"
-    const key = `custom-sections/${profileId}.${Date.now()}.${ext}`
+    const image = await validateImageUpload(imageFile)
+    if (!image.ok) return imageUploadErrorResponse(image)
+    const key = `custom-sections/${profileId}.${Date.now()}.${image.image.ext}`
     const uploaded = await uploadToS3({
       key,
-      contentType: imageFile.type || "image/jpeg",
-      body: Buffer.from(arrayBuffer),
+      contentType: image.image.contentType,
+      body: image.image.buffer,
       cacheControl: "public, max-age=604800, immutable",
     })
     imageUrl = uploaded.url

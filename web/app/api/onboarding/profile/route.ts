@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma"
 import { sanitizeOptionalRichText } from "@/lib/sanitize-rich-text"
 import { generateActivityDescriptions } from "@/lib/openai"
 import { uploadToS3 } from "@/lib/s3"
+import { MAX_IMAGE_BYTES, imageUploadErrorResponse, rejectOversizedRequest, validateImageUpload, type ValidatedImage } from "@/lib/upload-validation"
 import { isReservedSlug } from "@/lib/reserved-slugs"
 import { trackEvent } from "@/lib/product-events"
 import { getActiveSiteId } from "@/lib/active-site"
@@ -66,6 +67,8 @@ export async function POST(req: Request) {
       instagramUrl = body.instagramUrl
       calendlyUrl = body.calendlyUrl
     } else if (contentType.includes("multipart/form-data")) {
+      const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES)
+      if (tooLarge) return tooLarge
       const form = await req.formData()
       displayName = String(form.get("displayName") ?? "")
       areas = JSON.parse(String(form.get("areas") ?? "[]"))
@@ -85,6 +88,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Link do Calendly inválido. Use https://calendly.com/..." }, { status: 400 })
     }
 
+    // Validate the photo before spending on OpenAI or touching S3.
+    let avatarImage: ValidatedImage | undefined
+    if (avatarFile) {
+      const image = await validateImageUpload(avatarFile)
+      if (!image.ok) return imageUploadErrorResponse(image)
+      avatarImage = image.image
+    }
+
     // 1) Generate area descriptions with OpenAI. Best effort: a missing key, rate limit or
     // timeout must not block onboarding — areas are saved without description instead.
     const titles = Array.from(new Set(areas ?? [])).filter(Boolean)
@@ -100,14 +111,12 @@ export async function POST(req: Request) {
 
     // 2) Upload avatar if provided
     let avatarUrl: string | null = null
-    if (avatarFile) {
-      const arrayBuffer = await avatarFile.arrayBuffer()
-      const ext = avatarFile.type.split("/")[1] || "jpg"
-      const key = `avatars/${profileId}.${Date.now()}.${ext}`
+    if (avatarImage) {
+      const key = `avatars/${profileId}.${Date.now()}.${avatarImage.ext}`
       const uploaded = await uploadToS3({
         key,
-        contentType: avatarFile.type || "image/jpeg",
-        body: Buffer.from(arrayBuffer),
+        contentType: avatarImage.contentType,
+        body: avatarImage.buffer,
         cacheControl: "public, max-age=604800, immutable",
       })
       avatarUrl = uploaded.url

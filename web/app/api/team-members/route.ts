@@ -4,6 +4,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { uploadToS3 } from "@/lib/s3"
+import { MAX_IMAGE_BYTES, imageUploadErrorResponse, rejectOversizedRequest, validateImageUpload, type ValidatedImage } from "@/lib/upload-validation"
 import { getActiveSiteId } from "@/lib/active-site"
 
 export async function POST(req: Request) {
@@ -14,6 +15,8 @@ export async function POST(req: Request) {
   const profileId = await getActiveSiteId(userId)
   if (!profileId) return NextResponse.json({ error: "No site found" }, { status: 404 })
 
+  const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES)
+  if (tooLarge) return tooLarge
   const form = await req.formData()
   const name = String(form.get("name") ?? "").trim()
   if (!name) return NextResponse.json({ error: "Nome obrigatório" }, { status: 400 })
@@ -23,6 +26,14 @@ export async function POST(req: Request) {
   const whatsapp = String(form.get("whatsapp") ?? "") || null
   const email = String(form.get("email") ?? "") || null
   const avatar = form.get("avatar")
+
+  // Validate before creating the member so a rejected file leaves nothing behind.
+  let validatedAvatar: ValidatedImage | undefined
+  if (avatar && avatar instanceof File) {
+    const image = await validateImageUpload(avatar)
+    if (!image.ok) return imageUploadErrorResponse(image)
+    validatedAvatar = image.image
+  }
 
   const last = await prisma.teamMember.findFirst({
     where: { profileId },
@@ -36,14 +47,12 @@ export async function POST(req: Request) {
   })
 
   let avatarUrl: string | undefined
-  if (avatar && avatar instanceof File) {
-    const arrayBuffer = await avatar.arrayBuffer()
-    const ext = avatar.type.split("/")[1] || "jpg"
-    const key = `team/${profileId}.${Date.now()}.${created.id}.${ext}`
+  if (validatedAvatar) {
+    const key = `team/${profileId}.${Date.now()}.${created.id}.${validatedAvatar.ext}`
     const uploaded = await uploadToS3({
       key,
-      contentType: avatar.type || "image/jpeg",
-      body: Buffer.from(arrayBuffer),
+      contentType: validatedAvatar.contentType,
+      body: validatedAvatar.buffer,
       cacheControl: "public, max-age=604800, immutable",
     })
     avatarUrl = uploaded.url
@@ -87,6 +96,8 @@ export async function PATCH(req: Request) {
   }
 
   if (contentType.includes("multipart/form-data")) {
+    const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES)
+    if (tooLarge) return tooLarge
     const form = await req.formData()
     const id = String(form.get("id") ?? "")
     if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 })
@@ -107,13 +118,13 @@ export async function PATCH(req: Request) {
     if (removeAvatar) {
       avatarUrl = null
     } else if (avatar && avatar instanceof File) {
-      const arrayBuffer = await avatar.arrayBuffer()
-      const ext = avatar.type.split("/")[1] || "jpg"
-      const key = `team/${profileId}.${Date.now()}.${id}.${ext}`
+      const image = await validateImageUpload(avatar)
+      if (!image.ok) return imageUploadErrorResponse(image)
+      const key = `team/${profileId}.${Date.now()}.${id}.${image.image.ext}`
       const uploaded = await uploadToS3({
         key,
-        contentType: avatar.type || "image/jpeg",
-        body: Buffer.from(arrayBuffer),
+        contentType: image.image.contentType,
+        body: image.image.buffer,
         cacheControl: "public, max-age=604800, immutable",
       })
       avatarUrl = uploaded.url

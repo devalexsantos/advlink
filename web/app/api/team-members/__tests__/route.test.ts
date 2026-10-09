@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { jpegFile, pngFile, spoofedHtmlFile } from "@/test/fixtures/images"
 
 const { prismaMock, getServerSessionMock, uploadToS3Mock, getActiveSiteIdMock } = vi.hoisted(() => ({
   prismaMock: {
@@ -128,12 +129,22 @@ describe("POST /api/team-members", () => {
     expect(body.member).toBeDefined()
   })
 
+  it("rejects a spoofed avatar with 400 without creating the member or uploading", async () => {
+    const form = new FormData()
+    form.append("name", "Dra. Maria")
+    form.append("avatar", spoofedHtmlFile("avatar.jpg"))
+    const res = await POST(new Request("http://localhost/api/team-members", { method: "POST", body: form }))
+    expect(res.status).toBe(400)
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+    expect(prismaMock.teamMember.create).not.toHaveBeenCalled()
+  })
+
   it("creates member with avatar, uploads to S3, and updates record", async () => {
     const updatedMember = makeMember({ id: "tm-new", avatarUrl: "https://s3.test/team-avatar.jpg" })
     prismaMock.teamMember.update.mockResolvedValue(updatedMember)
     const form = new FormData()
     form.append("name", "Dra. Maria")
-    form.append("avatar", new File(["img"], "avatar.jpg", { type: "image/jpeg" }))
+    form.append("avatar", jpegFile("avatar.jpg"))
     const req = new Request("http://localhost/api/team-members", { method: "POST", body: form })
     const res = await POST(req)
     expect(res.status).toBe(200)
@@ -272,6 +283,16 @@ describe("PATCH /api/team-members", () => {
       expect(uploadToS3Mock).not.toHaveBeenCalled()
     })
 
+    it("rejects a spoofed avatar on update with 400 and does not upload", async () => {
+      const form = new FormData()
+      form.append("id", "tm-1")
+      form.append("avatar", spoofedHtmlFile("new-avatar.png"))
+      const res = await PATCH(new Request("http://localhost/api/team-members", { method: "PATCH", body: form }))
+      expect(res.status).toBe(400)
+      expect(uploadToS3Mock).not.toHaveBeenCalled()
+      expect(prismaMock.teamMember.update).not.toHaveBeenCalled()
+    })
+
     it("uploads new avatar on update", async () => {
       prismaMock.teamMember.update.mockResolvedValue({
         ...existingMember,
@@ -279,7 +300,7 @@ describe("PATCH /api/team-members", () => {
       })
       const form = new FormData()
       form.append("id", "tm-1")
-      form.append("avatar", new File(["img"], "new-avatar.png", { type: "image/png" }))
+      form.append("avatar", pngFile("new-avatar.png"))
       const req = new Request("http://localhost/api/team-members", {
         method: "PATCH",
         body: form,

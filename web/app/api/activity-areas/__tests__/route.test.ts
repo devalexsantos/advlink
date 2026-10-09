@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
+import { pngFile, spoofedHtmlFile } from "@/test/fixtures/images"
 
 const { prismaMock, getServerSessionMock, uploadToS3Mock, getActiveSiteIdMock } = vi.hoisted(() => ({
   prismaMock: {
@@ -113,10 +114,22 @@ describe("PATCH /api/activity-areas", () => {
     })
   })
 
+  it("rejects a spoofed cover (HTML sent as image/jpeg) with 400 and does not upload", async () => {
+    prismaMock.activityAreas.findFirst.mockResolvedValue({ id: "a1", profileId: "profile-1", position: 1 })
+    const form = new FormData()
+    form.append("id", "a1")
+    form.append("title", "WithCover")
+    form.append("cover", spoofedHtmlFile())
+    const res = await PATCH(new Request("http://localhost/api/activity-areas", { method: "PATCH", body: form }))
+    expect(res.status).toBe(400)
+    expect(uploadToS3Mock).not.toHaveBeenCalled()
+    expect(prismaMock.activityAreas.update).not.toHaveBeenCalled()
+  })
+
   it("updates area via multipart/form-data with cover File and uploads to S3", async () => {
     prismaMock.activityAreas.findFirst.mockResolvedValue({ id: "a1", profileId: "profile-1", position: 1 })
     prismaMock.activityAreas.update.mockResolvedValue({ id: "a1", title: "WithCover", coverImageUrl: "https://s3.test/cover.jpg" })
-    const file = new File([new Uint8Array([137, 80, 78, 71])], "cover.png", { type: "image/png" })
+    const file = pngFile("cover.png")
     const form = new FormData()
     form.append("id", "a1")
     form.append("title", "WithCover")

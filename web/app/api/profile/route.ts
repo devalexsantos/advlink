@@ -4,6 +4,7 @@ import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { sanitizeOptionalRichText } from "@/lib/sanitize-rich-text"
 import { uploadToS3 } from "@/lib/s3"
+import { MAX_IMAGE_BYTES, imageUploadErrorResponse, rejectOversizedRequest, validateImageUpload, type ValidatedImage } from "@/lib/upload-validation"
 import { isReservedSlug } from "@/lib/reserved-slugs"
 import { getActiveSiteId } from "@/lib/active-site"
 
@@ -119,6 +120,8 @@ export async function PATCH(req: Request) {
     city = body.city
     state = body.state
   } else if (contentType.includes("multipart/form-data")) {
+    const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES, 2)
+    if (tooLarge) return tooLarge
     const form = await req.formData()
     publicName = String(form.get("publicName") ?? "")
     aboutDescription = String(form.get("aboutDescription") ?? "")
@@ -184,6 +187,20 @@ export async function PATCH(req: Request) {
     throw e
   }
 
+  // Validate image files (magic bytes + size) before any upload.
+  let avatarImage: ValidatedImage | undefined
+  let coverImage: ValidatedImage | undefined
+  if (avatarFile) {
+    const image = await validateImageUpload(avatarFile)
+    if (!image.ok) return imageUploadErrorResponse(image)
+    avatarImage = image.image
+  }
+  if (coverFile) {
+    const image = await validateImageUpload(coverFile)
+    if (!image.ok) return imageUploadErrorResponse(image)
+    coverImage = image.image
+  }
+
   async function validateOrGenerateSlug(name: string, input?: string) {
     function baseFrom(text: string) {
       return text
@@ -215,14 +232,12 @@ export async function PATCH(req: Request) {
 
   // Upload avatar
   let avatarUrl: string | null | undefined
-  if (avatarFile) {
-    const arrayBuffer = await avatarFile.arrayBuffer()
-    const ext = avatarFile.type.split("/")[1] || "jpg"
-    const key = `avatars/${profileId}.${Date.now()}.${ext}`
+  if (avatarImage) {
+    const key = `avatars/${profileId}.${Date.now()}.${avatarImage.ext}`
     const uploaded = await uploadToS3({
       key,
-      contentType: avatarFile.type || "image/jpeg",
-      body: Buffer.from(arrayBuffer),
+      contentType: avatarImage.contentType,
+      body: avatarImage.buffer,
       cacheControl: "public, max-age=604800, immutable",
     })
     avatarUrl = uploaded.url
@@ -233,14 +248,12 @@ export async function PATCH(req: Request) {
 
   // Upload cover
   let coverUrl: string | null | undefined
-  if (coverFile) {
-    const arrayBuffer = await coverFile.arrayBuffer()
-    const ext = coverFile.type.split("/")[1] || "jpg"
-    const key = `covers/${profileId}.${Date.now()}.${ext}`
+  if (coverImage) {
+    const key = `covers/${profileId}.${Date.now()}.${coverImage.ext}`
     const uploaded = await uploadToS3({
       key,
-      contentType: coverFile.type || "image/jpeg",
-      body: Buffer.from(arrayBuffer),
+      contentType: coverImage.contentType,
+      body: coverImage.buffer,
       cacheControl: "public, max-age=604800, immutable",
     })
     coverUrl = uploaded.url
