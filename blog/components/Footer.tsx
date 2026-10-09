@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Container } from "./Container";
-import { ADVLINK_URL, SITE_NAME } from "@/lib/constants";
+import { ADVLINK_URL, APP_URL, SITE_NAME, withUtm } from "@/lib/constants";
 
 function AdvLinkLogo({ className }: { className?: string }) {
   return (
@@ -59,7 +59,7 @@ export function Footer() {
             <ul className="mt-3 space-y-2">
               <li>
                 <a
-                  href={ADVLINK_URL}
+                  href={withUtm(ADVLINK_URL, "footer")}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-muted-foreground transition-colors hover:text-foreground"
@@ -69,7 +69,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href={`${ADVLINK_URL}/login`}
+                  href={withUtm(`${APP_URL}/login`, "footer")}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-muted-foreground transition-colors hover:text-foreground"

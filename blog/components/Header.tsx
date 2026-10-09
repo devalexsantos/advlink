@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Container } from "./Container";
 import { ThemeToggle } from "./ThemeToggle";
-import { ADVLINK_URL } from "@/lib/constants";
+import { ADVLINK_URL, withUtm } from "@/lib/constants";
 
 export function Header() {
   return (
@@ -23,7 +23,7 @@ export function Header() {
           </Link>
           <ThemeToggle />
           <a
-            href={ADVLINK_URL}
+            href={withUtm(ADVLINK_URL, "header")}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:opacity-90"

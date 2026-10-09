@@ -6,6 +6,8 @@ type Status = "idle" | "loading" | "success" | "error";
 
 export function NewsletterForm() {
   const [email, setEmail] = useState("");
+  // Honeypot: hidden from people, filled by bots
+  const [website, setWebsite] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [message, setMessage] = useState("");
 
@@ -25,7 +27,7 @@ export function NewsletterForm() {
       const res = await fetch("/api/newsletter", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: trimmed }),
+        body: JSON.stringify({ email: trimmed, website }),
       });
 
       const data = await res.json();
@@ -73,6 +75,16 @@ export function NewsletterForm() {
           </p>
 
           <form onSubmit={handleSubmit} className="mt-6 flex gap-3 sm:flex-row flex-col">
+            <input
+              type="text"
+              name="website"
+              value={website}
+              onChange={(e) => setWebsite(e.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              className="absolute -left-[9999px] h-0 w-0 opacity-0"
+            />
             <input
               type="email"
               placeholder="seu@email.com"
