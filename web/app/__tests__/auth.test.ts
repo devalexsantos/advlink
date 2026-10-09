@@ -123,7 +123,8 @@ describe("auth.ts", () => {
 
     it("includes first-touch attribution when the cookie exists", async () => {
       attributionMock.mockResolvedValueOnce({ utm_source: "blog" })
-      await authOptions.events!.createUser!({ user: { id: "u2", email: "c@d.com" } } as any)
+      type CreateUserMessage = Parameters<NonNullable<NonNullable<typeof authOptions.events>["createUser"]>>[0]
+      await authOptions.events!.createUser!({ user: { id: "u2", email: "c@d.com" } } as unknown as CreateUserMessage)
       expect(trackEventMock).toHaveBeenCalledWith("user_signed_up", {
         userId: "u2",
         meta: { email: "c@d.com", attribution: { utm_source: "blog" } },
