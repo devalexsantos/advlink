@@ -10,6 +10,24 @@ import { isReservedSlug } from "@/lib/reserved-slugs"
 import { trackEvent } from "@/lib/product-events"
 import { getActiveSiteId } from "@/lib/active-site"
 
+const OPENAI_TIMEOUT_MS = 25_000
+
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`timeout after ${ms}ms`)), ms)
+    promise.then(
+      (value) => {
+        clearTimeout(timer)
+        resolve(value)
+      },
+      (err) => {
+        clearTimeout(timer)
+        reject(err)
+      }
+    )
+  })
+}
+
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
   const userId = (session?.user as { id?: string } | undefined)?.id
@@ -32,6 +50,7 @@ export async function POST(req: Request) {
     let cellphone: string | undefined
     let whatsapp: string | undefined
     let instagramUrl: string | undefined
+    let calendlyUrl: string | undefined
     let avatarFile: File | undefined
 
     if (contentType.includes("application/json")) {
@@ -45,6 +64,7 @@ export async function POST(req: Request) {
       cellphone = body.cellphone
       whatsapp = body.whatsapp
       instagramUrl = body.instagramUrl
+      calendlyUrl = body.calendlyUrl
     } else if (contentType.includes("multipart/form-data")) {
       const form = await req.formData()
       displayName = String(form.get("displayName") ?? "")
@@ -56,14 +76,27 @@ export async function POST(req: Request) {
       cellphone = String(form.get("cellphone") ?? "") || undefined
       whatsapp = String(form.get("whatsapp") ?? "") || undefined
       instagramUrl = String(form.get("instagramUrl") ?? "") || undefined
+      calendlyUrl = String(form.get("calendlyUrl") ?? "") || undefined
       const f = form.get("photo")
       if (f && f instanceof File) avatarFile = f
     }
 
-    // 1) Generate area descriptions with OpenAI
+    if (calendlyUrl && !/^https:\/\/calendly\.com\//i.test(calendlyUrl)) {
+      return NextResponse.json({ error: "Link do Calendly inválido. Use https://calendly.com/..." }, { status: 400 })
+    }
+
+    // 1) Generate area descriptions with OpenAI. Best effort: a missing key, rate limit or
+    // timeout must not block onboarding — areas are saved without description instead.
     const titles = Array.from(new Set(areas ?? [])).filter(Boolean)
     const openaiKey = process.env.OPENAI_API_KEY ?? ""
-    const descriptions = titles.length ? await generateActivityDescriptions(titles, openaiKey) : []
+    let descriptions: string[] = []
+    if (titles.length) {
+      try {
+        descriptions = await withTimeout(generateActivityDescriptions(titles, openaiKey), OPENAI_TIMEOUT_MS)
+      } catch (err) {
+        console.error("[onboarding] area description generation failed:", err)
+      }
+    }
 
     // 2) Upload avatar if provided
     let avatarUrl: string | null = null
@@ -115,6 +148,7 @@ export async function POST(req: Request) {
         publicPhone: phone ?? null,
         whatsapp: whatsapp ?? cellphone ?? null,
         instagramUrl: instagramUrl ?? null,
+        calendlyUrl: calendlyUrl ?? null,
         avatarUrl: avatarUrl ?? undefined,
         slug,
         metaTitle: displayName,

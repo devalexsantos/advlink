@@ -82,6 +82,45 @@ describe("POST /api/onboarding/profile", () => {
     expect(generateMock).toHaveBeenCalledWith(["Civil", "Penal"], expect.any(String))
   })
 
+  it("completes onboarding when OpenAI fails, saving areas without description", async () => {
+    generateMock.mockRejectedValueOnce(new Error("429 Too Many Requests"))
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {})
+    const req = new Request("http://localhost/api/onboarding/profile", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ displayName: "Test", areas: ["Civil", "Penal"], email: "test@test.com" }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    const data = prismaMock.activityAreas.createMany.mock.calls[0][0].data
+    expect(data).toHaveLength(2)
+    expect(data.every((a: { description: string | null }) => a.description === null)).toBe(true)
+    expect(prismaMock.profile.update.mock.calls[0][0].data.setupComplete).toBe(true)
+    errSpy.mockRestore()
+  })
+
+  it("persists calendlyUrl", async () => {
+    const req = new Request("http://localhost/api/onboarding/profile", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ displayName: "Test", email: "t@t.com", calendlyUrl: "https://calendly.com/joao" }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(200)
+    expect(prismaMock.profile.update.mock.calls[0][0].data.calendlyUrl).toBe("https://calendly.com/joao")
+  })
+
+  it("returns 400 for an invalid calendlyUrl", async () => {
+    const req = new Request("http://localhost/api/onboarding/profile", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ displayName: "Test", email: "t@t.com", calendlyUrl: "https://evil.com/x" }),
+    })
+    const res = await POST(req)
+    expect(res.status).toBe(400)
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
+  })
+
   it("marks onboarding as completed", async () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
