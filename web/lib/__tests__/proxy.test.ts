@@ -76,7 +76,7 @@ describe("proxy", () => {
     })
 
     it("exempts the payment webhooks and NextAuth", async () => {
-      for (const path of ["/api/stripe/webhook", "/api/webhooks/asaas", "/api/auth/signin/email"]) {
+      for (const path of ["/api/webhooks/asaas", "/api/auth/signin/email"]) {
         const res = await proxy(
           makeReq(`https://app.advlink.site${path}`, { method: "POST", headers: { origin: "https://evil.com" } })
         )

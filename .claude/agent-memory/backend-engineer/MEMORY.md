@@ -7,9 +7,8 @@
 - Entity ownership queries changed from `userId` to `profileId` (activityAreas, links, gallery, customSection)
 - Profile route uses `profile.update` (not `upsert`) since profiles are pre-created
 - Onboarding route uses `profile.update` (not `upsert`)
-- Stripe webhook uses `profile.updateMany` by `stripeSubscriptionId` (not `user.updateMany` by `stripeCustomerId`)
 - Public page checks `profile.isActive` directly (not `profile.user.isActive`)
-- Checkout metadata includes `profileId` for per-site activation
+- Billing is Asaas (2026-10): per-site payment link with `externalReference = profileId`; only `recomputeProfile` in `web/lib/billing/sync.ts` writes `billingStatus`/`isActive` (see billing-specialist agent)
 
 ## Test Setup
 - Vitest config: `web/vitest.config.ts`, setup file: `web/test/setup.ts`
@@ -22,4 +21,4 @@
 - Prisma schema: `web/prisma/schema.prisma`
 - Profile route: `web/app/api/profile/route.ts`
 - Onboarding route: `web/app/api/onboarding/profile/route.ts`
-- Stripe webhook: `web/app/api/stripe/webhook/route.ts`
+- Asaas webhook: `web/app/api/webhooks/asaas/route.ts`; billing core: `web/lib/billing/`

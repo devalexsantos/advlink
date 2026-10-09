@@ -28,13 +28,10 @@ import { GET } from "@/app/api/.../route"
 - Routes that use `new URL(req.url)` work fine with plain `new Request(url)`
 - Import `NextRequest` from `next/server` — it is available in the node test environment
 
-### Stripe mock shape (financial/cancel-subscription)
-```typescript
-stripeMock: {
-  subscriptions: { list: vi.fn(), update: vi.fn(), retrieve: vi.fn() }
-}
-vi.mock("@/lib/stripe", () => ({ stripe: stripeMock }))
-```
+### Billing (Asaas) tests
+- `*.db.test.ts` run against a real Postgres (`DATABASE_URL_TEST`, migrated) in the sequential vitest project "db"; they're skipped without the env
+- Use `FakeAsaas` (`@/lib/billing/asaas-fake`) + `setAsaasForTests()`; mock `@/lib/prisma` with a `new PrismaClient({ datasourceUrl })` created in `vi.hoisted`
+- Unit tests of billing UI mock `@/components/billing/useBillingStatus` / `PublishCheckout`
 
 ### BigInt in $queryRaw tests
 - Mock BigInt values directly: `[{ count: BigInt(45) }]`
@@ -50,7 +47,7 @@ vi.mock("@/lib/stripe", () => ({ stripe: stripeMock }))
 - Auth: `@/auth` exports `authOptions`
 - Admin auth: `@/lib/admin-auth` exports `getAdminSession`
 - Prisma: `@/lib/prisma` exports `prisma`
-- Stripe: `@/lib/stripe` exports `stripe`
+- Billing: `@/lib/billing/*` (no Stripe anymore)
 
 See: patterns.md for extended notes
 

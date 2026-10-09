@@ -49,7 +49,7 @@ Deploy build (`npm run build:deploy`) runs `prisma generate`, conditionally runs
 
 ### Testing
 
-Vitest + Testing Library (`web/vitest.config.ts`, jsdom by default, setup in `web/test/setup.ts`, shared mocks in `web/test/mocks/`). ~110 test files in `__tests__/` folders next to the code; every API route has one. API route tests start with `// @vitest-environment node` and declare mocks via `vi.hoisted()` before `vi.mock()`, importing the handler afterwards. CI (`.github/workflows/test.yml`) runs lint, typecheck and tests on push/PR to `main` (lint/typecheck are non-blocking until the existing debt is cleared).
+Vitest + Testing Library (`web/vitest.config.ts`, jsdom by default, setup in `web/test/setup.ts`, shared mocks in `web/test/mocks/`). ~110 test files in `__tests__/` folders next to the code; every API route has one. API route tests start with `// @vitest-environment node` and declare mocks via `vi.hoisted()` before `vi.mock()`, importing the handler afterwards. Billing integration tests (`*.db.test.ts`) run against a real Postgres from `DATABASE_URL_TEST` in a sequential Vitest project and are skipped without it. CI (`.github/workflows/test.yml`) runs lint, typecheck and tests on push/PR to `main` (lint/typecheck are non-blocking until the existing debt is cleared).
 
 ## Architecture
 
@@ -100,7 +100,7 @@ NextAuth v4 with JWT strategy, Prisma adapter. Three providers: Email (magic lin
 
 ### Multi-site (1 User : N Profiles)
 
-A `User` can own several sites (`Profile`). The active one is resolved by `getActiveSiteId(userId)` in `web/lib/active-site.ts` (cookie, falling back to the first profile); the dashboard switches sites via `SiteSwitcher.tsx` / `SiteContext.tsx`, and new sites are created at `/onboarding/new-site` (`/api/sites`). **Every authenticated route must scope reads/writes by that `profileId`**, never by `userId` alone. Publication and billing are per site: `Profile.isActive` + `Profile.stripeSubscriptionId` (checkout metadata carries `profileId`).
+A `User` can own several sites (`Profile`). The active one is resolved by `getActiveSiteId(userId)` in `web/lib/active-site.ts` (cookie, falling back to the first profile); the dashboard switches sites via `SiteSwitcher.tsx` / `SiteContext.tsx`, and new sites are created at `/onboarding/new-site` (`/api/sites`). **Every authenticated route must scope reads/writes by that `profileId`**, never by `userId` alone. Publication and billing are per site: `Profile.isActive` (published) is derived from `Profile.billingStatus` and `suspendedByAdmin` by `recomputeProfile` (`web/lib/billing/sync.ts`); Asaas payment links carry `externalReference = profileId`.
 
 ### Database (Prisma + PostgreSQL)
 
@@ -116,7 +116,7 @@ Profile has a unique `slug` used for public URLs.
 
 ### Key Integrations
 
-- **Stripe** (`web/lib/stripe.ts`, `/api/stripe/webhook`): Per-site subscription billing. `Profile.isActive` controls profile visibility. Webhook handles `checkout.session.completed`, subscription created/updated/deleted.
+- **Asaas** (`web/lib/billing/`, account NAIR APPS): per-site monthly subscription via hosted recurring payment links (card + boleto, or Pix). `POST /api/billing/checkout`, `GET /api/billing/status`, `POST /api/billing/cancel`, webhook `POST /api/webhooks/asaas` (token header, fetch-on-notify, dedup in `WebhookEvent`), hourly `GET /api/cron/billing-sweep` (GitHub Actions) for grace (5 days) → suspension → churn (30 days). Local mirror: `BillingPaymentLink`, `BillingSubscription`, `BillingPayment`. Billing e-mails via Resend (`web/lib/emails/billingEmails.ts`). Sandbox testing: `asaas-sandbox` skill.
 - **AWS S3** (`web/lib/s3.ts`): Avatar, cover, and gallery image uploads with cropping support (`react-easy-crop`).
 - **OpenAI** (`web/lib/openai.ts`): Generates practice area descriptions using gpt-4o-mini, optimized for Brazilian legal context.
 - **Resend** (`web/lib/resend.ts`): Transactional emails (auth, ticket notifications).
@@ -159,11 +159,11 @@ Profile has a unique `slug` used for public URLs.
   - `tickets/` — Support ticket system (list, new, detail)
   - `account/` — Billing page
 - `web/app/admin/` — Internal admin panel (dashboard, users, sites, tickets, events, financial, admins, audit)
-- `web/app/api/` — API routes (profile, links, gallery, activity-areas, onboarding, stripe, admin, analytics, custom-sections, tickets)
+- `web/app/api/` — API routes (profile, links, gallery, activity-areas, onboarding, billing, webhooks, cron, admin, analytics, custom-sections, tickets)
 - `web/components/ui/` — Shadcn UI components (including sidebar, rich-text-editor, icon-picker)
 - `web/components/themes/` — Public profile themes (01, 02, 03, 04) — do NOT change these
 - `web/components/analytics/` — `ProfileTracker` (page view beacon on public profiles)
-- `web/lib/` — Utility modules (prisma, s3, stripe, openai, resend, admin-auth, audit-log, product-events, curated-icons, icon-renderer, render-content, reserved-slugs, section-order, utils, emails)
+- `web/lib/` — Utility modules (prisma, s3, billing, openai, resend, admin-auth, audit-log, product-events, curated-icons, icon-renderer, render-content, reserved-slugs, section-order, utils, emails)
 - `web/prisma/` — Schema and migrations
 - `web/assets/icons/` — SVG icons
 - `web/hooks/` — Custom hooks (`use-mobile.ts`)
@@ -190,11 +190,11 @@ Profile has a unique `slug` used for public URLs.
 | `ux-analyst` | read-only usability analysis |
 | `test-engineer` | Vitest tests, regression tests, broken tests |
 | `email-engineer` | transactional/lifecycle emails (Resend) |
-| `billing-specialist` | Stripe checkout, webhook, subscription lifecycle per site |
+| `billing-specialist` | Asaas checkout/payment links, webhook, subscription lifecycle per site |
 | `security-auditor` | read-only security review (auth, IDOR, XSS, uploads, secrets) |
 | `seo-growth` | technical SEO for profiles, LP and blog; acquisition funnel |
 | `legal-content-writer` | blog posts and marketing copy compliant with OAB Provimento 205/2021 |
 
-**Skills** (`.claude/skills/`): `verify` (lint+typecheck+tests+build gate), `dev-env`, `db-migration`, `api-route`, `stripe-local`, `prod-smoke`, `blog-post`, `release`.
+**Skills** (`.claude/skills/`): `verify` (lint+typecheck+tests+build gate), `dev-env`, `db-migration`, `api-route`, `asaas-sandbox`, `prod-smoke`, `blog-post`, `release`.
 
 **Workflows** (`.claude/workflows/`, multi-agent orchestration — run only when asked): `audit` (parallel read-only audit → verified report in `docs/`), `feature` (plan → implement → test → verify → review), `launch-readiness` (go-live checklist).

@@ -116,7 +116,6 @@ function isUnsafeMethod(method: string) {
 function isCsrfExempt(pathname: string) {
   return (
     pathname.startsWith("/api/webhooks/") ||
-    pathname.startsWith("/api/stripe/webhook") ||
     pathname.startsWith("/api/auth/")
   )
 }

@@ -16,7 +16,7 @@ const READ_ONLY = 'Você está em modo SOMENTE LEITURA: não edite, crie ou apag
 
 const DIMENSIONS = [
   { key: 'security', agentFile: 'security-auditor',
-    scope: 'Segurança: segredos com fallback, authN/authZ e IDOR multi-site (getActiveSiteId/profileId), XSS armazenado (render-content, dangerouslySetInnerHTML, gtmContainerId), uploads S3 (MIME/tamanho), rate limiting, webhook Stripe, headers/cookies, npm audit (high/critical).' },
+    scope: 'Segurança: segredos com fallback, authN/authZ e IDOR multi-site (getActiveSiteId/profileId), XSS armazenado (render-content, dangerouslySetInnerHTML, gtmContainerId), uploads S3 (MIME/tamanho), rate limiting, webhook Asaas e cron de billing, headers/cookies, npm audit (high/critical).' },
   { key: 'billing', agentFile: 'billing-specialist',
     scope: 'Billing e ativação: checkout → webhook → Profile.isActive, idempotência e ordem de eventos, past_due/unpaid, invoice.payment_failed, cancelamento/reativação por site (multi-site), UX pós-checkout (?success=1), e-mails de cobrança.' },
   { key: 'seo-growth', agentFile: 'seo-growth',

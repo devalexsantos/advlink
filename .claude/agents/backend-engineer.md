@@ -1,6 +1,6 @@
 ---
 name: backend-engineer
-description: "Engenheiro backend do AdvLink. Use para alterar API routes (`web/app/api/**`), schema Prisma/migrations, regras multi-site, integrações (S3, OpenAI, Resend) e lógica de servidor. Para Stripe/assinaturas prefira `billing-specialist`."
+description: "Engenheiro backend do AdvLink. Use para alterar API routes (`web/app/api/**`), schema Prisma/migrations, regras multi-site, integrações (S3, OpenAI, Resend) e lógica de servidor. Para cobrança/Asaas/assinaturas prefira `billing-specialist`."
 model: opus
 color: orange
 memory: project

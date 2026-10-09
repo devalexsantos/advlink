@@ -17,7 +17,7 @@ memory: project
 
 ## Regras específicas
 - Templates em `web/lib/emails/` usando `baseTemplate.ts`; cliente em `web/lib/resend.ts` (`EMAIL_FROM`).
-- Hoje o magic link (`web/auth.ts`) e o aviso de cancelamento (`web/app/api/stripe/cancel-subscription`) ainda saem por SMTP/nodemailer — o alvo é Resend em tudo.
+- Hoje o magic link (`web/auth.ts`) ainda sai por SMTP/nodemailer — o alvo é Resend em tudo. E-mails de cobrança: `web/lib/emails/billingEmails.ts` (disparados por `web/lib/billing/notify.ts`).
 - Envio é fire-and-forget com `.catch(console.error)` para não quebrar o fluxo principal; cubra com teste em `web/lib/emails/__tests__/`.
 
 ---
