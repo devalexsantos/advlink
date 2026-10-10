@@ -76,16 +76,16 @@ describe("runActivationDrip", () => {
     expect(counts.welcome).toBe(1)
   })
 
-  it("does not send welcome before 1h or after 3 days", async () => {
-    const { send, run } = setup([user({ createdAt: ago(30 * 60_000) }), user({ id: "u2", createdAt: ago(4 * D) })])
+  it("does not send welcome before 1h or after 1 day", async () => {
+    const { send, run } = setup([user({ createdAt: ago(30 * 60_000) }), user({ id: "u2", createdAt: ago(1 * D + H) })])
     await run()
     expect(kindsSent(send)).not.toContain("welcome")
   })
 
-  it("day 1 sends checklist (and welcome, if not yet sent)", async () => {
+  it("day 1 sends checklist only (windows never overlap)", async () => {
     const { send, run } = setup([user({ createdAt: ago(1 * D + H) })])
     await run()
-    expect(kindsSent(send)).toEqual(["welcome", "checklist"])
+    expect(kindsSent(send)).toEqual(["checklist"])
   })
 
   it("day 3 sends oab_tips only, day 8 only last_reminder", async () => {
@@ -105,7 +105,7 @@ describe("runActivationDrip", () => {
 
   it("published users only get welcome", async () => {
     const pub = user({
-      createdAt: ago(1 * D + H),
+      createdAt: ago(2 * H),
       profiles: [{ id: "p1", slug: "ana", isActive: true, firstPublishedAt: ago(H) }],
     })
     const { send, run } = setup([pub])

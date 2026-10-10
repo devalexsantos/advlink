@@ -8,7 +8,8 @@ export const DEFAULT_BATCH_LIMIT = 200
 
 /** [min age, max age) after signup, in ms, for the kinds sent to users who have not published. */
 const SIGNUP_WINDOWS: Record<"welcome" | "checklist" | "oab_tips" | "last_reminder", [number, number]> = {
-  welcome: [1 * HOUR, 3 * DAY],
+  // Windows don't overlap, so one run never sends two kinds to the same person.
+  welcome: [1 * HOUR, 1 * DAY],
   checklist: [1 * DAY, 3 * DAY],
   oab_tips: [3 * DAY, 5 * DAY],
   last_reminder: [7 * DAY, 9 * DAY],
