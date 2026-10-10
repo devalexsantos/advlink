@@ -137,6 +137,25 @@ model Profile {
   /// First time the site became published (set once by recomputeProfile)
   firstPublishedAt DateTime?
 
+  linkedinUrl     String?
+  facebookUrl     String?
+  youtubeUrl      String?
+  /// Default text of the site's WhatsApp links (wa.me ?text=)
+  whatsappMessage String?
+
+  /// Law firm (sociedade de advocacia) shown in the footer: "individual" | "sociedade"
+  firmName            String?
+  firmType            String?
+  firmOabRegistration String?
+  /// Digits only
+  firmCnpj            String?
+
+  /// Free text, e.g. "Seg. a sex., 9h às 18h"
+  officeHours   String?
+  /// Free text, e.g. "Português, Inglês"
+  languages     String?
+  onlineService Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -201,11 +220,27 @@ model ActivityAreas {
   coverImageUrl String?
   description   String?
   position      Int
+  faqs          ActivityAreaFaq[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([profileId, position], map: "ActivityAreas_profileId_position_idx")
+}
+
+/// Informative Q&A of a practice area (plain text), rendered in the public "faq" section
+model ActivityAreaFaq {
+  id       String        @id @default(cuid())
+  areaId   String
+  area     ActivityAreas @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  question String
+  answer   String
+  position Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([areaId, position])
 }
 
 model Links {

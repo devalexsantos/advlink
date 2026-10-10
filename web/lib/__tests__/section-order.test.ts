@@ -13,9 +13,9 @@ import {
 } from "@/lib/section-order"
 
 describe("DEFAULT_SECTION_ORDER", () => {
-  it("has 7 items in correct order", () => {
+  it("has 8 items in correct order", () => {
     expect(DEFAULT_SECTION_ORDER).toEqual([
-      "servicos", "sobre", "galeria", "links", "equipe", "calendly", "endereco",
+      "servicos", "faq", "sobre", "galeria", "links", "equipe", "calendly", "endereco",
     ])
   })
 })
@@ -79,6 +79,19 @@ describe("getSectionOrder()", () => {
     expect(result).toContain("links")
     expect(result).toContain("calendly")
     expect(result).toContain("endereco")
+  })
+
+  it("inserts a missing built-in key right after its predecessor (faq after servicos)", () => {
+    const saved = ["sobre", "servicos", "galeria", "links", "equipe", "calendly", "endereco", "custom_1"]
+    expect(getSectionOrder(saved)).toEqual([
+      "sobre", "servicos", "faq", "galeria", "links", "equipe", "calendly", "endereco", "custom_1",
+    ])
+  })
+
+  it("appends faq when servicos is missing too", () => {
+    expect(getSectionOrder(["endereco"])).toEqual([
+      "endereco", "servicos", "faq", "sobre", "galeria", "links", "equipe", "calendly",
+    ])
   })
 
   it("filters out invalid keys", () => {

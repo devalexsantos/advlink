@@ -1,5 +1,6 @@
 export const DEFAULT_SECTION_ORDER = [
   "servicos",
+  "faq",
   "sobre",
   "galeria",
   "links",
@@ -25,6 +26,7 @@ export function isValidSectionKey(key: string): key is SectionKey {
 
 export const DEFAULT_SECTION_LABELS: Record<BuiltInSectionKey, string> = {
   servicos: "Serviços",
+  faq: "Perguntas frequentes",
   sobre: "Sobre",
   galeria: "Galeria",
   links: "Links",
@@ -35,6 +37,7 @@ export const DEFAULT_SECTION_LABELS: Record<BuiltInSectionKey, string> = {
 
 export const DEFAULT_SECTION_ICONS: Record<BuiltInSectionKey, string> = {
   servicos: "Scale",
+  faq: "MessageSquare",
   sobre: "HeartHandshake",
   galeria: "Images",
   links: "Link2",
@@ -45,14 +48,21 @@ export const DEFAULT_SECTION_ICONS: Record<BuiltInSectionKey, string> = {
 
 export type SectionLabels = Partial<Record<string, string>>
 
+/** Built-in keys introduced after launch: on older saved orders they go right after this key. */
+const INSERT_AFTER: Partial<Record<BuiltInSectionKey, BuiltInSectionKey>> = { faq: "servicos" }
+
 export function getSectionOrder(
   saved: string[] | null | undefined,
 ): SectionKey[] {
   if (!saved || saved.length === 0) return [...DEFAULT_SECTION_ORDER]
   const result = saved.filter(isValidSectionKey) as SectionKey[]
-  // Ensure all built-in keys exist
+  // Ensure all built-in keys exist (appended, except keys added later that have a natural spot)
   for (const key of DEFAULT_SECTION_ORDER) {
-    if (!result.includes(key)) result.push(key)
+    if (result.includes(key)) continue
+    const anchor = INSERT_AFTER[key]
+    const at = anchor ? result.indexOf(anchor) : -1
+    if (at === -1) result.push(key)
+    else result.splice(at + 1, 0, key)
   }
   return result
 }

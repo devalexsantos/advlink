@@ -48,7 +48,7 @@ import { render, screen, fireEvent, waitFor as waitForDom } from "@testing-libra
 import userEvent from "@testing-library/user-event"
 import { EditFormProvider, useEditForm } from "@/app/profile/edit/EditFormContext"
 import * as apiModule from "@/app/profile/edit/api"
-import { DEFAULT_SECTION_ORDER } from "@/lib/section-order"
+import { DEFAULT_SECTION_ORDER, getSectionOrder } from "@/lib/section-order"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -309,10 +309,11 @@ describe("EditFormContext", () => {
       expect(result.current.theme).toBe("modern")
     })
 
-    it("sets sectionOrder from profile data", async () => {
+    it("sets sectionOrder from profile data (built-in keys added later are filled in)", async () => {
       const { result } = renderHook(() => useEditForm(), { wrapper: makeWrapper(queryClient) })
       await waitFor(() => expect(result.current.isLoading).toBe(false))
-      expect(result.current.sectionOrder).toEqual(fakeProfileResponse.profile.sectionOrder)
+      expect(result.current.sectionOrder).toEqual(getSectionOrder(fakeProfileResponse.profile.sectionOrder))
+      expect(result.current.sectionOrder).toContain("faq")
     })
 
     it("sets sectionLabels from profile data", async () => {
