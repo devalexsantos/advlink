@@ -125,6 +125,7 @@ model Profile {
   updatedAt DateTime @updatedAt
 
   pageViews      PageView[]
+  contactClicks  ContactClick[]
   activityAreas  ActivityAreas[]
   links          Links[]
   gallery        Gallery[]
@@ -158,6 +159,21 @@ model PageView {
 
   @@index([profileId, createdAt])
   @@index([profileId, visitorHash, createdAt])
+}
+
+/// Clique em botão de contato do site público (WhatsApp, telefone, e-mail, link externo).
+/// LGPD: só alimenta contagens agregadas. Não guarda telefone, URL de destino nem IP;
+/// visitorHash é o mesmo hash diário truncado do PageView, usado apenas para deduplicar.
+model ContactClick {
+  id          String   @id @default(cuid())
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  /// "whatsapp" | "phone" | "email" | "link"
+  kind        String
+  visitorHash String   @map("visitor_hash")
+  createdAt   DateTime @default(now())
+
+  @@index([profileId, createdAt])
 }
 
 model ActivityAreas {
