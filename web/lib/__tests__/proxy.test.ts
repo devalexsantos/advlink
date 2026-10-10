@@ -113,6 +113,61 @@ describe("proxy", () => {
     })
   })
 
+  describe("nonce-based CSP on private areas", () => {
+    const nonceOf = (csp: string | null) => csp?.match(/'nonce-([A-Za-z0-9+/=]+)'/)?.[1]
+
+    it.each(["/login", "/profile/edit", "/profile/account", "/onboarding/profile", "/admin/login"])(
+      "sets a nonce CSP on %s and forwards the nonce to the page",
+      async (path) => {
+        const res = await proxy(makeReq(`https://app.advlink.site${path}`))
+        const csp = res.headers.get("content-security-policy")
+        const nonce = nonceOf(csp)
+        expect(nonce).toBeTruthy()
+        expect(csp).toContain(`script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`)
+        expect(csp).toContain("frame-ancestors 'none'")
+        expect(csp).toContain("object-src 'none'")
+        expect(csp).toContain("base-uri 'self'")
+        expect(csp).not.toContain("unsafe-inline")
+        // Request headers forwarded to the render (Next reads the CSP, layouts read x-nonce)
+        expect(res.headers.get("x-middleware-request-x-nonce")).toBe(nonce)
+        expect(res.headers.get("x-middleware-request-content-security-policy")).toBe(csp)
+      }
+    )
+
+    it("sets it on authenticated admin pages", async () => {
+      const { SignJWT } = await import("jose")
+      const { getAdminJwtSecret } = await import("@/lib/admin-secret")
+      const token = await new SignJWT({ sub: "a1" }).setProtectedHeader({ alg: "HS256" }).sign(getAdminJwtSecret())
+      const res = await proxy(makeReq("https://app.advlink.site/admin/users", { headers: { cookie: `admin-token=${token}` } }))
+      expect(res.headers.get("x-middleware-next")).toBe("1")
+      expect(nonceOf(res.headers.get("content-security-policy"))).toBeTruthy()
+    })
+
+    it("generates a fresh nonce per request", async () => {
+      const nonces = new Set<string | undefined>()
+      for (let i = 0; i < 5; i++) {
+        const res = await proxy(makeReq("https://app.advlink.site/login"))
+        nonces.add(nonceOf(res.headers.get("content-security-policy")))
+      }
+      expect(nonces.size).toBe(5)
+    })
+
+    it("does not set it on public profiles (subdomain or /adv in local dev)", async () => {
+      for (const url of ["https://alex.advlink.site/", "http://localhost:3000/adv/alex"]) {
+        const res = await proxy(makeReq(url))
+        expect(res.headers.get("content-security-policy")).toBeNull()
+        expect(res.headers.get("x-middleware-request-x-nonce")).toBeNull()
+      }
+    })
+
+    it("does not set it on other public pages or API routes", async () => {
+      for (const path of ["/termos-e-privacidade", "/api/profile", "/profilex"]) {
+        const res = await proxy(makeReq(`https://app.advlink.site${path}`))
+        expect(res.headers.get("content-security-policy")).toBeNull()
+      }
+    })
+  })
+
   describe("first-touch attribution cookie", () => {
     it("stores UTM params from an app landing", async () => {
       const res = await proxy(makeReq("https://app.advlink.site/login?utm_source=blog&utm_medium=footer"))

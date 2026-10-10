@@ -25,7 +25,7 @@ export function shouldLoadPixel(hostname: string, pathname: string, rootDomain =
   return true
 }
 
-export default function MetaPixel() {
+export default function MetaPixel({ nonce }: { nonce?: string }) {
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const [enabled, setEnabled] = useState(false)
@@ -50,7 +50,9 @@ export default function MetaPixel() {
   if (!enabled) return null
 
   return (
-    <Script id="meta-pixel" strategy="afterInteractive">
+    // Inline script: under the private areas' CSP it only runs with the request nonce (the
+    // fbevents.js it injects is then trusted through 'strict-dynamic').
+    <Script id="meta-pixel" strategy="afterInteractive" nonce={nonce}>
       {`
         !function(f,b,e,v,n,t,s){
           if(f.fbq)return; n=f.fbq=function(){ n.callMethod ?
