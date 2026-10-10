@@ -15,6 +15,8 @@ const noFramingHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Next 16 writes web/AGENTS.md on `next dev`; the project guidance lives in /CLAUDE.md and /.claude
+  agentRules: false,
   serverExternalPackages: ["geoip-lite"],
   poweredByHeader: false,
   // Dev only: hosts (e.g. a tunnel for webhook testing) allowed to load /_next dev resources.
