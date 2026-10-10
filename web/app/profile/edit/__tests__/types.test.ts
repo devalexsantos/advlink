@@ -2,6 +2,20 @@ import { describe, it, expect } from "vitest"
 import { profileEditSchema } from "@/app/profile/edit/types"
 
 describe("profileEditSchema", () => {
+  // ---- OAB ------------------------------------------------------------------
+
+  it("accepts empty and valid OAB fields", () => {
+    expect(profileEditSchema.safeParse({ publicName: "Ab", oabNumber: "", oabState: "", practiceType: "" }).success).toBe(true)
+    expect(profileEditSchema.safeParse({ publicName: "Ab", oabNumber: "123.456-a", oabState: "SP", practiceType: "escritorio" }).success).toBe(true)
+  })
+
+  it("rejects an invalid OAB number, UF or practice type", () => {
+    expect(profileEditSchema.safeParse({ publicName: "Ab", oabNumber: "1234567" }).success).toBe(false)
+    expect(profileEditSchema.safeParse({ publicName: "Ab", oabNumber: "abc" }).success).toBe(false)
+    expect(profileEditSchema.safeParse({ publicName: "Ab", oabState: "XX" }).success).toBe(false)
+    expect(profileEditSchema.safeParse({ publicName: "Ab", practiceType: "outro" }).success).toBe(false)
+  })
+
   // ---- publicName ----------------------------------------------------------
 
   it("validates publicName with ≥2 chars", () => {

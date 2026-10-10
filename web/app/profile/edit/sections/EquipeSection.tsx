@@ -28,6 +28,7 @@ import {
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
 import { OabWarnings } from "@/components/oab-warnings"
+import { UF_LIST } from "@/lib/oab"
 import { useEditForm } from "../EditFormContext"
 import { PublicSectionHeader } from "../SectionRenderer"
 import type { TeamMemberItem } from "../types"
@@ -132,6 +133,8 @@ type MemberForm = {
   phone: string
   whatsapp: string
   email: string
+  oabNumber: string
+  oabState: string
 }
 
 const emptyForm = (): MemberForm => ({
@@ -140,6 +143,8 @@ const emptyForm = (): MemberForm => ({
   phone: "",
   whatsapp: "",
   email: "",
+  oabNumber: "",
+  oabState: "",
 })
 
 function fromMember(m: TeamMemberItem): MemberForm {
@@ -150,6 +155,8 @@ function fromMember(m: TeamMemberItem): MemberForm {
     phone: m.phone ?? "",
     whatsapp: m.whatsapp ?? "",
     email: m.email ?? "",
+    oabNumber: m.oabNumber ?? "",
+    oabState: m.oabState ?? "",
   }
 }
 
@@ -281,6 +288,8 @@ export default function EquipeSection() {
       fd.set("phone", formData.phone)
       fd.set("whatsapp", formData.whatsapp)
       fd.set("email", formData.email)
+      fd.set("oabNumber", formData.oabNumber)
+      fd.set("oabState", formData.oabState)
       if (avatarFile) fd.set("avatar", avatarFile)
 
       if (formData.id) {
@@ -295,8 +304,8 @@ export default function EquipeSection() {
         showToast("Membro adicionado")
       }
       closeDialog()
-    } catch {
-      showToast("Falha ao salvar membro")
+    } catch (err) {
+      showToast(err instanceof Error && err.message ? err.message : "Falha ao salvar membro")
     } finally {
       setSaving(false)
     }
@@ -490,6 +499,37 @@ export default function EquipeSection() {
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
               />
               <OabWarnings text={formData.description} />
+            </div>
+
+            {/* OAB */}
+            <div>
+              <div className="grid grid-cols-[1fr_6rem] gap-3">
+                <div>
+                  <Label htmlFor="member-oab-number" className="mb-1.5 block">Número da OAB</Label>
+                  <Input
+                    id="member-oab-number"
+                    value={formData.oabNumber}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, oabNumber: e.target.value }))}
+                    placeholder="Ex.: 123456"
+                    autoComplete="off"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="member-oab-state" className="mb-1.5 block">UF</Label>
+                  <select
+                    id="member-oab-state"
+                    value={formData.oabState}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, oabState: e.target.value }))}
+                    className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm"
+                  >
+                    <option value="">UF</option>
+                    {UF_LIST.map((uf) => (
+                      <option key={uf} value={uf}>{uf}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <p className="mt-1 text-xs text-muted-foreground">Opcional. Exibida abaixo do nome do membro no seu site.</p>
             </div>
 
             {/* Phone */}

@@ -1,8 +1,21 @@
 import { z } from "zod"
+import { normalizeOabNumber, UF_LIST } from "@/lib/oab"
 
 export const profileEditSchema = z.object({
   publicName: z.string().min(2, "Informe pelo menos 2 caracteres."),
   headline: z.string().optional().or(z.literal("").transform(() => undefined)),
+  // OAB: optional here (existing sites may not have it yet), but validated when filled
+  oabNumber: z
+    .string()
+    .optional()
+    .refine((v) => !v || normalizeOabNumber(v) !== null, {
+      message: "Número da OAB inválido. Use até 6 dígitos, com letra opcional (ex.: 123456 ou 123456A).",
+    }),
+  oabState: z
+    .string()
+    .optional()
+    .refine((v) => !v || (UF_LIST as readonly string[]).includes(v), { message: "UF da OAB inválida." }),
+  practiceType: z.enum(["autonomo", "escritorio", ""]).optional(),
   aboutDescription: z
     .string()
     .max(5000)
@@ -103,6 +116,8 @@ export type TeamMemberItem = {
   phone: string | null
   whatsapp: string | null
   email: string | null
+  oabNumber?: string | null
+  oabState?: string | null
   position?: number
 }
 
@@ -121,6 +136,10 @@ export type CustomSectionItem = {
 export type ProfileData = {
   publicName?: string | null
   headline?: string | null
+  oabNumber?: string | null
+  oabState?: string | null
+  practiceType?: "autonomo" | "escritorio" | null
+  firstPublishedAt?: string | null
   aboutDescription?: string | null
   publicEmail?: string | null
   publicPhone?: string | null
