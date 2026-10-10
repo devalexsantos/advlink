@@ -10,14 +10,16 @@ datasource db {
 }
 
 model User {
-  id                   String    @id @default(cuid())
-  name                 String?
-  email                String?   @unique
-  emailVerified        DateTime?
-  image                String?
-  isActive             Boolean   @default(true)
-  passwordHash         String?
-  completed_onboarding Boolean   @default(false) @map("completed_onboarding")
+  id                      String    @id @default(cuid())
+  name                    String?
+  email                   String?   @unique
+  emailVerified           DateTime?
+  image                   String?
+  isActive                Boolean   @default(true)
+  passwordHash            String?
+  completed_onboarding    Boolean   @default(false) @map("completed_onboarding")
+  // Opt-out of activation/tips e-mails (account and billing e-mails are not affected).
+  marketingEmailsOptOutAt DateTime?
 
   accounts Account[]
   sessions Session[]
@@ -28,6 +30,20 @@ model User {
 
   tickets        Ticket[]
   ticketMessages TicketMessage[]
+  emailSends     EmailSend[]
+}
+
+// One row per lifecycle e-mail sent to a user (idempotency of the activation drip).
+model EmailSend {
+  id     String   @id @default(cuid())
+  userId String
+  kind   String
+  siteId String?
+  sentAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind])
 }
 
 model Account {
