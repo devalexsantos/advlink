@@ -47,7 +47,7 @@ describe("generateActivityDescriptions()", () => {
     expect(globalThis.fetch).toHaveBeenCalledTimes(4)
   })
 
-  it("truncates descriptions to 2000 chars", async () => {
+  it("truncates batch descriptions to 1200 chars", async () => {
     const longDesc = "x".repeat(3000)
     vi.spyOn(globalThis, "fetch").mockResolvedValue({
       ok: true,
@@ -61,7 +61,74 @@ describe("generateActivityDescriptions()", () => {
     } as Response)
 
     const result = await generateActivityDescriptions(["Test"], "sk-test")
-    expect(result[0].length).toBeLessThanOrEqual(2000)
+    expect(result[0]).toHaveLength(1200)
+  })
+
+  it("truncates per-item descriptions to 1200 chars", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({
+        choices: [{ message: { content: "y".repeat(3000) } }],
+      }),
+    } as Response)
+
+    const result = await generateActivityDescriptions(["A", "B", "C", "D"], "sk-test")
+    for (const d of result) expect(d).toHaveLength(1200)
+  })
+
+  describe("OAB-compliant prompts (Provimento 205/2021)", () => {
+    function sentBodies() {
+      return vi.mocked(globalThis.fetch).mock.calls.map(
+        ([, init]) => JSON.parse(String((init as RequestInit).body)) as {
+          max_tokens: number
+          messages: { role: string; content: string }[]
+        }
+      )
+    }
+
+    function assertCompliant(messages: { content: string }[]) {
+      const text = messages.map((m) => m.content).join("\n").toLowerCase()
+      expect(text).not.toContain("persuasiv")
+      expect(text).not.toContain("oferecer seus serviços")
+      expect(text).not.toContain("chamada para")
+      expect(text).toContain("não inclua chamada à ação de contato ou contratação")
+    }
+
+    it("batch prompt is informative, forbids contact CTA and uses 1800 max_tokens", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({
+          choices: [{ message: { content: JSON.stringify({ descriptions: ["a", "b"] }) } }],
+        }),
+      } as Response)
+
+      await generateActivityDescriptions(["Civil", "Penal"], "sk-test")
+      const [body] = sentBodies()
+      expect(body.max_tokens).toBe(1800)
+      assertCompliant(body.messages)
+      const user = body.messages.find((m) => m.role === "user")!.content
+      expect(user).toContain("400 e 900 caracteres")
+      expect(user).toContain('"especialista"')
+      expect(user).toContain("honorários")
+    })
+
+    it("per-item prompt carries the same rules and uses 700 max_tokens", async () => {
+      vi.spyOn(globalThis, "fetch").mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ choices: [{ message: { content: "ok" } }] }),
+      } as Response)
+
+      await generateActivityDescriptions(["A", "B", "C", "D"], "sk-test")
+      const bodies = sentBodies()
+      expect(bodies).toHaveLength(4)
+      for (const body of bodies) {
+        expect(body.max_tokens).toBe(700)
+        assertCompliant(body.messages)
+        const user = body.messages.find((m) => m.role === "user")!.content
+        expect(user).toContain("400 e 900 caracteres")
+        expect(user).toContain('"especialista"')
+      }
+    })
   })
 
   it("throws on API error", async () => {
