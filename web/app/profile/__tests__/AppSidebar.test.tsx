@@ -65,6 +65,13 @@ describe("AppSidebar", () => {
     expect(screen.getByText("Analytics")).toBeInTheDocument()
   })
 
+  it("renders Divulgar meu site link and navigates on click", async () => {
+    render(<AppSidebar />)
+    await userEvent.click(screen.getByText("Divulgar meu site").closest("button")!)
+    expect(mockRouterPush).toHaveBeenCalledWith("/profile/divulgar")
+    expect(mockSetOpenMobile).toHaveBeenCalledWith(false)
+  })
+
   it("renders Suporte link", () => {
     render(<AppSidebar />)
     expect(screen.getByText("Suporte")).toBeInTheDocument()

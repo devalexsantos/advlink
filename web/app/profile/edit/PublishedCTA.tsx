@@ -1,6 +1,7 @@
 "use client"
 
-import { CheckCircle2, ExternalLink } from "lucide-react"
+import Link from "next/link"
+import { CheckCircle2, ExternalLink, Share2 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
 import { getProfileUrl } from "@/lib/site-url"
 import ChangeSlugButton from "./ChangeSlugButton"
@@ -55,6 +56,15 @@ export default function PublishedCTA({ slug }: Props) {
               <ChangeSlugButton effectiveSlug={effectiveSlug} />
             </p>
           </div>
+          {hasSlug && (
+            <Link
+              href="/profile/divulgar"
+              className="inline-flex shrink-0 items-center gap-2 rounded-md border border-lime-600/50 px-3 py-1.5 text-sm font-medium text-lime-800 hover:bg-lime-500/10"
+            >
+              <Share2 className="h-4 w-4" />
+              Divulgar meu site
+            </Link>
+          )}
         </div>
       </div>
 
