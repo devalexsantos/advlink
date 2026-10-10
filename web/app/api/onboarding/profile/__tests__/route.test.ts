@@ -30,11 +30,13 @@ vi.mock("@/lib/attribution-server", () => ({ getRequestAttribution: attributionM
 import { POST } from "@/app/api/onboarding/profile/route"
 import { resetRateLimiters } from "@/lib/rate-limit"
 
-function jsonReq(body: Record<string, unknown>) {
+const OAB = { oabNumber: "123.456", oabState: "SP" }
+
+function jsonReq(body: Record<string, unknown>, { withOab = true } = {}) {
   return new Request("http://localhost/api/onboarding/profile", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify(body),
+    body: JSON.stringify(withOab ? { ...OAB, ...body } : body),
   })
 }
 
@@ -59,7 +61,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Test" }),
+      body: JSON.stringify({ ...OAB, displayName: "Test" }),
     })
     const res = await POST(req)
     expect(res.status).toBe(401)
@@ -69,7 +71,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
+      body: JSON.stringify({ ...OAB,
         displayName: "João Silva",
         areas: ["Civil"],
         email: "joao@test.com",
@@ -86,7 +88,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
+      body: JSON.stringify({ ...OAB,
         displayName: "Test",
         areas: ["Civil", "Penal"],
         email: "test@test.com",
@@ -102,7 +104,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Test", areas: ["Civil", "Penal"], email: "test@test.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "Test", areas: ["Civil", "Penal"], email: "test@test.com" }),
     })
     const res = await POST(req)
     expect(res.status).toBe(200)
@@ -117,7 +119,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Test", email: "t@t.com", calendlyUrl: "https://calendly.com/joao" }),
+      body: JSON.stringify({ ...OAB, displayName: "Test", email: "t@t.com", calendlyUrl: "https://calendly.com/joao" }),
     })
     const res = await POST(req)
     expect(res.status).toBe(200)
@@ -128,7 +130,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Test", email: "t@t.com", calendlyUrl: "https://evil.com/x" }),
+      body: JSON.stringify({ ...OAB, displayName: "Test", email: "t@t.com", calendlyUrl: "https://evil.com/x" }),
     })
     const res = await POST(req)
     expect(res.status).toBe(400)
@@ -140,7 +142,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Test", email: "t@t.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "Test", email: "t@t.com" }),
     })
     await POST(req)
     expect(trackEventMock).toHaveBeenCalledWith(
@@ -153,7 +155,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Test", email: "test@test.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "Test", email: "test@test.com" }),
     })
     await POST(req)
     expect(prismaMock.user.update).toHaveBeenCalledWith(
@@ -167,7 +169,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Test", email: "test@test.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "Test", email: "test@test.com" }),
     })
     await POST(req)
     expect(trackEventMock).toHaveBeenCalledWith("site_created", expect.objectContaining({ userId: "user-1" }))
@@ -178,7 +180,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Test", email: "test@test.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "Test", email: "test@test.com" }),
     })
     const res = await POST(req)
     expect(res.status).toBe(404)
@@ -191,7 +193,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Test", email: "test@test.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "Test", email: "test@test.com" }),
     })
     const res = await POST(req)
     expect(res.status).toBe(500)
@@ -202,6 +204,8 @@ describe("POST /api/onboarding/profile", () => {
   it("handles multipart/form-data content type", async () => {
     const form = new FormData()
     form.append("displayName", "Maria Souza")
+    form.append("oabNumber", "98765A")
+    form.append("oabState", "rj")
     form.append("areas", JSON.stringify(["Trabalhista"]))
     form.append("email", "maria@test.com")
     form.append("about", "Especialista em CLT")
@@ -218,7 +222,7 @@ describe("POST /api/onboarding/profile", () => {
     expect(res.status).toBe(200)
     expect(prismaMock.profile.update).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ publicName: "Maria Souza" }),
+        data: expect.objectContaining({ publicName: "Maria Souza", oabNumber: "98765A", oabState: "RJ" }),
       })
     )
   })
@@ -226,6 +230,8 @@ describe("POST /api/onboarding/profile", () => {
   it("rejects a spoofed photo with 400 before calling OpenAI or S3", async () => {
     const form = new FormData()
     form.append("displayName", "Maria Souza")
+    form.append("oabNumber", "98765A")
+    form.append("oabState", "rj")
     form.append("areas", JSON.stringify(["Direito Civil"]))
     form.append("email", "maria@test.com")
     form.append("photo", spoofedHtmlFile("photo.jpg"))
@@ -240,6 +246,8 @@ describe("POST /api/onboarding/profile", () => {
     const photoFile = jpegFile("photo.jpg")
     const form = new FormData()
     form.append("displayName", "Maria Souza")
+    form.append("oabNumber", "98765A")
+    form.append("oabState", "rj")
     form.append("areas", "[]")
     form.append("email", "maria@test.com")
     form.append("photo", photoFile)
@@ -261,7 +269,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Test", areas: [], email: "test@test.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "Test", areas: [], email: "test@test.com" }),
     })
     await POST(req)
     expect(generateMock).not.toHaveBeenCalled()
@@ -272,7 +280,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
+      body: JSON.stringify({ ...OAB,
         displayName: "Test",
         areas: ["Civil", "Civil", "Penal"],
         email: "test@test.com",
@@ -297,7 +305,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Login", email: "login@test.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "Login", email: "login@test.com" }),
     })
     await POST(req)
     const updateArg = prismaMock.profile.update.mock.calls[0][0]
@@ -312,7 +320,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "João Silva", email: "joao@test.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "João Silva", email: "joao@test.com" }),
     })
     const res = await POST(req)
     expect(res.status).toBe(200)
@@ -324,7 +332,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Test", email: "test@test.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "Test", email: "test@test.com" }),
     })
     await POST(req)
     expect(prismaMock.profile.update).toHaveBeenCalledWith(
@@ -338,7 +346,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Dr. Carlos", email: "carlos@test.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "Dr. Carlos", email: "carlos@test.com" }),
     })
     await POST(req)
     expect(prismaMock.profile.update).toHaveBeenCalledWith(
@@ -352,7 +360,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "", email: "empty@test.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "", email: "empty@test.com" }),
     })
     const res = await POST(req)
     expect(res.status).toBe(200)
@@ -365,7 +373,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Test", email: "test@test.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "Test", email: "test@test.com" }),
     })
     const res = await POST(req)
     expect(res.status).toBe(500)
@@ -383,7 +391,7 @@ describe("POST /api/onboarding/profile", () => {
     const req = new Request("http://localhost/api/onboarding/profile", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ displayName: "Popular Name", email: "popular@test.com" }),
+      body: JSON.stringify({ ...OAB, displayName: "Popular Name", email: "popular@test.com" }),
     })
     const res = await POST(req)
     expect(res.status).toBe(200)
@@ -432,6 +440,61 @@ describe("POST /api/onboarding/profile", () => {
       expect(res.status).toBe(429)
       expect(Number(res.headers.get("Retry-After"))).toBeGreaterThan(0)
       expect(generateMock).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("OAB and practice type", () => {
+    const base = { displayName: "Maria", email: "maria@test.com" }
+
+    it("returns 400 when the OAB number is missing", async () => {
+      const res = await POST(jsonReq({ ...base, oabState: "SP" }, { withOab: false }))
+      expect(res.status).toBe(400)
+      expect((await res.json()).error).toMatch(/OAB/)
+      expect(prismaMock.profile.update).not.toHaveBeenCalled()
+    })
+
+    it("returns 400 for an invalid OAB number", async () => {
+      const res = await POST(jsonReq({ ...base, oabNumber: "12AB34" }))
+      expect(res.status).toBe(400)
+      expect(prismaMock.profile.update).not.toHaveBeenCalled()
+    })
+
+    it("returns 400 when the UF is missing or invalid", async () => {
+      expect((await POST(jsonReq({ ...base, oabNumber: "123" }, { withOab: false }))).status).toBe(400)
+      expect((await POST(jsonReq({ ...base, oabState: "XX" }))).status).toBe(400)
+      expect(prismaMock.profile.update).not.toHaveBeenCalled()
+    })
+
+    it("returns 400 for multipart without OAB", async () => {
+      const form = new FormData()
+      form.append("displayName", "Maria")
+      form.append("email", "maria@test.com")
+      const res = await POST(new Request("http://localhost/api/onboarding/profile", { method: "POST", body: form }))
+      expect(res.status).toBe(400)
+    })
+
+    it("normalizes and persists OAB; practiceType defaults to null", async () => {
+      const res = await POST(jsonReq({ ...base, oabNumber: "123.456-a", oabState: "sp" }))
+      expect(res.status).toBe(200)
+      const data = prismaMock.profile.update.mock.calls[0][0].data
+      expect(data).toMatchObject({ oabNumber: "123456A", oabState: "SP", practiceType: null })
+    })
+
+    it("persists a valid practiceType", async () => {
+      await POST(jsonReq({ ...base, practiceType: "escritorio" }))
+      expect(prismaMock.profile.update.mock.calls[0][0].data.practiceType).toBe("escritorio")
+    })
+
+    it("returns 400 for an invalid practiceType", async () => {
+      const res = await POST(jsonReq({ ...base, practiceType: "empresa" }))
+      expect(res.status).toBe(400)
+      expect(prismaMock.profile.update).not.toHaveBeenCalled()
+    })
+
+    it("tracks site_created and onboarding_completed with siteId", async () => {
+      await POST(jsonReq(base))
+      expect(trackEventMock).toHaveBeenCalledWith("site_created", expect.objectContaining({ userId: "user-1", siteId: "profile-1" }))
+      expect(trackEventMock).toHaveBeenCalledWith("onboarding_completed", { userId: "user-1", siteId: "profile-1" })
     })
   })
 })

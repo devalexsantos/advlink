@@ -6,6 +6,14 @@ import { prisma } from "@/lib/prisma"
 import { uploadToS3 } from "@/lib/s3"
 import { MAX_IMAGE_BYTES, imageUploadErrorResponse, rejectOversizedRequest, validateImageUpload, type ValidatedImage } from "@/lib/upload-validation"
 import { getActiveSiteId } from "@/lib/active-site"
+import { parseOptionalOab } from "@/lib/oab"
+
+function oabFromForm(form: FormData) {
+  return parseOptionalOab({
+    oabNumber: form.has("oabNumber") ? String(form.get("oabNumber") ?? "") : undefined,
+    oabState: form.has("oabState") ? String(form.get("oabState") ?? "") : undefined,
+  })
+}
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -26,6 +34,8 @@ export async function POST(req: Request) {
   const whatsapp = String(form.get("whatsapp") ?? "") || null
   const email = String(form.get("email") ?? "") || null
   const avatar = form.get("avatar")
+  const oab = oabFromForm(form)
+  if (!oab.ok) return NextResponse.json({ error: oab.error }, { status: 400 })
 
   // Validate before creating the member so a rejected file leaves nothing behind.
   let validatedAvatar: ValidatedImage | undefined
@@ -43,7 +53,17 @@ export async function POST(req: Request) {
   const nextPosition = (last?.position ?? 0) + 1
 
   const created = await prisma.teamMember.create({
-    data: { profileId, name, description, phone, whatsapp, email, position: nextPosition },
+    data: {
+      profileId,
+      name,
+      description,
+      phone,
+      whatsapp,
+      email,
+      oabNumber: oab.data.oabNumber ?? null,
+      oabState: oab.data.oabState ?? null,
+      position: nextPosition,
+    },
   })
 
   let avatarUrl: string | undefined
@@ -110,6 +130,8 @@ export async function PATCH(req: Request) {
     const phone = form.has("phone") ? (String(form.get("phone") ?? "") || null) : existing.phone
     const whatsapp = form.has("whatsapp") ? (String(form.get("whatsapp") ?? "") || null) : existing.whatsapp
     const email = form.has("email") ? (String(form.get("email") ?? "") || null) : existing.email
+    const oab = oabFromForm(form)
+    if (!oab.ok) return NextResponse.json({ error: oab.error }, { status: 400 })
 
     const removeAvatar = String(form.get("removeAvatar") ?? "").toLowerCase() === "true"
     const avatar = form.get("avatar")
@@ -138,6 +160,8 @@ export async function PATCH(req: Request) {
         phone,
         whatsapp,
         email,
+        oabNumber: oab.data.oabNumber,
+        oabState: oab.data.oabState,
         ...(avatarUrl !== undefined ? { avatarUrl } : {}),
       },
     })
