@@ -112,6 +112,15 @@ model Profile {
   sectionIcons       Json?
   sectionTitleHidden Json?
 
+  /// OAB registration of the site's lawyer (digits + optional 1-letter suffix, normalized by lib/oab)
+  oabNumber        String?
+  /// UF of the OAB registration (e.g. "SP")
+  oabState         String?
+  /// "autonomo" | "escritorio"
+  practiceType     String?
+  /// First time the site became published (set once by recomputeProfile)
+  firstPublishedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -122,6 +131,7 @@ model Profile {
   address        Address?
   customSections CustomSection[]
   teamMembers    TeamMember[]
+  previewLinks   PreviewLink[]
 
   billingPaymentLinks  BillingPaymentLink[]
   billingSubscriptions BillingSubscription[]
@@ -296,11 +306,25 @@ model TeamMember {
   phone       String?
   whatsapp    String?
   email       String?
+  oabNumber   String?
+  oabState    String?
   position    Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([profileId, position])
+}
+
+/// Shareable, expiring link to preview an unpublished site (/previa/[token])
+model PreviewLink {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([profileId])
 }
 
 model CustomSection {
