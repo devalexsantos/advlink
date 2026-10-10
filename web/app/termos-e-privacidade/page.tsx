@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { REFUND_WINDOW_DAYS } from "@/lib/billing/plan"
 
 export default function TermsPrivacyPage() {
   return (
@@ -42,6 +43,7 @@ export default function TermsPrivacyPage() {
               <li>Alguns recursos são pagos e exigem uma assinatura ativa.</li>
               <li>O pagamento (cartão, boleto ou Pix) é processado de forma segura pelo Asaas, parceiro externo de pagamentos; a cobrança é emitida em nome da NAIR APPS.</li>
               <li>Você pode cancelar a qualquer momento; o site permanece publicado até o fim do período já pago.</li>
+              <li>Você pode desistir da contratação em até {REFUND_WINDOW_DAYS} dias após o primeiro pagamento, com reembolso integral, solicitando pelo suporte.</li>
               <li>Em caso de atraso, o site fica no ar por mais 5 dias; depois sai do ar até o pagamento, e a assinatura é encerrada após 30 dias.</li>
               <li>Podemos alterar preços e planos, comunicando previamente quando aplicável.</li>
             </ul>
