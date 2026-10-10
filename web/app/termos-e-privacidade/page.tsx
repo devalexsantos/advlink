@@ -123,6 +123,17 @@ export default function TermsPrivacyPage() {
           </section>
 
           <section className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="text-xl font-semibold mb-2">Visitantes dos sites dos assinantes (LGPD)</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Em relação aos visitantes dos sites publicados pelos assinantes, o assinante é o controlador dos dados e o
+              AdvLink atua como operador (LGPD, art. 39), tratando-os apenas para hospedar o site e gerar métricas de
+              visita sem cookies. Cada site tem um aviso de privacidade próprio, acessível pelo link “Privacidade” no
+              rodapé. Quando o assinante configura o Google Tag Manager, o AdvLink exibe um banner de consentimento e só
+              carrega o script depois que o visitante aceita.
+            </p>
+          </section>
+
+          <section className="rounded-2xl border border-border bg-card p-6">
             <h2 className="text-xl font-semibold mb-2">Contato</h2>
             <p className="text-muted-foreground leading-relaxed">
               Em caso de dúvidas sobre estes termos ou sobre a Política de Privacidade, entre em contato:
