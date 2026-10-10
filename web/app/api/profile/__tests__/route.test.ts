@@ -925,3 +925,156 @@ describe("PATCH /api/profile — OAB and practice type", () => {
     expect(prismaMock.profile.update).not.toHaveBeenCalled()
   })
 })
+
+describe("PATCH /api/profile — networks, firm data and service info", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
+    prismaMock.profile.findFirst.mockResolvedValue(null)
+    prismaMock.profile.update.mockResolvedValue({ id: "profile-1" })
+    prismaMock.address.upsert.mockResolvedValue({})
+    prismaMock.address.findUnique.mockResolvedValue(null)
+  })
+
+  const jsonPatch = (body: Record<string, unknown>) =>
+    PATCH(
+      new Request("http://localhost/api/profile", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ publicName: "X", ...body }),
+      }),
+    )
+  const formPatch = (fields: Record<string, string>) => {
+    const form = new FormData()
+    form.append("publicName", "X")
+    for (const [k, v] of Object.entries(fields)) form.append(k, v)
+    return PATCH(new Request("http://localhost/api/profile", { method: "PATCH", body: form }))
+  }
+  const lastData = () => prismaMock.profile.update.mock.calls.at(-1)![0].data
+  const NEW_KEYS = [
+    "linkedinUrl", "facebookUrl", "youtubeUrl", "whatsappMessage", "firmName", "firmType",
+    "firmOabRegistration", "firmCnpj", "officeHours", "languages", "onlineService",
+  ]
+
+  const valid = {
+    linkedinUrl: "https://www.linkedin.com/in/joao",
+    facebookUrl: "https://m.facebook.com/joao",
+    youtubeUrl: "https://youtu.be/abc123",
+    whatsappMessage: "  Olá, vim pelo site.  ",
+    firmName: " Silva Advogados ",
+    firmType: "sociedade",
+    firmOabRegistration: "OAB/SP 12.345",
+    firmCnpj: "11.222.333/0001-81",
+    officeHours: "Seg a sex, 9h às 18h",
+    languages: "Português, Inglês",
+  }
+  const expected = {
+    ...valid,
+    whatsappMessage: "Olá, vim pelo site.",
+    firmName: "Silva Advogados",
+    firmCnpj: "11222333000181",
+  }
+
+  it("saves the fields via JSON (trimmed, CNPJ as digits) scoped to the active site", async () => {
+    const res = await jsonPatch({ ...valid, onlineService: true })
+    expect(res.status).toBe(200)
+    expect(prismaMock.profile.update.mock.calls.at(-1)![0].where).toEqual({ id: "profile-1" })
+    expect(lastData()).toMatchObject({ ...expected, onlineService: true })
+  })
+
+  it("saves the fields via multipart", async () => {
+    const res = await formPatch({ ...valid, onlineService: "false" })
+    expect(res.status).toBe(200)
+    expect(lastData()).toMatchObject({ ...expected, onlineService: false })
+  })
+
+  it("accepts youtube.com and plain linkedin/facebook hosts", async () => {
+    const res = await jsonPatch({
+      youtubeUrl: "https://www.youtube.com/@joao",
+      linkedinUrl: "https://linkedin.com/company/x",
+      facebookUrl: "https://facebook.com/x",
+    })
+    expect(res.status).toBe(200)
+  })
+
+  it("leaves the fields untouched when the keys are absent (JSON and multipart)", async () => {
+    await jsonPatch({})
+    for (const k of NEW_KEYS) expect(lastData()[k]).toBeUndefined()
+    await formPatch({})
+    for (const k of NEW_KEYS) expect(lastData()[k]).toBeUndefined()
+  })
+
+  it("clears with empty strings (multipart) and null/empty (JSON)", async () => {
+    const empty = Object.fromEntries(Object.keys(valid).map((k) => [k, ""]))
+    await formPatch(empty)
+    expect(lastData()).toMatchObject(Object.fromEntries(Object.keys(valid).map((k) => [k, null])))
+    await jsonPatch({ ...empty, firmCnpj: null, linkedinUrl: null })
+    expect(lastData()).toMatchObject(Object.fromEntries(Object.keys(valid).map((k) => [k, null])))
+  })
+
+  it("ignores a non-boolean onlineService in JSON", async () => {
+    await jsonPatch({ onlineService: "true" })
+    expect(lastData().onlineService).toBeUndefined()
+  })
+
+  it.each([
+    [{ linkedinUrl: "https://evil.com/linkedin.com/x" }, /linkedinUrl/],
+    [{ linkedinUrl: "http://linkedin.com/in/x" }, /linkedinUrl/],
+    [{ facebookUrl: "https://facebook.com.evil.com/x" }, /facebookUrl/],
+    [{ youtubeUrl: "javascript:alert(1)" }, /youtubeUrl/],
+    [{ youtubeUrl: "https://youtube.co/x" }, /youtubeUrl/],
+    [{ whatsappMessage: "a".repeat(201) }, /WhatsApp/],
+    [{ firmType: "ltda" }, /Tipo de escritório/],
+    [{ firmCnpj: "11.222.333/0001-82" }, /CNPJ inválido/],
+    [{ firmCnpj: "abc" }, /CNPJ inválido/],
+    [{ firmCnpj: "11111111111111" }, /CNPJ inválido/],
+    [{ firmName: "a".repeat(121) }, /120/],
+    [{ firmOabRegistration: "a".repeat(41) }, /40/],
+    [{ officeHours: "a".repeat(81) }, /80/],
+    [{ languages: "a".repeat(81) }, /80/],
+  ])("returns 400 for %j", async (body, message) => {
+    const res = await jsonPatch(body)
+    expect(res.status).toBe(400)
+    expect((await res.json()).error).toMatch(message)
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
+  })
+
+  it("rejects invalid values via multipart too", async () => {
+    const res = await formPatch({ firmCnpj: "123" })
+    expect(res.status).toBe(400)
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
+  })
+
+  it("accepts a 200-char WhatsApp message", async () => {
+    const res = await jsonPatch({ whatsappMessage: "a".repeat(200) })
+    expect(res.status).toBe(200)
+  })
+})
+
+describe("GET /api/profile — area FAQs", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
+    prismaMock.profile.findUnique.mockResolvedValue({ id: "profile-1" })
+    prismaMock.activityAreas.findMany.mockResolvedValue([])
+    prismaMock.address.findUnique.mockResolvedValue(null)
+    prismaMock.links.findMany.mockResolvedValue([])
+    prismaMock.gallery.findMany.mockResolvedValue([])
+    prismaMock.customSection.findMany.mockResolvedValue([])
+    prismaMock.teamMember.findMany.mockResolvedValue([])
+  })
+
+  it("loads the areas of the active site with their FAQs ordered by position", async () => {
+    await GET()
+    expect(prismaMock.activityAreas.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { profileId: "profile-1" },
+        include: {
+          faqs: { orderBy: { position: "asc" }, select: { id: true, question: true, answer: true, position: true } },
+        },
+      }),
+    )
+  })
+})

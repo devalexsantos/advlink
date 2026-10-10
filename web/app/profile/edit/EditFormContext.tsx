@@ -15,6 +15,7 @@ import {
   type TeamMemberItem,
   type FetchProfileResponse,
 } from "./types"
+import { formatCnpj } from "@/lib/cnpj"
 import { DEFAULT_SECTION_ORDER, getSectionOrder, type SectionKey, type SectionLabels } from "@/lib/section-order"
 import {
   fetchProfile,
@@ -122,6 +123,8 @@ type EditFormContextType = {
   publicPhoneIsFixed: boolean
   setPublicPhoneIsFixed: React.Dispatch<React.SetStateAction<boolean>>
   whatsappIsFixed: boolean
+  onlineService: boolean
+  setOnlineService: React.Dispatch<React.SetStateAction<boolean>>
   setWhatsappIsFixed: React.Dispatch<React.SetStateAction<boolean>>
   // Custom sections
   customSections: CustomSectionItem[]
@@ -231,6 +234,16 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
       publicPhone: "",
       whatsapp: "",
       instagramUrl: "",
+      linkedinUrl: "",
+      facebookUrl: "",
+      youtubeUrl: "",
+      whatsappMessage: "",
+      officeHours: "",
+      languages: "",
+      firmName: "",
+      firmType: "",
+      firmOabRegistration: "",
+      firmCnpj: "",
       calendlyUrl: "",
       metaTitle: "",
       metaDescription: "",
@@ -273,6 +286,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
   const [removeLinkCover, setRemoveLinkCover] = useState(false)
   const [publicPhoneIsFixed, setPublicPhoneIsFixed] = useState<boolean>(false)
   const [whatsappIsFixed, setWhatsappIsFixed] = useState<boolean>(false)
+  const [onlineService, setOnlineService] = useState<boolean>(false)
   // Custom sections
   const [customSections, setCustomSections] = useState<CustomSectionItem[]>([])
   // Team members
@@ -337,6 +351,16 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
       publicPhone: p.publicPhone ?? "",
       whatsapp: p.whatsapp ?? "",
       instagramUrl: p.instagramUrl ?? "",
+      linkedinUrl: p.linkedinUrl ?? "",
+      facebookUrl: p.facebookUrl ?? "",
+      youtubeUrl: p.youtubeUrl ?? "",
+      whatsappMessage: p.whatsappMessage ?? "",
+      officeHours: p.officeHours ?? "",
+      languages: p.languages ?? "",
+      firmName: p.firmName ?? "",
+      firmType: p.firmType ?? "",
+      firmOabRegistration: p.firmOabRegistration ?? "",
+      firmCnpj: p.firmCnpj ? formatCnpj(p.firmCnpj) : "",
       calendlyUrl: p.calendlyUrl ?? "",
       metaTitle: p.metaTitle ?? "",
       metaDescription: p.metaDescription ?? "",
@@ -357,6 +381,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     setRemoveCover(false)
     setPublicPhoneIsFixed(Boolean(p.publicPhoneIsFixed))
     setWhatsappIsFixed(Boolean(p.whatsappIsFixed))
+    setOnlineService(Boolean(p.onlineService))
     setPrimaryColor((p.primaryColor as string) ?? "#8B0000")
     setSecondaryColor((p.secondaryColor as string) ?? "#FFFFFF")
     setTextColor((p.textColor as string) ?? "#FFFFFF")
@@ -611,6 +636,17 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     if (values.publicPhone) fd.set("publicPhone", values.publicPhone)
     if (values.whatsapp) fd.set("whatsapp", values.whatsapp)
     fd.set("instagramUrl", values.instagramUrl ?? "")
+    fd.set("linkedinUrl", values.linkedinUrl ?? "")
+    fd.set("facebookUrl", values.facebookUrl ?? "")
+    fd.set("youtubeUrl", values.youtubeUrl ?? "")
+    fd.set("whatsappMessage", values.whatsappMessage ?? "")
+    fd.set("firmName", values.firmName ?? "")
+    fd.set("firmType", values.firmType ?? "")
+    fd.set("firmOabRegistration", values.firmOabRegistration ?? "")
+    fd.set("firmCnpj", values.firmCnpj ?? "")
+    fd.set("officeHours", values.officeHours ?? "")
+    fd.set("languages", values.languages ?? "")
+    fd.set("onlineService", String(onlineService))
     if (values.calendlyUrl) fd.set("calendlyUrl", values.calendlyUrl)
     if (values.metaTitle) fd.set("metaTitle", values.metaTitle)
     if (values.metaDescription) fd.set("metaDescription", values.metaDescription)
@@ -688,6 +724,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     removeLinkCover, setRemoveLinkCover,
     publicPhoneIsFixed, setPublicPhoneIsFixed,
     whatsappIsFixed, setWhatsappIsFixed,
+    onlineService, setOnlineService,
     customSections, setCustomSections,
     teamMembers, setTeamMembers,
     deleteTeamMemberConfirm, setDeleteTeamMemberConfirm,

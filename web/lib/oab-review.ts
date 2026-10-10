@@ -37,6 +37,12 @@ const RULES: Rule[] = [
       /\bentre em contato agora\b|\bligue agora\b|\bchame agora\b|\bnao perca\b|\bprocesse ja\b|\bcontrate ja\b|\bfale conosco agora\b/g,
   },
   {
+    rule: "caso-concreto",
+    message:
+      "Responda sempre de forma geral: responder habitualmente a casos concretos por meios de comunicação é vedado (CED, art. 42, I).",
+    pattern: /\banalisamos (?:o )?seu caso\b|\banalise do seu caso\b|\bno seu caso\b|\bseu caso\b/g,
+  },
+  {
     rule: "numero-de-processo",
     message: "Não divulgue números de processos (sigilo profissional).",
     pattern: /\d{7}-\d{2}\.\d{4}\.\d\.\d{2}\.\d{4}/g,

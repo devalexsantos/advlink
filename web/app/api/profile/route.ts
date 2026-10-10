@@ -8,6 +8,25 @@ import { MAX_IMAGE_BYTES, imageUploadErrorResponse, rejectOversizedRequest, vali
 import { isReservedSlug } from "@/lib/reserved-slugs"
 import { getActiveSiteId } from "@/lib/active-site"
 import { isValidPracticeType, parseOptionalOab } from "@/lib/oab"
+import { isValidCnpj, normalizeCnpj } from "@/lib/cnpj"
+import { WHATSAPP_MESSAGE_MAX } from "@/lib/whatsapp"
+
+const FIRM_TYPES = ["individual", "sociedade"]
+
+/** JSON body value → string field: absent = undefined (keep), null = "" (clear). */
+function jsonStr(v: unknown): string | undefined {
+  if (v === undefined) return undefined
+  if (v === null) return ""
+  return String(v)
+}
+
+function parseFormBool(raw: FormDataEntryValue | null): boolean | undefined {
+  if (raw === null) return undefined
+  const v = String(raw).trim().toLowerCase()
+  if (["true", "1", "on", "yes"].includes(v)) return true
+  if (["false", "0", "off", "no"].includes(v)) return false
+  return undefined
+}
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -20,7 +39,11 @@ export async function GET() {
 
   const [profile, areas, address, links, gallery, customSections, teamMembers] = await Promise.all([
     prisma.profile.findUnique({ where: { id: profileId } }),
-    prisma.activityAreas.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+    prisma.activityAreas.findMany({
+      where: { profileId },
+      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
+      include: { faqs: { orderBy: { position: "asc" }, select: { id: true, question: true, answer: true, position: true } } },
+    }),
     prisma.address.findUnique({ where: { profileId } }),
     prisma.links.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     prisma.gallery.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
@@ -77,6 +100,18 @@ export async function PATCH(req: Request) {
   let oabNumberRaw: unknown
   let oabStateRaw: unknown
   let practiceTypeRaw: unknown
+  // Networks, firm data and service info: undefined = key not sent (keep), "" = clear
+  let linkedinUrl: string | undefined
+  let facebookUrl: string | undefined
+  let youtubeUrl: string | undefined
+  let whatsappMessage: string | undefined
+  let firmName: string | undefined
+  let firmType: string | undefined
+  let firmOabRegistration: string | undefined
+  let firmCnpj: string | undefined
+  let officeHours: string | undefined
+  let languages: string | undefined
+  let onlineService: boolean | undefined
 
   if (contentType.includes("application/json")) {
     const body = await req.json()
@@ -127,6 +162,17 @@ export async function PATCH(req: Request) {
     oabNumberRaw = body.oabNumber
     oabStateRaw = body.oabState
     practiceTypeRaw = body.practiceType
+    linkedinUrl = jsonStr(body.linkedinUrl)
+    facebookUrl = jsonStr(body.facebookUrl)
+    youtubeUrl = jsonStr(body.youtubeUrl)
+    whatsappMessage = jsonStr(body.whatsappMessage)
+    firmName = jsonStr(body.firmName)
+    firmType = jsonStr(body.firmType)
+    firmOabRegistration = jsonStr(body.firmOabRegistration)
+    firmCnpj = jsonStr(body.firmCnpj)
+    officeHours = jsonStr(body.officeHours)
+    languages = jsonStr(body.languages)
+    onlineService = typeof body.onlineService === "boolean" ? body.onlineService : undefined
   } else if (contentType.includes("multipart/form-data")) {
     const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES, 2)
     if (tooLarge) return tooLarge
@@ -177,6 +223,18 @@ export async function PATCH(req: Request) {
     if (form.has("oabNumber")) oabNumberRaw = String(form.get("oabNumber") ?? "")
     if (form.has("oabState")) oabStateRaw = String(form.get("oabState") ?? "")
     if (form.has("practiceType")) practiceTypeRaw = String(form.get("practiceType") ?? "")
+    const formStr = (key: string) => (form.has(key) ? String(form.get(key) ?? "") : undefined)
+    linkedinUrl = formStr("linkedinUrl")
+    facebookUrl = formStr("facebookUrl")
+    youtubeUrl = formStr("youtubeUrl")
+    whatsappMessage = formStr("whatsappMessage")
+    firmName = formStr("firmName")
+    firmType = formStr("firmType")
+    firmOabRegistration = formStr("firmOabRegistration")
+    firmCnpj = formStr("firmCnpj")
+    officeHours = formStr("officeHours")
+    languages = formStr("languages")
+    onlineService = parseFormBool(form.get("onlineService"))
     const f = form.get("photo")
     if (f && f instanceof File) avatarFile = f
     const c = form.get("cover")
@@ -186,12 +244,31 @@ export async function PATCH(req: Request) {
   // Slug validation: check uniqueness excluding current profile
   // Validate URL/ID fields before any upload. The validators throw a 400 NextResponse, which must
   // be returned (a thrown Response becomes a 500 in a route handler).
-  let validated: { instagramUrl: string | null | undefined; calendlyUrl: string | null | undefined; gtmContainerId: string | null | undefined }
+  type Opt = string | null | undefined
+  let validated: {
+    instagramUrl: Opt; calendlyUrl: Opt; gtmContainerId: Opt
+    linkedinUrl: Opt; facebookUrl: Opt; youtubeUrl: Opt; whatsappMessage: Opt
+    firmName: Opt; firmType: Opt; firmOabRegistration: Opt; firmCnpj: Opt; officeHours: Opt; languages: Opt
+  }
   try {
     validated = {
       instagramUrl: validateInstagram(instagramUrl),
       calendlyUrl: validateCalendly(calendlyUrl),
       gtmContainerId: validateGtm(gtmContainerId),
+      linkedinUrl: validateUrl(linkedinUrl, /^https:\/\/(www\.)?linkedin\.com\//i, "linkedinUrl inválida. Use https://linkedin.com/..."),
+      facebookUrl: validateUrl(facebookUrl, /^https:\/\/(www\.|m\.)?facebook\.com\//i, "facebookUrl inválida. Use https://facebook.com/..."),
+      youtubeUrl: validateUrl(
+        youtubeUrl,
+        /^https:\/\/((www\.)?youtube\.com|youtu\.be)\//i,
+        "youtubeUrl inválida. Use https://youtube.com/... ou https://youtu.be/...",
+      ),
+      whatsappMessage: validateMaxLength(whatsappMessage, WHATSAPP_MESSAGE_MAX, "A mensagem do WhatsApp"),
+      firmName: validateMaxLength(firmName, 120, "O nome do escritório"),
+      firmType: validateFirmType(firmType),
+      firmOabRegistration: validateMaxLength(firmOabRegistration, 40, "O registro da sociedade na OAB"),
+      firmCnpj: validateCnpj(firmCnpj),
+      officeHours: validateMaxLength(officeHours, 80, "O horário de atendimento"),
+      languages: validateMaxLength(languages, 80, "O campo de idiomas"),
     }
   } catch (e) {
     if (e instanceof Response) return e
@@ -325,6 +402,39 @@ export async function PATCH(req: Request) {
     return v
   }
 
+  function validateUrl(url: string | undefined, pattern: RegExp, error: string) {
+    const v = nopt(url)
+    if (v == null) return v
+    if (!pattern.test(v)) throw NextResponse.json({ error }, { status: 400 })
+    return v
+  }
+
+  function validateMaxLength(val: string | undefined, max: number, label: string) {
+    const v = nopt(val)
+    if (v == null) return v
+    if (v.length > max) {
+      throw NextResponse.json({ error: `${label} deve ter no máximo ${max} caracteres.` }, { status: 400 })
+    }
+    return v
+  }
+
+  function validateFirmType(val?: string) {
+    const v = nopt(val)
+    if (v == null) return v
+    if (!FIRM_TYPES.includes(v)) {
+      throw NextResponse.json({ error: "Tipo de escritório inválido. Use \"individual\" ou \"sociedade\"." }, { status: 400 })
+    }
+    return v
+  }
+
+  function validateCnpj(val?: string) {
+    if (val === undefined) return undefined
+    if (!val.trim()) return null
+    const digits = normalizeCnpj(val)
+    if (!isValidCnpj(digits)) throw NextResponse.json({ error: "CNPJ inválido" }, { status: 400 })
+    return digits
+  }
+
   const updated = await prisma.profile.update({
     where: { id: profileId },
     data: {
@@ -352,6 +462,17 @@ export async function PATCH(req: Request) {
       oabNumber: oab.data.oabNumber,
       oabState: oab.data.oabState,
       practiceType,
+      linkedinUrl: validated.linkedinUrl,
+      facebookUrl: validated.facebookUrl,
+      youtubeUrl: validated.youtubeUrl,
+      whatsappMessage: validated.whatsappMessage,
+      firmName: validated.firmName,
+      firmType: validated.firmType,
+      firmOabRegistration: validated.firmOabRegistration,
+      firmCnpj: validated.firmCnpj,
+      officeHours: validated.officeHours,
+      languages: validated.languages,
+      onlineService,
     },
   })
 

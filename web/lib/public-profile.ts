@@ -15,7 +15,11 @@ const byPosition = [{ position: "asc" as const }, { createdAt: "asc" as const }]
 /** Everything a theme renders besides the profile row, in the editor's order. */
 export async function loadPublicProfileRelations(profileId: string) {
   const [areas, links, gallery, customSections, teamMembers] = await Promise.all([
-    prisma.activityAreas.findMany({ where: { profileId }, orderBy: byPosition }),
+    prisma.activityAreas.findMany({
+      where: { profileId },
+      orderBy: byPosition,
+      include: { faqs: { orderBy: { position: "asc" }, select: { id: true, question: true, answer: true, position: true } } },
+    }),
     prisma.links.findMany({ where: { profileId }, orderBy: byPosition }),
     prisma.gallery.findMany({ where: { profileId }, orderBy: byPosition }),
     prisma.customSection.findMany({ where: { profileId }, orderBy: byPosition }),

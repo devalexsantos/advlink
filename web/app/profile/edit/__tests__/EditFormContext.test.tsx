@@ -85,6 +85,15 @@ const fakeProfileResponse = {
     whatsapp: "11999990001",
     instagramUrl: "https://instagram.com/joao",
     calendlyUrl: "https://calendly.com/joao",
+    linkedinUrl: "https://www.linkedin.com/in/joao",
+    whatsappMessage: "Olá, vim pelo site.",
+    firmName: "Silva Advogados",
+    firmType: "sociedade",
+    firmOabRegistration: "999",
+    firmCnpj: "11222333000181",
+    officeHours: "Seg. a sex.",
+    languages: "Português",
+    onlineService: true,
     avatarUrl: "https://s3.example.com/avatar.jpg",
     coverUrl: "https://s3.example.com/cover.jpg",
     primaryColor: "#1A1A2E",
@@ -1203,6 +1212,19 @@ describe("EditFormContext", () => {
       expect((callArg as FormData).get("oabNumber")).toBe("123456A")
       expect((callArg as FormData).get("oabState")).toBe("SP")
       expect((callArg as FormData).get("practiceType")).toBe("escritorio")
+      // New contact / firm / service keys are always sent
+      const fd = callArg as FormData
+      expect(fd.get("linkedinUrl")).toBe("https://www.linkedin.com/in/joao")
+      expect(fd.get("facebookUrl")).toBe("")
+      expect(fd.get("youtubeUrl")).toBe("")
+      expect(fd.get("whatsappMessage")).toBe("Olá, vim pelo site.")
+      expect(fd.get("firmName")).toBe("Silva Advogados")
+      expect(fd.get("firmType")).toBe("sociedade")
+      expect(fd.get("firmOabRegistration")).toBe("999")
+      expect(fd.get("firmCnpj")).toBe("11.222.333/0001-81")
+      expect(fd.get("officeHours")).toBe("Seg. a sex.")
+      expect(fd.get("languages")).toBe("Português")
+      expect(fd.get("onlineService")).toBe("true")
     })
 
     it("calls showToast with 'Salvo com sucesso!' after form submit", async () => {

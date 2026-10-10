@@ -1,3 +1,5 @@
+import { MAX_FAQ_ANSWER_LENGTH, MAX_FAQ_QUESTION_LENGTH, toFaqPlainText } from "@/lib/area-faq"
+
 const MAX_DESCRIPTION_CHARS = 1200
 
 // Provimento OAB 205/2021 (art. 3º, IV e §1º): publicidade apenas informativa, sem captação de clientela.
@@ -100,4 +102,72 @@ ${CONTENT_RULES}`
     })
   )
   return results
+}
+
+const MAX_GENERATED_FAQS = 5
+
+const FAQ_RULES = `Regras das perguntas e respostas (obrigatórias):
+- Gere de 3 a 5 perguntas frequentes que o público leigo costuma fazer sobre a área em geral.
+- Cada resposta explica o assunto em termos gerais, em 3ª pessoa ou de forma impessoal, com tom informativo e sóbrio.
+- Cada resposta deve ter entre 200 e 500 caracteres, em texto simples (sem Markdown, sem negrito, sem listas, sem títulos), mesmo que outra instrução peça Markdown.
+- NUNCA analise ou opine sobre um caso concreto. Não use as expressões "no seu caso", "seu caso" nem se dirija à situação particular do leitor.
+- Não recomende contratar um advogado nem procurar, consultar ou entrar em contato com alguém.
+- Não inclua chamada à ação de contato ou contratação.
+- Não prometa nem sugira resultados.
+- Não mencione valores, preços, honorários, gratuidade ou descontos.
+- Não use superlativos nem as palavras ou expressões: "especialista", "o melhor", "líder", "garantia de resultado", "garantimos", "resultado garantido", "sucesso", "gratuito", "grátis", "desconto", "entre em contato".
+- Não cite números de artigos nem números de leis; refira-se às normas apenas de forma genérica (por exemplo, "a legislação trabalhista").
+- Considere exclusivamente o Direito brasileiro.`
+
+/** Informative FAQ (plain text) for a practice area, OAB Provimento 205/2021 compliant. */
+export async function generateAreaFaqs(
+  title: string,
+  apiKey: string
+): Promise<{ question: string; answer: string }[]> {
+  if (!apiKey) throw new Error("Missing OPENAI_API_KEY")
+
+  const user = `Gere perguntas frequentes com respostas sobre a área de atuação jurídica brasileira chamada ${JSON.stringify(title)}.
+${FAQ_RULES}
+Responda ESTRITAMENTE em JSON no formato: { "faqs": [{ "question": string, "answer": string }] }.`
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: user },
+      ],
+      temperature: 0.5,
+      response_format: { type: "json_object" },
+      max_tokens: 1500,
+    }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`OpenAI error: ${res.status} ${text}`)
+  }
+  const data = await res.json()
+  const content = data.choices?.[0]?.message?.content ?? "{}"
+  let parsed: { faqs?: unknown } = {}
+  try {
+    parsed = JSON.parse(content)
+  } catch {
+    parsed = {}
+  }
+  const list = Array.isArray(parsed.faqs) ? parsed.faqs : []
+  return list
+    .map((item) => {
+      const f = (item ?? {}) as { question?: unknown; answer?: unknown }
+      // Plain text only: drop HTML and stray Markdown emphasis
+      const clean = (v: unknown, max: number) => toFaqPlainText(v).replace(/\*\*|__/g, "").slice(0, max).trim()
+      return { question: clean(f.question, MAX_FAQ_QUESTION_LENGTH), answer: clean(f.answer, MAX_FAQ_ANSWER_LENGTH) }
+    })
+    .filter((f) => f.question && f.answer)
+    .slice(0, MAX_GENERATED_FAQS)
 }

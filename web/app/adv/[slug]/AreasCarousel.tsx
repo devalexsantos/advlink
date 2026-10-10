@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { renderContent } from "@/lib/render-content"
 import { Info, Mail, Phone, X } from "lucide-react"
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon"
+import { buildWhatsAppUrl } from "@/lib/whatsapp"
 
 
 type Area = {
@@ -23,6 +24,7 @@ export function AreasCarousel({
   text,
   secondary,
   whatsapp,
+  whatsappMessage,
   publicPhone,
   publicEmail,
 }: {
@@ -31,6 +33,7 @@ export function AreasCarousel({
   text: string
   secondary: string
   whatsapp?: string | null
+  whatsappMessage?: string | null
   publicPhone?: string | null
   publicEmail?: string | null
 }) {
@@ -164,11 +167,11 @@ export function AreasCarousel({
                 )
               })()}
               <div className="flex flex-col gap-2 mt-8">
-                <h3 className="text-lg font-semibold text-center" style={{ color: text }}>Entre em contato agora mesmo para falar sobre o seu caso</h3>
+                <h3 className="text-lg font-semibold text-center" style={{ color: text }}>Para mais informações, utilize os canais abaixo.</h3>
                 <div className="flex flex-col items-center justify-center md:flex-row gap-2">
               {whatsapp && (
                 <div>
-                  <a href={`https://wa.me/${whatsapp.replace(/\D/g, "")}`} target="_blank" rel="noreferrer">
+                  <a href={buildWhatsAppUrl(whatsapp, whatsappMessage)} target="_blank" rel="noreferrer">
                     <Button size="sm" style={{ backgroundColor: primary, color: text, border: "1px solid", borderColor: `${text}33`, cursor: "pointer" }}>
                       <WhatsAppIcon className="w-4 h-4" />
                       Contato via WhatsApp

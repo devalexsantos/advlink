@@ -57,6 +57,8 @@ function makeEditFormValue(overrides: Record<string, unknown> = {}) {
     setPublicPhoneIsFixed: vi.fn(),
     whatsappIsFixed: false,
     setWhatsappIsFixed: vi.fn(),
+    onlineService: false,
+    setOnlineService: vi.fn(),
     ...overrides,
   }
 }
@@ -397,5 +399,54 @@ describe("PerfilContatoSection", () => {
       rerender(<Wrapper />)
       expect(screen.getByText("URL do Calendly inválida")).toBeInTheDocument()
     })
+  })
+
+  it("renders the new social URL fields and lets the user type", async () => {
+    render(<FormWrapper />)
+    const linkedin = screen.getByLabelText("LinkedIn URL")
+    expect(linkedin).toHaveAttribute("placeholder", "https://www.linkedin.com/in/seu-perfil")
+    expect(screen.getByLabelText("Facebook URL")).toBeInTheDocument()
+    expect(screen.getByLabelText("YouTube URL")).toBeInTheDocument()
+    await userEvent.type(linkedin, "https://www.linkedin.com/in/ana")
+    expect(linkedin).toHaveValue("https://www.linkedin.com/in/ana")
+  })
+
+  it("renders the WhatsApp initial message with limit and helper", async () => {
+    render(<FormWrapper />)
+    const input = screen.getByLabelText(/mensagem inicial do whatsapp/i)
+    expect(input).toHaveAttribute("maxlength", "200")
+    expect(input).toHaveAttribute("placeholder", "Olá, vim pelo seu site.")
+    expect(screen.getByText(/já aparece escrito na conversa/i)).toBeInTheDocument()
+    await userEvent.type(input, "Oi")
+    expect(input).toHaveValue("Oi")
+  })
+
+  it("renders the Atendimento card and toggles online service", async () => {
+    const setOnlineService = vi.fn()
+    render(<FormWrapper contextOverrides={{ setOnlineService }} />)
+    expect(screen.getByLabelText("Horário de atendimento")).toBeInTheDocument()
+    expect(screen.getByLabelText("Idiomas")).toBeInTheDocument()
+    await userEvent.click(screen.getByRole("switch", { name: /atendimento on-line/i }))
+    expect(setOnlineService).toHaveBeenCalledWith(true)
+  })
+
+  it("renders the firm card, picks the type and formats the CNPJ on blur", async () => {
+    render(<FormWrapper />)
+    expect(screen.getByText(/sociedade de advocacia \(opcional\)/i)).toBeInTheDocument()
+    await userEvent.type(screen.getByLabelText("Nome da sociedade"), "Silva Advogados")
+    await userEvent.click(screen.getByLabelText("Sociedade de Advogados"))
+    expect(screen.getByLabelText("Sociedade de Advogados")).toBeChecked()
+    await userEvent.type(screen.getByLabelText("Registro da sociedade na OAB"), "123")
+    const cnpj = screen.getByLabelText("CNPJ")
+    await userEvent.type(cnpj, "11222333000181")
+    await userEvent.tab()
+    expect(cnpj).toHaveValue("11.222.333/0001-81")
+  })
+
+  it("schema rejects an invalid CNPJ and accepts a valid one", () => {
+    const base = { publicName: "Ana" }
+    expect(profileEditSchema.safeParse({ ...base, firmCnpj: "11.222.333/0001-82" }).success).toBe(false)
+    expect(profileEditSchema.safeParse({ ...base, firmCnpj: "11.222.333/0001-81" }).success).toBe(true)
+    expect(profileEditSchema.safeParse({ ...base, firmCnpj: "" }).success).toBe(true)
   })
 })

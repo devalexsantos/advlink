@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Smartphone, Monitor } from "lucide-react"
 import Theme03 from "@/components/themes/03/Theme03"
 
-type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
+type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null; faqs?: { id: string; question: string; answer: string; position?: number }[] }
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
@@ -16,6 +16,17 @@ type Profile = {
   coverUrl?: string | null
   avatarUrl?: string | null
   whatsapp?: string | null
+  linkedinUrl?: string | null
+  facebookUrl?: string | null
+  youtubeUrl?: string | null
+  whatsappMessage?: string | null
+  firmName?: string | null
+  firmType?: string | null
+  firmOabRegistration?: string | null
+  firmCnpj?: string | null
+  officeHours?: string | null
+  languages?: string | null
+  onlineService?: boolean | null
   publicEmail?: string | null
   publicPhone?: string | null
   calendlyUrl?: string | null

@@ -5,7 +5,7 @@ import Theme04 from "@/components/themes/04/Theme04"
 import { ProfileTracker } from "@/components/analytics/ProfileTracker"
 import { GtmConsent } from "@/components/analytics/GtmConsent"
 import { getProfileUrl } from "@/lib/site-url"
-import { buildProfileJsonLd, jsonLdScript } from "@/lib/profile-jsonld"
+import { buildFaqJsonLd, buildProfileJsonLd, jsonLdScript } from "@/lib/profile-jsonld"
 import type { PublicProfileData } from "@/lib/public-profile"
 
 const THEMES = ["modern", "classic", "corporate"] as const
@@ -48,6 +48,7 @@ export default function PublicProfileView({ data, slug, showTracker, gtmContaine
     address,
     areas.map((a) => a.title)
   )
+  const faqJsonLd = buildFaqJsonLd(areas)
 
   const themeProps = {
     profile,
@@ -72,6 +73,7 @@ export default function PublicProfileView({ data, slug, showTracker, gtmContaine
     <div>
       {banner}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
+      {faqJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd) }} />}
       {gtmId && <GtmConsent gtmContainerId={gtmId} privacyUrl={privacyUrl} />}
       {showTracker && <ProfileTracker slug={slug} />}
       {theme === "modern" && <Theme02 {...themeProps} />}

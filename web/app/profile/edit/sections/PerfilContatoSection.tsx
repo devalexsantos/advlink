@@ -9,6 +9,8 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/comp
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import { OabWarnings } from "@/components/oab-warnings"
 import { UF_LIST } from "@/lib/oab"
+import { formatCnpj } from "@/lib/cnpj"
+import { WHATSAPP_MESSAGE_MAX } from "@/lib/whatsapp"
 import { useEditForm } from "../EditFormContext"
 import { PublicSectionHeader } from "../SectionRenderer"
 
@@ -18,6 +20,7 @@ export default function PerfilContatoSection() {
     aboutMarkdown, setAboutMarkdown,
     publicPhoneIsFixed, setPublicPhoneIsFixed,
     whatsappIsFixed, setWhatsappIsFixed,
+    onlineService, setOnlineService,
   } = useEditForm()
 
   const { control, formState: { errors } } = form
@@ -175,6 +178,19 @@ export default function PerfilContatoSection() {
             </label>
           </div>
         </div>
+        <div>
+          <Label htmlFor="whatsappMessage" className="mb-1 block text-sm">Mensagem inicial do WhatsApp (opcional)</Label>
+          <Controller
+            control={control}
+            name="whatsappMessage"
+            render={({ field }) => (
+              <Input id="whatsappMessage" placeholder="Olá, vim pelo seu site." maxLength={WHATSAPP_MESSAGE_MAX} value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
+            )}
+          />
+          <p className="mt-1 text-xs text-muted-foreground">Texto que já aparece escrito na conversa quando o visitante clicar no botão de WhatsApp.</p>
+          <OabWarnings text={form.watch("whatsappMessage")} />
+          {errors.whatsappMessage && <p className="mt-1 text-sm text-red-500">{errors.whatsappMessage.message}</p>}
+        </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="publicPhone" className="mb-1 block text-sm">Telefone</Label>
           <div className="flex items-center gap-3">
@@ -213,6 +229,153 @@ export default function PerfilContatoSection() {
             )}
           />
           {errors.instagramUrl && <p className="mt-1 text-sm text-red-500">{errors.instagramUrl.message}</p>}
+        </div>
+        <div>
+          <Label htmlFor="linkedinUrl" className="mb-1 block text-sm">LinkedIn URL</Label>
+          <Controller
+            control={control}
+            name="linkedinUrl"
+            render={({ field }) => (
+              <Input id="linkedinUrl" placeholder="https://www.linkedin.com/in/seu-perfil" value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
+            )}
+          />
+          {errors.linkedinUrl && <p className="mt-1 text-sm text-red-500">{errors.linkedinUrl.message}</p>}
+        </div>
+        <div>
+          <Label htmlFor="facebookUrl" className="mb-1 block text-sm">Facebook URL</Label>
+          <Controller
+            control={control}
+            name="facebookUrl"
+            render={({ field }) => (
+              <Input id="facebookUrl" placeholder="https://www.facebook.com/sua-pagina" value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
+            )}
+          />
+          {errors.facebookUrl && <p className="mt-1 text-sm text-red-500">{errors.facebookUrl.message}</p>}
+        </div>
+        <div>
+          <Label htmlFor="youtubeUrl" className="mb-1 block text-sm">YouTube URL</Label>
+          <Controller
+            control={control}
+            name="youtubeUrl"
+            render={({ field }) => (
+              <Input id="youtubeUrl" placeholder="https://www.youtube.com/@seu-canal" value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
+            )}
+          />
+          {errors.youtubeUrl && <p className="mt-1 text-sm text-red-500">{errors.youtubeUrl.message}</p>}
+        </div>
+      </div>
+
+      {/* Atendimento */}
+      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+        <Label className="text-base font-bold">Atendimento</Label>
+        <div>
+          <Label htmlFor="officeHours" className="mb-1 block text-sm">Horário de atendimento</Label>
+          <Controller
+            control={control}
+            name="officeHours"
+            render={({ field }) => (
+              <Input id="officeHours" placeholder="Seg. a sex., 9h às 18h" maxLength={80} value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
+            )}
+          />
+          {errors.officeHours && <p className="mt-1 text-sm text-red-500">{errors.officeHours.message}</p>}
+        </div>
+        <div>
+          <Label htmlFor="languages" className="mb-1 block text-sm">Idiomas</Label>
+          <Controller
+            control={control}
+            name="languages"
+            render={({ field }) => (
+              <Input id="languages" placeholder="Português, Inglês" maxLength={80} value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
+            )}
+          />
+          {errors.languages && <p className="mt-1 text-sm text-red-500">{errors.languages.message}</p>}
+        </div>
+        <label className="inline-flex items-center gap-2 cursor-pointer">
+          <Switch checked={onlineService} onCheckedChange={setOnlineService} aria-label="Atendimento on-line" />
+          <span className="text-sm">Atendimento on-line</span>
+        </label>
+      </div>
+
+      {/* Sociedade de advocacia */}
+      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+        <div>
+          <Label className="text-base font-bold">Sociedade de advocacia (opcional)</Label>
+          <p className="mt-1 text-xs text-muted-foreground">Se você atua por meio de uma sociedade, o CED (art. 44) pede que ela seja identificada na publicidade. Deixe em branco se atua como autônomo(a).</p>
+        </div>
+        <div>
+          <Label htmlFor="firmName" className="mb-1 block text-sm">Nome da sociedade</Label>
+          <Controller
+            control={control}
+            name="firmName"
+            render={({ field }) => (
+              <Input id="firmName" placeholder="Ex.: Silva & Souza Advogados" maxLength={120} value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
+            )}
+          />
+          {errors.firmName && <p className="mt-1 text-sm text-red-500">{errors.firmName.message}</p>}
+        </div>
+        <fieldset>
+          <legend className="mb-1 block text-sm font-medium">Tipo</legend>
+          <Controller
+            control={control}
+            name="firmType"
+            render={({ field }) => (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {([
+                  ["individual", "Sociedade Individual de Advocacia"],
+                  ["sociedade", "Sociedade de Advogados"],
+                ] as const).map(([value, label]) => (
+                  <label
+                    key={value}
+                    className="flex cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                  >
+                    <input
+                      type="radio"
+                      name="firmType"
+                      value={value}
+                      checked={field.value === value}
+                      onChange={() => field.onChange(value)}
+                      className="accent-primary"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            )}
+          />
+          {form.watch("firmType") && (
+            <button type="button" className="mt-1 text-xs text-muted-foreground underline cursor-pointer" onClick={() => form.setValue("firmType", "", { shouldDirty: true })}>
+              Limpar tipo
+            </button>
+          )}
+        </fieldset>
+        <div>
+          <Label htmlFor="firmOabRegistration" className="mb-1 block text-sm">Registro da sociedade na OAB</Label>
+          <Controller
+            control={control}
+            name="firmOabRegistration"
+            render={({ field }) => (
+              <Input id="firmOabRegistration" placeholder="Ex.: 12345" maxLength={40} value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
+            )}
+          />
+          {errors.firmOabRegistration && <p className="mt-1 text-sm text-red-500">{errors.firmOabRegistration.message}</p>}
+        </div>
+        <div>
+          <Label htmlFor="firmCnpj" className="mb-1 block text-sm">CNPJ</Label>
+          <Controller
+            control={control}
+            name="firmCnpj"
+            render={({ field }) => (
+              <Input
+                id="firmCnpj"
+                inputMode="numeric"
+                placeholder="00.000.000/0000-00"
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                onBlur={() => { field.onChange(formatCnpj(field.value)); field.onBlur() }}
+              />
+            )}
+          />
+          {errors.firmCnpj && <p className="mt-1 text-sm text-red-500">{errors.firmCnpj.message}</p>}
         </div>
       </div>
 

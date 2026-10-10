@@ -30,7 +30,7 @@ const sections: Record<string, {
   estilo: { title: "Estilo", icon: Paintbrush, component: EstiloSection },
   perfil: { title: "Perfil e Contato", icon: User, component: PerfilContatoSection },
   endereco: { title: "Endereço", icon: MapPin, component: EnderecoSection, publicSectionKeys: ["endereco"] },
-  areas: { title: "Áreas ou serviços", icon: ListTree, component: AreasServicosSection, publicSectionKeys: ["servicos"] },
+  areas: { title: "Áreas ou serviços", icon: ListTree, component: AreasServicosSection, publicSectionKeys: ["servicos", "faq"] },
   galeria: { title: "Galeria", icon: Images, component: GaleriaSection, publicSectionKeys: ["galeria"] },
   links: { title: "Links", icon: LinkIcon, component: LinksSection, publicSectionKeys: ["links"] },
   equipe: { title: "Equipe", icon: Users, component: EquipeSection },

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { generateActivityDescriptions } from "@/lib/openai"
+import { generateActivityDescriptions, generateAreaFaqs } from "@/lib/openai"
 
 describe("generateActivityDescriptions()", () => {
   beforeEach(() => {
@@ -158,5 +158,110 @@ describe("generateActivityDescriptions()", () => {
     expect(result[0]).toBe("Only one")
     expect(result[1]).toBe("")
     expect(result[2]).toBe("")
+  })
+})
+
+describe("generateAreaFaqs()", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  function mockContent(content: string) {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ choices: [{ message: { content } }] }),
+      text: () => Promise.resolve(""),
+    } as Response)
+  }
+
+  function sentBody() {
+    const [, init] = vi.mocked(globalThis.fetch).mock.calls[0]
+    return JSON.parse(String((init as RequestInit).body)) as {
+      max_tokens: number
+      temperature: number
+      response_format: { type: string }
+      messages: { role: string; content: string }[]
+    }
+  }
+
+  it("throws without API key", async () => {
+    await expect(generateAreaFaqs("Direito Civil", "")).rejects.toThrow("Missing OPENAI_API_KEY")
+  })
+
+  it("parses the faqs from JSON mode", async () => {
+    mockContent(JSON.stringify({ faqs: [{ question: "O que é?", answer: "É um ramo do Direito." }, { question: "Q2?", answer: "A2." }] }))
+    const result = await generateAreaFaqs("Direito Civil", "sk-test")
+    expect(result).toEqual([
+      { question: "O que é?", answer: "É um ramo do Direito." },
+      { question: "Q2?", answer: "A2." },
+    ])
+    const body = sentBody()
+    expect(body.response_format).toEqual({ type: "json_object" })
+    expect(body.max_tokens).toBe(1500)
+    expect(body.temperature).toBe(0.5)
+  })
+
+  it("drops empty items, strips HTML/Markdown, trims, caps lengths and the count", async () => {
+    mockContent(
+      JSON.stringify({
+        faqs: [
+          { question: "  <b>Pergunta</b>  ", answer: " **Resposta** " },
+          { question: "", answer: "sem pergunta" },
+          { question: "sem resposta", answer: "   " },
+          null,
+          "texto solto",
+          { question: "q".repeat(300), answer: "a".repeat(1000) },
+          { question: "3", answer: "3" },
+          { question: "4", answer: "4" },
+          { question: "5", answer: "5" },
+          { question: "6", answer: "6" },
+        ],
+      }),
+    )
+    const result = await generateAreaFaqs("Família", "sk-test")
+    expect(result).toHaveLength(5)
+    expect(result[0]).toEqual({ question: "Pergunta", answer: "Resposta" })
+    expect(result[1].question).toHaveLength(150)
+    expect(result[1].answer).toHaveLength(700)
+    expect(result.map((f) => f.question).slice(2)).toEqual(["3", "4", "5"])
+  })
+
+  it("returns [] for malformed JSON or a missing faqs array", async () => {
+    mockContent("not json")
+    expect(await generateAreaFaqs("Penal", "sk-test")).toEqual([])
+    vi.restoreAllMocks()
+    mockContent(JSON.stringify({ items: [] }))
+    expect(await generateAreaFaqs("Penal", "sk-test")).toEqual([])
+  })
+
+  it("prompt carries the OAB rules (general answers, no concrete case, no CTA, no law numbers)", async () => {
+    mockContent(JSON.stringify({ faqs: [] }))
+    await generateAreaFaqs("Direito do Consumidor", "sk-test")
+    const { messages } = sentBody()
+    const system = messages.find((m) => m.role === "system")!.content
+    const user = messages.find((m) => m.role === "user")!.content
+    expect(system).toContain("Provimento OAB 205/2021")
+    expect(user).toContain('"Direito do Consumidor"')
+    expect(user).toContain("3 a 5 perguntas")
+    expect(user).toContain("200 e 500 caracteres")
+    expect(user).toContain("NUNCA analise ou opine sobre um caso concreto")
+    expect(user).toContain('"no seu caso"')
+    expect(user).toContain("Não recomende contratar")
+    expect(user).toContain("Não inclua chamada à ação de contato ou contratação")
+    expect(user).toContain("Não prometa")
+    expect(user).toContain("gratuidade")
+    expect(user).toContain('"especialista"')
+    expect(user).toContain("Não cite números de artigos nem números de leis")
+    expect(user).toContain("Direito brasileiro")
+    expect(user).toContain("sem Markdown")
+  })
+
+  it("throws on API error", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: false,
+      status: 500,
+      text: () => Promise.resolve("boom"),
+    } as Response)
+    await expect(generateAreaFaqs("Civil", "sk-test")).rejects.toThrow("OpenAI error: 500")
   })
 })
