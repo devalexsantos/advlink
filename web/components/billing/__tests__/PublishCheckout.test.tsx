@@ -71,6 +71,31 @@ describe("PublishCheckout", () => {
     expect(screen.getByText(/Garantia de 7 dias: desistiu, devolvemos o valor integral\./)).toBeInTheDocument()
   })
 
+  describe("plan choice", () => {
+    it("offers monthly (default) and yearly plans", () => {
+      render(<PublishCheckout />)
+      const monthly = screen.getByRole("radio", { name: /Mensal — R\$\s49,00\/mês/ })
+      const yearly = screen.getByRole("radio", { name: /Anual — R\$\s490,00\/ano \(equivale a 2 meses grátis\)/ })
+      expect(monthly).toHaveAttribute("aria-checked", "true")
+      expect(yearly).toHaveAttribute("aria-checked", "false")
+    })
+
+    it("sends the yearly cycle when chosen, and 'Pagar de outra forma' retries with the same cycle", async () => {
+      mockFetch
+        .mockResolvedValueOnce(response(false, { code: "PENDING_PAYMENT", error: "Cobrança em aberto.", invoiceUrl: null }))
+        .mockResolvedValueOnce(response(true, { url: "https://asaas.test/pay/yearly" }))
+      render(<PublishCheckout />)
+      await userEvent.click(screen.getByRole("radio", { name: /Anual/ }))
+      expect(screen.getByRole("radio", { name: /Anual/ })).toHaveAttribute("aria-checked", "true")
+      await clickCardBoleto()
+      expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toEqual({ method: "card_boleto", cycle: "YEARLY", replacePending: false })
+
+      await userEvent.click(await screen.findByRole("button", { name: "Pagar de outra forma" }))
+      await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2))
+      expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toEqual({ method: "card_boleto", cycle: "YEARLY", replacePending: true })
+    })
+  })
+
   describe("starting a checkout", () => {
     it("POSTs the card/boleto method and sends the opened tab to the payment page", async () => {
       mockFetch.mockResolvedValueOnce(response(true, { url: "https://asaas.test/pay/1" }))
@@ -81,7 +106,7 @@ describe("PublishCheckout", () => {
       const [url, init] = mockFetch.mock.calls[0]
       expect(url).toBe("/api/billing/checkout")
       expect(init.method).toBe("POST")
-      expect(JSON.parse(init.body)).toEqual({ method: "card_boleto", replacePending: false })
+      expect(JSON.parse(init.body)).toEqual({ method: "card_boleto", cycle: "MONTHLY", replacePending: false })
     })
 
     it("opens the blank tab synchronously from the click (popup-blocker safe)", async () => {
@@ -217,7 +242,7 @@ describe("PublishCheckout", () => {
       await userEvent.click(await screen.findByRole("button", { name: "Pagar de outra forma" }))
 
       await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2))
-      expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toEqual({ method: "card_boleto", replacePending: true })
+      expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toEqual({ method: "card_boleto", cycle: "MONTHLY", replacePending: true })
       await waitFor(() => expect(tab.location.href).toBe("https://asaas.test/pay/new"))
     })
 

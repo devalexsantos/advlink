@@ -177,6 +177,13 @@ describe("AccountPage", () => {
       mockSubscriptionFindFirst.mockResolvedValue(OPEN_SUB)
     })
 
+    it("shows a yearly plan as /ano", async () => {
+      mockSubscriptionFindFirst.mockResolvedValue({ ...OPEN_SUB, cycle: "YEARLY", valueCents: 49000 })
+      await renderAccountPage()
+      expect(screen.getByText(/anual, R\$\s490,00\/ano, renovação automática/)).toBeInTheDocument()
+      expect(screen.queryByText(/\/mês/)).not.toBeInTheDocument()
+    })
+
     it("shows the plan price, the paid-until date and the cancel button", async () => {
       await renderAccountPage()
       expect(screen.getByText(/R\$\s49,00\/mês, renovação automática/)).toBeInTheDocument()

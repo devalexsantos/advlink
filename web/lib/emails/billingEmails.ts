@@ -10,6 +10,8 @@ export interface BillingEmailInput {
   siteSlug: string | null
   graceUntil: string | null
   invoiceUrl: string | null
+  /** Cycle of the subscription (MONTHLY when missing): wording of the renewal sentence. */
+  cycle?: "MONTHLY" | "YEARLY"
 }
 
 export function escapeHtml(s: string | null | undefined): string {
@@ -45,6 +47,7 @@ export function buildBillingEmail(input: BillingEmailInput): { subject: string; 
   const payCta = { label: "Pagar fatura", url: payUrl ?? accountUrl }
   const accountCta = { label: "Minha conta", url: accountUrl }
   const grace = formatBrDate(graceUntil)
+  const period = input.cycle === "YEARLY" ? "a cada ano" : "a cada mês"
 
   let subject: string
   let title: string
@@ -60,7 +63,7 @@ export function buildBillingEmail(input: BillingEmailInput): { subject: string; 
       body =
         p("Recebemos a confirmação do seu pagamento e o seu site está publicado:") +
         p(`<strong>${siteLink}</strong>`) +
-        p("As próximas cobranças serão geradas automaticamente a cada mês. Você pode acompanhar a assinatura e as faturas em Minha conta.")
+        p(`As próximas cobranças serão geradas automaticamente ${period}. Você pode acompanhar a assinatura e as faturas em Minha conta.`)
       cta = { label: "Ver meu site", url: siteUrl }
       break
     case "reactivated":
@@ -70,7 +73,7 @@ export function buildBillingEmail(input: BillingEmailInput): { subject: string; 
       body =
         p("Identificamos o pagamento da sua assinatura e o seu site está novamente publicado:") +
         p(`<strong>${siteLink}</strong>`) +
-        p("As próximas cobranças continuam sendo geradas automaticamente a cada mês.")
+        p(`As próximas cobranças continuam sendo geradas automaticamente ${period}.`)
       cta = { label: "Ver meu site", url: siteUrl }
       break
     case "overdue":

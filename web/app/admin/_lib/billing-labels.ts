@@ -28,6 +28,11 @@ const billingTypeLabels: Record<string, string> = {
   PIX: "Pix",
 }
 
+const cycleLabels: Record<string, string> = {
+  MONTHLY: "Mensal",
+  YEARLY: "Anual",
+}
+
 const subscriptionStatusLabels: Record<string, string> = {
   ACTIVE: "Ativa",
   INACTIVE: "Inativa",
@@ -58,6 +63,16 @@ export function billingStatusVariant(status: string): BadgeVariant {
 export function billingTypeLabel(type: string | null | undefined): string {
   if (!type) return "—"
   return billingTypeLabels[type] ?? type
+}
+
+/** "Mensal" / "Anual"; legacy rows without a cycle are monthly. */
+export function cycleLabel(cycle: string | null | undefined): string {
+  return cycleLabels[cycle ?? "MONTHLY"] ?? cycle ?? "Mensal"
+}
+
+/** Subscription price with its period: "R$ 49,00/mês" or "R$ 490,00/ano". */
+export function formatSubscriptionValue(cents: number | null | undefined, cycle: string | null | undefined): string {
+  return `${formatCents(cents)}${cycle === "YEARLY" ? "/ano" : "/mês"}`
 }
 
 export function subscriptionStatusLabel(status: string): string {

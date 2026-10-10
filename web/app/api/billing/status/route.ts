@@ -51,7 +51,11 @@ export async function GET(req: Request) {
       orderBy: { dueDate: "desc" },
       select: { invoiceUrl: true, dueDate: true, billingType: true, status: true },
     }),
-    prisma.billingSubscription.findFirst({ where: { profileId, status: "ACTIVE" }, select: { id: true } }),
+    prisma.billingSubscription.findFirst({
+      where: { profileId, status: "ACTIVE" },
+      orderBy: { createdAt: "desc" },
+      select: { id: true, cycle: true },
+    }),
   ])
 
   return NextResponse.json({
@@ -61,6 +65,8 @@ export async function GET(req: Request) {
     paidUntil: dbDateToCivil(full.paidUntil),
     graceUntil: dbDateToCivil(full.graceUntil),
     renews: !!openSub,
+    /** Cycle of the open subscription (MONTHLY | YEARLY), null without one */
+    cycle: openSub?.cycle ?? null,
     pendingPayment: unpaid,
   })
 }

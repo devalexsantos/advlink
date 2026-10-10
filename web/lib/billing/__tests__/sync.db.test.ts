@@ -28,9 +28,9 @@ describe.skipIf(!TEST_URL)("billing sync (Postgres)", () => {
   let deps: BillingDeps
   let profileId: string
 
-  async function createLink(billingType: "UNDEFINED" | "PIX" = "UNDEFINED") {
-    const link = await asaas.createPaymentLink({ billingType, externalReference: profileId })
-    await db.billingPaymentLink.create({ data: { environment: "SANDBOX", asaasId: link.id, profileId, billingType, url: link.url } })
+  async function createLink(billingType: "UNDEFINED" | "PIX" = "UNDEFINED", cycle: "MONTHLY" | "YEARLY" = "MONTHLY") {
+    const link = await asaas.createPaymentLink({ billingType, cycle, externalReference: profileId })
+    await db.billingPaymentLink.create({ data: { environment: "SANDBOX", asaasId: link.id, profileId, billingType, cycle, url: link.url } })
     await recomputeProfile(deps, profileId) // same as the checkout route
     return link.id
   }
@@ -62,6 +62,41 @@ describe.skipIf(!TEST_URL)("billing sync (Postgres)", () => {
 
   afterAll(async () => {
     await db?.$disconnect()
+  })
+
+  it("a yearly payment keeps the site published for 12 months, then grace, then suspension", async () => {
+    const link = await createLink("UNDEFINED", "YEARLY")
+    const { payment, subscription } = asaas.simulatePayment(link, { status: "CONFIRMED", dueDate: "2026-10-06" })
+    expect(subscription).toMatchObject({ cycle: "YEARLY", value: 490 })
+    expect(await paymentEvent(payment.id)).toBe("ACTIVE")
+    expect(asaas.links[link].active).toBe(false) // disabled with its own cycle
+
+    const p = await profile()
+    expect(p.paidUntil?.toISOString().slice(0, 10)).toBe("2027-10-05")
+    expect(await db.billingPayment.findFirstOrThrow({ where: { asaasId: payment.id } })).toMatchObject({ cycle: "YEARLY", valueCents: 49000 })
+    expect(await db.billingSubscription.findFirstOrThrow({ where: { asaasId: subscription.id } })).toMatchObject({ cycle: "YEARLY", valueCents: 49000 })
+
+    now = new Date("2027-09-20T15:00:00Z") // 11+ months later: a monthly charge would have expired long ago
+    await billingSweep(deps)
+    expect(await profile()).toMatchObject({ billingStatus: "ACTIVE", isActive: true })
+
+    now = new Date("2027-10-08T15:00:00Z") // renewal not paid: grace
+    await billingSweep(deps)
+    expect((await profile()).billingStatus).toBe("GRACE")
+
+    now = new Date("2027-10-12T15:00:00Z")
+    await billingSweep(deps)
+    expect(await profile()).toMatchObject({ billingStatus: "SUSPENDED", isActive: false })
+  })
+
+  it("a monthly payment still covers one month", async () => {
+    const link = await createLink()
+    const { payment } = asaas.simulatePayment(link, { status: "RECEIVED", dueDate: "2026-10-06", billingType: "PIX" })
+    await paymentEvent(payment.id, "PAYMENT_RECEIVED")
+    expect(await db.billingPayment.findFirstOrThrow({ where: { asaasId: payment.id } })).toMatchObject({ cycle: "MONTHLY", valueCents: 4900 })
+    now = new Date("2026-11-08T15:00:00Z")
+    await billingSweep(deps)
+    expect((await profile()).billingStatus).toBe("GRACE")
   })
 
   it("card CONFIRMED publishes the site, closes the link and notifies once", async () => {

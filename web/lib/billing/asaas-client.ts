@@ -1,6 +1,6 @@
 // Asaas API v3 client (sandbox and production). Ported from Escavador
 // (packages/integrations/src/asaas/client.ts), validated against the sandbox on 2026-10-09.
-import { PLAN } from "./plan"
+import { PLANS, type BillingCycle } from "./plan"
 
 export type AsaasEnvironment = "SANDBOX" | "PRODUCTION"
 /** UNDEFINED = card + boleto on the hosted checkout; PIX = recurring Pix. */
@@ -28,6 +28,8 @@ export interface AsaasSubscription {
   value: number
   customer: string
   billingType?: string
+  /** MONTHLY | YEARLY (Asaas also has WEEKLY etc., never created by AdvLink). */
+  cycle?: string
   externalReference?: string | null
   nextDueDate?: string
   deleted?: boolean
@@ -35,13 +37,15 @@ export interface AsaasSubscription {
 
 export interface PaymentLinkInput {
   billingType: LinkBillingType
+  cycle: BillingCycle
   externalReference: string
 }
 
 export interface AsaasApi {
   readonly environment: AsaasEnvironment
   createPaymentLink(input: PaymentLinkInput): Promise<{ id: string; url: string }>
-  disablePaymentLink(id: string): Promise<void>
+  /** `cycle` must be the link's own cycle: Asaas requires subscriptionCycle again on update. */
+  disablePaymentLink(id: string, cycle: BillingCycle): Promise<void>
   getPayment(id: string): Promise<AsaasPayment>
   getSubscription(id: string): Promise<AsaasSubscription>
   deleteSubscription(id: string): Promise<void>
@@ -89,27 +93,28 @@ export class HttpAsaas implements AsaasApi {
   }
 
   async createPaymentLink(input: PaymentLinkInput) {
+    const plan = PLANS[input.cycle]
     const r = await this.request<{ id: string; url: string }>("POST", "/paymentLinks", {
-      name: PLAN.name,
-      description: PLAN.description,
-      value: PLAN.valueCents / 100,
+      name: plan.name,
+      description: plan.description,
+      value: plan.valueCents / 100,
       billingType: input.billingType,
       chargeType: "RECURRENT",
-      subscriptionCycle: "MONTHLY",
-      dueDateLimitDays: PLAN.boletoDueDateLimitDays,
+      subscriptionCycle: input.cycle,
+      dueDateLimitDays: plan.boletoDueDateLimitDays,
       externalReference: input.externalReference,
       notificationEnabled: true,
     })
     return { id: r.id, url: r.url }
   }
 
-  async disablePaymentLink(id: string) {
+  async disablePaymentLink(id: string, cycle: BillingCycle) {
     // Asaas requires these fields again even when only disabling
     await this.request("PUT", `/paymentLinks/${encodeURIComponent(id)}`, {
       active: false,
       chargeType: "RECURRENT",
-      subscriptionCycle: "MONTHLY",
-      dueDateLimitDays: PLAN.boletoDueDateLimitDays,
+      subscriptionCycle: cycle,
+      dueDateLimitDays: PLANS[cycle].boletoDueDateLimitDays,
     })
   }
 

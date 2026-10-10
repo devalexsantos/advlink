@@ -7,11 +7,16 @@ import { useQueryClient } from "@tanstack/react-query"
 import { CreditCard, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/toast/ToastProvider"
-import { REFUND_WINDOW_DAYS } from "@/lib/billing/plan"
+import { PLANS, REFUND_WINDOW_DAYS, formatBRL, type BillingCycle } from "@/lib/billing/plan"
 import { BILLING_STATUS_KEY, useBillingStatus } from "./useBillingStatus"
 
 type Method = "card_boleto"
 type CheckoutError = { code?: string; error?: string; invoiceUrl?: string | null }
+
+const CYCLE_OPTIONS: { cycle: BillingCycle; label: string; hint?: string }[] = [
+  { cycle: "MONTHLY", label: `Mensal — ${formatBRL(PLANS.MONTHLY.valueCents)}/mês` },
+  { cycle: "YEARLY", label: `Anual — ${formatBRL(PLANS.YEARLY.valueCents)}/ano`, hint: "equivale a 2 meses grátis" },
+]
 
 /** Stop watching the payment after this long (the lawyer can come back later; the webhook still publishes). */
 const WATCH_TIMEOUT_MS = 15 * 60 * 1000
@@ -28,6 +33,9 @@ export default function PublishCheckout({ compact = false }: { compact?: boolean
   const [error, setError] = useState<CheckoutError | null>(null)
   const [watching, setWatching] = useState(false)
   const [lastMethod, setLastMethod] = useState<Method | null>(null)
+  const [cycle, setCycle] = useState<BillingCycle>("MONTHLY")
+  /** Cycle of the attempt that hit PENDING_PAYMENT: "Pagar de outra forma" retries with the same plan */
+  const [lastCycle, setLastCycle] = useState<BillingCycle>("MONTHLY")
   const { data: status } = useBillingStatus({ watch: watching })
 
   useEffect(() => {
@@ -47,17 +55,18 @@ export default function PublishCheckout({ compact = false }: { compact?: boolean
     return () => clearTimeout(t)
   }, [watching])
 
-  async function start(method: Method, replacePending = false) {
+  async function start(method: Method, chosenCycle: BillingCycle, replacePending = false) {
     setError(null)
     setLoading(method)
     setLastMethod(method)
+    setLastCycle(chosenCycle)
     // Open the tab synchronously (inside the click) so popup blockers allow it; navigate it after the API call
     const tab = window.open("about:blank", "_blank")
     try {
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ method, replacePending }),
+        body: JSON.stringify({ method, cycle: chosenCycle, replacePending }),
       })
       const data = (await res.json().catch(() => ({}))) as CheckoutError & { url?: string }
       if (!res.ok || !data.url) {
@@ -82,10 +91,41 @@ export default function PublishCheckout({ compact = false }: { compact?: boolean
 
   return (
     <div className={compact ? "space-y-2" : "space-y-3"}>
+      <div
+        role="radiogroup"
+        aria-label="Plano"
+        className="inline-flex w-full sm:w-auto flex-col sm:flex-row rounded-lg border border-border bg-background p-1 gap-1"
+      >
+        {CYCLE_OPTIONS.map((opt) => {
+          const selected = cycle === opt.cycle
+          return (
+            <button
+              key={opt.cycle}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              onClick={() => setCycle(opt.cycle)}
+              disabled={loading !== null}
+              className={`cursor-pointer rounded-md px-3 py-1.5 text-left text-sm transition-colors disabled:cursor-not-allowed ${
+                selected ? "bg-purple-600 text-white shadow-sm" : "text-foreground hover:bg-muted"
+              }`}
+            >
+              <span className="font-medium">{opt.label}</span>
+              {opt.hint && (
+                <>
+                  {" "}
+                  <span className={selected ? "text-white/85" : "text-muted-foreground"}>({opt.hint})</span>
+                </>
+              )}
+            </button>
+          )
+        })}
+      </div>
+
       <div className="flex flex-col sm:flex-row gap-2">
         <Button
           type="button"
-          onClick={() => start("card_boleto")}
+          onClick={() => start("card_boleto", cycle)}
           disabled={loading !== null}
           className="gap-2 cursor-pointer border border-purple-400 bg-purple-600 text-white hover:bg-purple-500"
         >
@@ -120,7 +160,7 @@ export default function PublishCheckout({ compact = false }: { compact?: boolean
                 </a>
               )}
               {lastMethod && (
-                <button type="button" onClick={() => start(lastMethod, true)} className="font-medium underline underline-offset-4 cursor-pointer">
+                <button type="button" onClick={() => start(lastMethod, lastCycle, true)} className="font-medium underline underline-offset-4 cursor-pointer">
                   Pagar de outra forma
                 </button>
               )}

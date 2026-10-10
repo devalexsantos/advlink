@@ -5,7 +5,7 @@ const { getAdminSessionMock, prismaMock, getBillingDepsMock } = vi.hoisted(() =>
   getAdminSessionMock: vi.fn(),
   prismaMock: {
     profile: { groupBy: vi.fn(), count: vi.fn() },
-    billingSubscription: { aggregate: vi.fn(), findMany: vi.fn(), count: vi.fn() },
+    billingSubscription: { groupBy: vi.fn(), findMany: vi.fn(), count: vi.fn() },
     billingPayment: { aggregate: vi.fn() },
   },
   getBillingDepsMock: vi.fn(),
@@ -36,7 +36,7 @@ describe("GET /api/admin/financial", () => {
       { billingStatus: "NONE", _count: { _all: 30 } },
     ])
     prismaMock.profile.count.mockResolvedValue(3)
-    prismaMock.billingSubscription.aggregate.mockResolvedValue({ _sum: { valueCents: 34300 } })
+    prismaMock.billingSubscription.groupBy.mockResolvedValue([{ cycle: "MONTHLY", _sum: { valueCents: 34300 } }])
     prismaMock.billingPayment.aggregate.mockResolvedValue({
       _sum: { valueCents: 14700, netValueCents: 13900 },
       _count: { _all: 3 },
@@ -76,7 +76,7 @@ describe("GET /api/admin/financial", () => {
   it("returns zeros when there is no billing data", async () => {
     prismaMock.profile.groupBy.mockResolvedValue([])
     prismaMock.profile.count.mockResolvedValue(0)
-    prismaMock.billingSubscription.aggregate.mockResolvedValue({ _sum: { valueCents: null } })
+    prismaMock.billingSubscription.groupBy.mockResolvedValue([])
     prismaMock.billingPayment.aggregate.mockResolvedValue({ _sum: { valueCents: null, netValueCents: null }, _count: { _all: 0 } })
 
     const data = await (await get()).json()
@@ -87,10 +87,20 @@ describe("GET /api/admin/financial", () => {
   it("MRR sums ACTIVE subscriptions of paid sites in the configured environment", async () => {
     getBillingDepsMock.mockReturnValue({ asaas: { environment: "SANDBOX" } })
     await get()
-    expect(prismaMock.billingSubscription.aggregate).toHaveBeenCalledWith({
+    expect(prismaMock.billingSubscription.groupBy).toHaveBeenCalledWith({
+      by: ["cycle"],
       where: { environment: "SANDBOX", status: "ACTIVE", profile: { billingStatus: { in: ["ACTIVE", "GRACE"] } } },
       _sum: { valueCents: true },
     })
+  })
+
+  it("MRR counts a yearly subscription as 1/12 of its value", async () => {
+    prismaMock.billingSubscription.groupBy.mockResolvedValue([
+      { cycle: "MONTHLY", _sum: { valueCents: 9800 } },
+      { cycle: "YEARLY", _sum: { valueCents: 49000 } },
+    ])
+    const data = await (await get()).json()
+    expect(data.mrrCents).toBe(9800 + 4083)
   })
 
   it("month revenue sums paid, non-revoked payments with paymentDate in the current month (São Paulo)", async () => {

@@ -11,7 +11,9 @@ import {
   billingStatusLabel,
   billingStatusVariant,
   billingTypeLabel,
+  cycleLabel,
   formatCents,
+  formatSubscriptionValue,
   formatCivilDate,
   paymentStatusLabel,
   subscriptionStatusLabel,
@@ -50,6 +52,7 @@ interface SiteDetail {
   billingSubscriptions: {
     status: string
     valueCents: number
+    cycle?: string | null
     billingType: string | null
     nextDueDate: string | null
     canceledAt: string | null
@@ -179,7 +182,8 @@ export default function AdminSiteDetailPage() {
               <>
                 <p>
                   <strong>Assinatura:</strong> {subscriptionStatusLabel(subscription.status)} ·{" "}
-                  {formatCents(subscription.valueCents)}/mês · {billingTypeLabel(subscription.billingType)}
+                  {cycleLabel(subscription.cycle)} · {formatSubscriptionValue(subscription.valueCents, subscription.cycle)} ·{" "}
+                  {billingTypeLabel(subscription.billingType)}
                 </p>
                 {subscription.status === "ACTIVE" && (
                   <p><strong>Próxima cobrança:</strong> {formatCivilDate(subscription.nextDueDate)}</p>

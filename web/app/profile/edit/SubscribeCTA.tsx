@@ -76,7 +76,7 @@ export default function SubscribeCTA() {
         </p>
       )}
       <p>
-        Publique por {formatBRL(PLAN.valueCents)}/mês. Cancele quando quiser.
+        Publique a partir de {formatBRL(PLAN.valueCents)}/mês, ou economize 2 meses no plano anual. Cancele quando quiser.
       </p>
       <PublishCheckout />
       <SharePreviewButton className="pt-1" />

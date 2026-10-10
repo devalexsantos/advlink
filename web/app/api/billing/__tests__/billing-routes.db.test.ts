@@ -88,9 +88,55 @@ describe.skipIf(!TEST_URL)("billing routes (Postgres)", () => {
       const r2 = await (await checkout(post({ method: "card_boleto" }))).json()
       expect(r1.url).toBe(r2.url)
       expect(asaas.calls.filter((c) => c.startsWith("createPaymentLink"))).toEqual([
-        `createPaymentLink:UNDEFINED:${profileId}`,
+        `createPaymentLink:UNDEFINED:MONTHLY:${profileId}`,
       ])
       expect((await profile()).billingStatus).toBe("PENDING")
+    })
+
+    it("400 for an unknown cycle", async () => {
+      expect((await checkout(post({ method: "card_boleto", cycle: "WEEKLY" }))).status).toBe(400)
+    })
+
+    it("reuses the link per cycle and closes the other cycle's open link when the lawyer switches", async () => {
+      const monthly = await (await checkout(post({ method: "card_boleto", cycle: "MONTHLY" }))).json()
+      const monthlyLink = await db.billingPaymentLink.findFirstOrThrow({ where: { url: monthly.url } })
+
+      const yearly = await (await checkout(post({ method: "card_boleto", cycle: "YEARLY" }))).json()
+      expect(yearly.url).not.toBe(monthly.url)
+      expect(asaas.calls.filter((c) => /PaymentLink/.test(c))).toEqual([
+        `createPaymentLink:UNDEFINED:MONTHLY:${profileId}`,
+        `disablePaymentLink:${monthlyLink.asaasId}`,
+        `createPaymentLink:UNDEFINED:YEARLY:${profileId}`,
+      ])
+      expect(asaas.links[monthlyLink.asaasId].active).toBe(false)
+      expect(await db.billingPaymentLink.findUniqueOrThrow({ where: { id: monthlyLink.id } })).toMatchObject({ status: "DISABLED", closedAt: expect.any(Date) })
+      expect(await db.billingPaymentLink.findMany({ where: { profileId, status: "ACTIVE" } })).toEqual([
+        expect.objectContaining({ cycle: "YEARLY", url: yearly.url }),
+      ])
+
+      // same cycle again: reused, nothing new in Asaas
+      const again = await (await checkout(post({ method: "card_boleto", cycle: "YEARLY" }))).json()
+      expect(again.url).toBe(yearly.url)
+      expect(asaas.calls.filter((c) => c.startsWith("createPaymentLink"))).toHaveLength(2)
+
+      // paying the yearly link publishes the site with 12 months covered
+      const { payment } = asaas.simulatePayment(lastLinkId(), { status: "CONFIRMED", dueDate: "2026-10-06" })
+      await paymentHook(payment.id)
+      const p = await profile()
+      expect(p).toMatchObject({ billingStatus: "ACTIVE", isActive: true })
+      expect(p.paidUntil?.toISOString().slice(0, 10)).toBe("2027-10-05")
+    })
+
+    it("502 and keeps the open link when Asaas fails to close the other cycle's link", async () => {
+      await checkout(post({ method: "card_boleto" }))
+      asaas.disablePaymentLink = async () => {
+        throw new Error("Asaas 500")
+      }
+      const res = await checkout(post({ method: "card_boleto", cycle: "YEARLY" }))
+      expect(res.status).toBe(502)
+      expect(await db.billingPaymentLink.findMany({ where: { profileId, status: "ACTIVE" } })).toEqual([
+        expect.objectContaining({ cycle: "MONTHLY" }),
+      ])
     })
 
     it("409 when the site is already published (no double charge — BIL-2)", async () => {

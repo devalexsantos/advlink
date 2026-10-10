@@ -7,6 +7,7 @@ import { trackEvent } from "@/lib/product-events"
 import type { AsaasApi, AsaasSubscription } from "./asaas-client"
 import { civilDateOf, civilToDbDate, dbDateToCivil, parseCivilDate, type CivilDate } from "./civil-date"
 import { computeEntitlement, isPaidStatus, REVOKED_STATUSES, type Entitlement } from "./entitlement"
+import { normalizeCycle } from "./plan"
 import { decideBillingStatus, isPublishedStatus, transitionEffects, type BillingNotice } from "./status"
 
 export interface BillingNotification {
@@ -45,6 +46,7 @@ async function upsertSubscription(deps: BillingDeps, s: AsaasSubscription, profi
     profileId,
     asaasCustomerId: s.customer,
     billingType: s.billingType ?? null,
+    cycle: normalizeCycle(s.cycle),
     valueCents: cents(s.value) ?? 0,
     status: s.deleted ? "DELETED" : s.status,
     nextDueDate: s.nextDueDate ?? null,
@@ -64,10 +66,13 @@ export async function syncPayment(deps: BillingDeps, paymentId: string): Promise
   if (!profileId) return null
   const revoked = !!p.deleted || REVOKED_STATUSES.has(p.status)
   const env = deps.asaas.environment
+  // The subscription says how long the charge covers (a yearly charge keeps the site up 12 months)
+  const s = p.subscription ? await deps.asaas.getSubscription(p.subscription) : null
   const data = {
     profileId,
     subscriptionAsaasId: p.subscription ?? null,
     billingType: p.billingType,
+    cycle: normalizeCycle(s?.cycle),
     valueCents: cents(p.value) ?? 0,
     netValueCents: cents(p.netValue),
     status: p.status,
@@ -82,8 +87,7 @@ export async function syncPayment(deps: BillingDeps, paymentId: string): Promise
     create: { environment: env, asaasId: p.id, ...data },
     update: data,
   })
-  if (p.subscription) {
-    const s = await deps.asaas.getSubscription(p.subscription)
+  if (s) {
     // A refund/chargeback does not end the subscription in Asaas; without this the card is charged again next month
     if (revoked && s.status === "ACTIVE" && !s.deleted) {
       await deps.asaas.deleteSubscription(s.id)
@@ -137,7 +141,7 @@ export async function recomputeProfile(deps: BillingDeps, profileId: string, att
   }
 
   const entitlement = computeEntitlement(
-    payments.map((p) => ({ status: p.status, dueDate: parseCivilDate(p.dueDate), revoked: p.revoked })),
+    payments.map((p) => ({ status: p.status, dueDate: parseCivilDate(p.dueDate), revoked: p.revoked, cycle: p.cycle })),
     today
   )
   let openSubs = subscriptions.filter((s) => s.status === "ACTIVE")
@@ -154,7 +158,7 @@ export async function recomputeProfile(deps: BillingDeps, profileId: string, att
     // Paid: close the checkout links (a link accepts payments until disabled — BIL-2)
     for (const link of activeLinks) {
       try {
-        await deps.asaas.disablePaymentLink(link.asaasId)
+        await deps.asaas.disablePaymentLink(link.asaasId, normalizeCycle(link.cycle))
       } catch (err) {
         deps.log?.error("[billing] falha ao desativar link", { profileId, link: link.asaasId, err: String(err) })
         continue
