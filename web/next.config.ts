@@ -8,10 +8,9 @@ const securityHeaders = [
 ]
 
 // Logged-in / internal areas must never be framed (clickjacking on billing, admin actions).
-const noFramingHeaders = [
-  { key: "X-Frame-Options", value: "DENY" },
-  { key: "Content-Security-Policy", value: "frame-ancestors 'none'; base-uri 'self'; object-src 'none'" },
-]
+// Their Content-Security-Policy (nonce-based script-src + frame-ancestors 'none') is set per
+// request in proxy.ts (lib/csp.ts); don't add a static CSP here or the browser enforces both.
+const noFramingHeaders = [{ key: "X-Frame-Options", value: "DENY" }]
 
 const nextConfig: NextConfig = {
   output: "standalone",

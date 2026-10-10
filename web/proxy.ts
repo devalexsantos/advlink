@@ -5,6 +5,7 @@ import { jwtVerify } from "jose"
 import { RESERVED_SLUGS } from "@/lib/reserved-slugs"
 import { getAdminJwtSecret } from "@/lib/admin-secret"
 import { ATTRIBUTION_COOKIE, ATTRIBUTION_MAX_AGE, attributionFromRequest } from "@/lib/attribution"
+import { buildCsp, generateNonce, isCspProtectedPath } from "@/lib/csp"
 
 
 // Subdomain rewrite to /adv/[slug] for *.advlink.site
@@ -32,7 +33,7 @@ export async function proxy(req: NextRequest) {
   if (pathname.startsWith("/admin")) {
     // Allow login page
     if (pathname === "/admin/login") {
-      return NextResponse.next()
+      return nextPage(req)
     }
 
     const token = req.cookies.get("admin-token")?.value
@@ -42,7 +43,7 @@ export async function proxy(req: NextRequest) {
 
     try {
       await jwtVerify(token, getAdminJwtSecret())
-      return NextResponse.next()
+      return nextPage(req)
     } catch {
       return NextResponse.redirect(new URL("/admin/login", nextUrl.origin))
     }
@@ -86,10 +87,27 @@ export async function proxy(req: NextRequest) {
       signInUrl.searchParams.set("callbackUrl", nextUrl.href)
       return withAttribution(req, NextResponse.redirect(signInUrl))
     }
-    return withAttribution(req, NextResponse.next())
+    return withAttribution(req, nextPage(req))
   }
 
-  return withAttribution(req, NextResponse.next())
+  return withAttribution(req, nextPage(req))
+}
+
+// Continues to the page. Private areas get a per-request nonce: Next reads it from the request's
+// Content-Security-Policy header and stamps it on its own scripts; the root layout reads `x-nonce`
+// for our inline scripts. See lib/csp.ts for the scope (public profiles are excluded).
+function nextPage(req: NextRequest) {
+  if (!isCspProtectedPath(req.nextUrl.pathname)) return NextResponse.next()
+
+  const nonce = generateNonce()
+  const csp = buildCsp(nonce)
+  const requestHeaders = new Headers(req.headers)
+  requestHeaders.set("x-nonce", nonce)
+  requestHeaders.set("Content-Security-Policy", csp)
+
+  const res = NextResponse.next({ request: { headers: requestHeaders } })
+  res.headers.set("Content-Security-Policy", csp)
+  return res
 }
 
 // First-touch attribution for app pages (login, onboarding, dashboard): kept for 90 days and
