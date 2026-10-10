@@ -186,7 +186,7 @@
         if (cls) url.searchParams.set('utm_content', cls);
       }
       link.href = url.toString();
-      // Conversion signal for GA4 (already loaded on this page): a click on any "go to app" CTA
+      // Conversion signal for GA4 (only present after consent): a click on any "go to app" CTA
       link.addEventListener('click', () => {
         if (typeof window.gtag === 'function') {
           window.gtag('event', 'generate_lead', { cta: url.searchParams.get('utm_content') || 'app_link' });
@@ -198,9 +198,9 @@
     });
   })();
 
-  // ========== Cookie Consent + Meta Pixel ==========
+  // ========== Cookie Consent + Meta Pixel + GA4 ==========
   // cookie_consent: "1" = accepted (marketing cookies allowed), "0" = rejected.
-  // The AdvLink Meta Pixel only loads after explicit consent.
+  // The AdvLink Meta Pixel and Google Analytics 4 only load after explicit consent.
   const FB_PIXEL_ID = '1003801661770634';
 
   function loadMetaPixel() {
@@ -214,6 +214,22 @@
     /* eslint-enable */
     window.fbq('init', FB_PIXEL_ID);
     window.fbq('track', 'PageView');
+  }
+
+  const GA_ID = 'G-JFJJ7NVH2F';
+
+  function loadGoogleAnalytics() {
+    if (window.__gaLoaded) return;
+    window.__gaLoaded = true;
+    window.dataLayer = window.dataLayer || [];
+    // gtag is only defined after consent; callers guard with typeof window.gtag.
+    window.gtag = function () { window.dataLayer.push(arguments); };
+    window.gtag('js', new Date());
+    window.gtag('config', GA_ID);
+    const s = document.createElement('script');
+    s.async = true;
+    s.src = 'https://www.googletagmanager.com/gtag/js?id=' + GA_ID;
+    document.head.appendChild(s);
   }
 
   function getConsent() {
@@ -237,7 +253,7 @@
   const rejectBtn = document.getElementById('cookieReject');
   const consent = getConsent();
 
-  if (consent === '1') loadMetaPixel();
+  if (consent === '1') { loadMetaPixel(); loadGoogleAnalytics(); }
   if (banner && consent !== '1' && consent !== '0') {
     banner.classList.add('cookie-banner--visible');
   }
@@ -246,6 +262,7 @@
       setConsent('1');
       banner.classList.remove('cookie-banner--visible');
       loadMetaPixel();
+      loadGoogleAnalytics();
     });
   }
   if (rejectBtn) {
