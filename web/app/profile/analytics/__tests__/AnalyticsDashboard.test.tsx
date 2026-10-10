@@ -72,6 +72,7 @@ const FULL_DATA = {
   ],
   hourly: [{ hour: 14, count: 200 }],
   daily: [{ day: "2024-01-15", count: 150 }],
+  contactClicks: { total: 37, byKind: { whatsapp: 25, phone: 6, email: 4, link: 2 } },
   period: 30,
 }
 
@@ -307,6 +308,45 @@ describe("AnalyticsDashboard", () => {
       await waitFor(() => {
         const barChart = screen.getByTestId("bar-chart")
         expect(barChart.getAttribute("data-has-data")).toBe("24")
+      })
+    })
+  })
+
+  describe("contact clicks", () => {
+    it("shows the 'Contatos gerados pelo site' KPI with the total", async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => FULL_DATA })
+      render(<AnalyticsDashboard />, { wrapper: makeWrapper() })
+      expect(screen.getByText("Contatos gerados pelo site")).toBeInTheDocument()
+      await waitFor(() => expect(screen.getByTestId("contact-total")).toHaveTextContent("37"))
+    })
+
+    it("lists each channel with its count", async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => FULL_DATA })
+      render(<AnalyticsDashboard />, { wrapper: makeWrapper() })
+      expect(screen.getByText("Contatos por canal")).toBeInTheDocument()
+      await waitFor(() => {
+        expect(screen.getByTestId("contact-channel-whatsapp")).toHaveTextContent(/WhatsApp\s*25/)
+        expect(screen.getByTestId("contact-channel-phone")).toHaveTextContent(/Telefone\s*6/)
+        expect(screen.getByTestId("contact-channel-email")).toHaveTextContent(/E-mail\s*4/)
+        expect(screen.getByTestId("contact-channel-link")).toHaveTextContent(/Links\s*2/)
+      })
+    })
+
+    it("shows the note about what is counted", async () => {
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => FULL_DATA })
+      render(<AnalyticsDashboard />, { wrapper: makeWrapper() })
+      expect(
+        screen.getByText(/O agendamento pelo Calendly ainda não é contabilizado/)
+      ).toBeInTheDocument()
+    })
+
+    it("falls back to zeros when the response has no contactClicks", async () => {
+      const legacy = { ...FULL_DATA, contactClicks: undefined }
+      mockFetch.mockResolvedValueOnce({ ok: true, json: async () => legacy })
+      render(<AnalyticsDashboard />, { wrapper: makeWrapper() })
+      await waitFor(() => {
+        expect(screen.getByTestId("contact-total")).toHaveTextContent("0")
+        expect(screen.getByTestId("contact-channel-whatsapp")).toHaveTextContent(/WhatsApp\s*0/)
       })
     })
   })
