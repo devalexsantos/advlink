@@ -183,6 +183,7 @@ describe("AccountPage", () => {
       expect(screen.getByText("Pago até:")).toBeInTheDocument()
       expect(screen.getByText(/05\/11\/2026/)).toBeInTheDocument()
       expect(screen.getByTestId("cancel-btn")).toBeInTheDocument()
+      expect(screen.getByText(/Desistiu em até 7 dias do primeiro pagamento\? Reembolso integral/)).toBeInTheDocument()
       expect(screen.queryByTestId("publish-checkout")).not.toBeInTheDocument()
       expect(screen.queryByText(/assinatura cancelada/i)).not.toBeInTheDocument()
     })

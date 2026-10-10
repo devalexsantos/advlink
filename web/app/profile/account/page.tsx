@@ -3,7 +3,7 @@ import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { getActiveSiteId } from "@/lib/active-site"
 import { getProfileHost } from "@/lib/site-url"
-import { formatBRL } from "@/lib/billing/plan"
+import { formatBRL, REFUND_WINDOW_DAYS } from "@/lib/billing/plan"
 import { dbDateToCivil } from "@/lib/billing/civil-date"
 import { isPaidStatus } from "@/lib/billing/entitlement"
 import PublishCheckout from "@/components/billing/PublishCheckout"
@@ -112,7 +112,12 @@ export default async function AccountPage() {
         </div>
         <div className="mt-4">
           {published && openSub ? (
-            <CancelSubscriptionButton />
+            <div className="space-y-2">
+              <CancelSubscriptionButton />
+              <p className="text-xs text-muted-foreground">
+                Desistiu em até {REFUND_WINDOW_DAYS} dias do primeiro pagamento? Reembolso integral, pelo suporte.
+              </p>
+            </div>
           ) : !published && !legacyPublished && !profile?.suspendedByAdmin && profile ? (
             <PublishCheckout />
           ) : null}
