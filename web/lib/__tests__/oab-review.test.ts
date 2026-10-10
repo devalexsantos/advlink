@@ -10,6 +10,8 @@ describe("reviewText", () => {
     ["Garantimos o resultado", "promessa-de-resultado"],
     ["Causa ganha para você", "promessa-de-resultado"],
     ["Sucesso garantido", "promessa-de-resultado"],
+    ["Resultado garantido na sua ação", "promessa-de-resultado"],
+    ["Garantia de êxito", "promessa-de-resultado"],
     ["Atuação com 100% de êxito", "promessa-de-resultado"],
     ["Primeira consulta gratuita", "honorarios-gratuidade"],
     ["Parcelamos seus honorários", "honorarios-gratuidade"],
@@ -31,6 +33,12 @@ describe("reviewText", () => {
 
   it("não dispara em texto informativo limpo", () => {
     expect(reviewText("Atuação em Direito Civil, de Família e Sucessões, com atendimento em São Paulo.")).toEqual([])
+  })
+
+  it("não dispara em linguagem jurídica com 'garantia'", () => {
+    expect(
+      reviewText("As garantias fundamentais e a garantia de emprego são direitos garantidos por lei."),
+    ).toEqual([])
   })
 
   it("não dispara em 'melhorar' nem 'especialidade'", () => {

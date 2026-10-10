@@ -9,7 +9,7 @@ const CONTENT_RULES = `Regras de conteúdo (obrigatórias):
 - Escreva em 3ª pessoa ou de forma impessoal. Não use 1ª pessoa comercial (por exemplo "posso te ajudar", "ofereço", "nosso escritório resolve").
 - Não inclua chamada à ação de contato ou contratação, nem convite para o leitor procurar o advogado.
 - Não prometa nem sugira resultados.
-- É proibido usar as palavras ou expressões: "especialista", "o melhor", "líder", "garantia", "garantimos", "resultado", "sucesso", "gratuito", "grátis", "desconto", "entre em contato".
+- É proibido usar as palavras ou expressões: "especialista", "o melhor", "líder", "garantia de resultado", "garantimos", "resultado garantido", "sucesso", "gratuito", "grátis", "desconto", "entre em contato".
 - Não mencione valores, preços ou honorários.
 - Tamanho: entre 400 e 900 caracteres.
 Regras de formatação:

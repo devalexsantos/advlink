@@ -17,7 +17,7 @@ const RULES: Rule[] = [
     rule: "promessa-de-resultado",
     message: "Não prometa resultados (art. 6º).",
     pattern:
-      /\bresultado garantido\b|\bsucesso garantido\b|\bcausa ganha\b|\bgarantias?\b|\bgarantimos\b|\bgarantidos?\b|\b100\s?%/g,
+      /\b(?:resultados?|sucesso|exito|vitoria|ganho de causa) garantid[oa]s?\b|\bgarantia (?:de|do) (?:resultado|sucesso|exito|vitoria)\b|\bcausa ganha\b|\bgarantimos\b|\b100\s?%/g,
   },
   {
     rule: "honorarios-gratuidade",
