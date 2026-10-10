@@ -13,9 +13,9 @@ import {
 } from "@/lib/section-order"
 
 describe("DEFAULT_SECTION_ORDER", () => {
-  it("has 8 items in correct order", () => {
+  it("has 10 items in correct order", () => {
     expect(DEFAULT_SECTION_ORDER).toEqual([
-      "servicos", "faq", "sobre", "galeria", "links", "equipe", "calendly", "endereco",
+      "servicos", "faq", "sobre", "artigos", "galeria", "links", "equipe", "calendly", "contato", "endereco",
     ])
   })
 })
@@ -81,16 +81,16 @@ describe("getSectionOrder()", () => {
     expect(result).toContain("endereco")
   })
 
-  it("inserts a missing built-in key right after its predecessor (faq after servicos)", () => {
+  it("inserts keys added later after their anchor (faq/servicos, artigos/sobre, contato/calendly)", () => {
     const saved = ["sobre", "servicos", "galeria", "links", "equipe", "calendly", "endereco", "custom_1"]
     expect(getSectionOrder(saved)).toEqual([
-      "sobre", "servicos", "faq", "galeria", "links", "equipe", "calendly", "endereco", "custom_1",
+      "sobre", "artigos", "servicos", "faq", "galeria", "links", "equipe", "calendly", "contato", "endereco", "custom_1",
     ])
   })
 
-  it("appends faq when servicos is missing too", () => {
+  it("appends missing anchors and places the later keys after them", () => {
     expect(getSectionOrder(["endereco"])).toEqual([
-      "endereco", "servicos", "faq", "sobre", "galeria", "links", "equipe", "calendly",
+      "endereco", "servicos", "faq", "sobre", "artigos", "galeria", "links", "equipe", "calendly", "contato",
     ])
   })
 

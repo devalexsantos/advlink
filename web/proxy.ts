@@ -84,7 +84,8 @@ export async function proxy(req: NextRequest) {
     const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET })
     if (!token && !isLoginRoute) {
       const signInUrl = new URL("/login", nextUrl.origin)
-      signInUrl.searchParams.set("callbackUrl", nextUrl.href)
+      // Relative path: behind the reverse proxy nextUrl.origin is the container's (0.0.0.0:80)
+      signInUrl.searchParams.set("callbackUrl", `${pathname}${nextUrl.search}`)
       return withAttribution(req, NextResponse.redirect(signInUrl))
     }
     return withAttribution(req, nextPage(req))

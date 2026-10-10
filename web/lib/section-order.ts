@@ -2,10 +2,12 @@ export const DEFAULT_SECTION_ORDER = [
   "servicos",
   "faq",
   "sobre",
+  "artigos",
   "galeria",
   "links",
   "equipe",
   "calendly",
+  "contato",
   "endereco",
 ] as const
 
@@ -27,6 +29,8 @@ export function isValidSectionKey(key: string): key is SectionKey {
 export const DEFAULT_SECTION_LABELS: Record<BuiltInSectionKey, string> = {
   servicos: "Serviços",
   faq: "Perguntas frequentes",
+  artigos: "Artigos",
+  contato: "Fale com o escritório",
   sobre: "Sobre",
   galeria: "Galeria",
   links: "Links",
@@ -38,6 +42,8 @@ export const DEFAULT_SECTION_LABELS: Record<BuiltInSectionKey, string> = {
 export const DEFAULT_SECTION_ICONS: Record<BuiltInSectionKey, string> = {
   servicos: "Scale",
   faq: "MessageSquare",
+  artigos: "Newspaper",
+  contato: "MessageCircle",
   sobre: "HeartHandshake",
   galeria: "Images",
   links: "Link2",
@@ -49,7 +55,11 @@ export const DEFAULT_SECTION_ICONS: Record<BuiltInSectionKey, string> = {
 export type SectionLabels = Partial<Record<string, string>>
 
 /** Built-in keys introduced after launch: on older saved orders they go right after this key. */
-const INSERT_AFTER: Partial<Record<BuiltInSectionKey, BuiltInSectionKey>> = { faq: "servicos" }
+const INSERT_AFTER: Partial<Record<BuiltInSectionKey, BuiltInSectionKey>> = {
+  faq: "servicos",
+  artigos: "sobre",
+  contato: "calendly",
+}
 
 export function getSectionOrder(
   saved: string[] | null | undefined,

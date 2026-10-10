@@ -212,6 +212,14 @@ describe("proxy", () => {
       expect(res.cookies.get("advlink_attribution")).toBeUndefined()
     })
 
+    it("sends anonymous visitors to login with a relative callbackUrl (not the container origin)", async () => {
+      getTokenMock.mockResolvedValue(null)
+      const res = await proxy(makeReq("http://0.0.0.0:80/profile/analytics?range=30", { headers: { host: "app.advlink.site" } }))
+      const location = new URL(res.headers.get("location")!)
+      expect(location.pathname).toBe("/login")
+      expect(location.searchParams.get("callbackUrl")).toBe("/profile/analytics?range=30")
+    })
+
     it("keeps the attribution when an anonymous visitor is redirected to login", async () => {
       getTokenMock.mockResolvedValue(null)
       const res = await proxy(makeReq("https://app.advlink.site/profile/edit?utm_source=email"))
