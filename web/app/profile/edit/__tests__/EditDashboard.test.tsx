@@ -16,6 +16,9 @@ vi.mock("@/components/billing/OverdueAlert", () => ({
 vi.mock("../PublishedCTA", () => ({
   default: ({ slug }: { slug?: string }) => <div data-testid="published-cta">Seu site está publicado! Link: {slug}</div>,
 }))
+vi.mock("../SiteChecklist", () => ({
+  default: () => <div data-testid="site-checklist">Checklist</div>,
+}))
 vi.mock("../SectionRenderer", () => ({
   default: () => <div data-testid="section-renderer">Section</div>,
 }))
@@ -57,6 +60,11 @@ describe("EditDashboard", () => {
     await userEvent.click(retry)
     expect(editFormState.refetchProfile).toHaveBeenCalled()
     expect(screen.getByText("Salvar").closest("button")).toBeDisabled()
+  })
+
+  it("renders the completeness checklist below the CTAs", () => {
+    render(<EditDashboard isActive={false} />)
+    expect(screen.getByTestId("site-checklist")).toBeInTheDocument()
   })
 
   it("shows SubscribeCTA when user is NOT active", () => {

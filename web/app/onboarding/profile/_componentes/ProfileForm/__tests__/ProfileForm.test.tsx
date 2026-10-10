@@ -30,12 +30,14 @@ const finish = () => userEvent.click(screen.getByRole("button", { name: /salvar 
 
 async function fillStep1() {
   await userEvent.type(screen.getByLabelText(/nome de exibição/i), "João Silva")
+  await userEvent.type(screen.getByLabelText(/número da oab/i), "123.456-a")
+  await userEvent.selectOptions(screen.getByLabelText(/^uf/i), "SP")
   await next()
   await screen.findByRole("heading", { name: "Áreas de atuação" })
 }
 
 async function fillStep2() {
-  await userEvent.click(screen.getByRole("button", { name: "Civil" }))
+  await userEvent.click(screen.getByRole("button", { name: "Direito Civil" }))
   await next()
   await screen.findByRole("heading", { name: "Informações para contato" })
 }
@@ -65,6 +67,19 @@ describe("ProfileForm", () => {
       render(<ProfileForm />)
       await next()
       expect(await screen.findByText("Informe pelo menos 2 caracteres.")).toBeInTheDocument()
+      expect(screen.getByRole("heading", { name: "Sobre você ou seu escritório" })).toBeInTheDocument()
+    })
+
+    it("blocks step 1 when the OAB number or UF is missing or invalid", async () => {
+      render(<ProfileForm />)
+      await userEvent.type(screen.getByLabelText(/nome de exibição/i), "João Silva")
+      await next()
+      expect(await screen.findByText("Informe o número da sua OAB.")).toBeInTheDocument()
+      expect(screen.getByText("Selecione a UF da sua OAB.")).toBeInTheDocument()
+      await userEvent.type(screen.getByLabelText(/número da oab/i), "12ab")
+      await userEvent.selectOptions(screen.getByLabelText(/^uf/i), "SP")
+      await next()
+      expect(await screen.findByText(/número da oab inválido/i)).toBeInTheDocument()
       expect(screen.getByRole("heading", { name: "Sobre você ou seu escritório" })).toBeInTheDocument()
     })
 
@@ -125,7 +140,9 @@ describe("ProfileForm", () => {
       expect(init.method).toBe("POST")
       const body = init.body as FormData
       expect(body.get("displayName")).toBe("João Silva")
-      expect(body.get("areas")).toBe(JSON.stringify(["Civil"]))
+      expect(body.get("oabNumber")).toBe("123456A")
+      expect(body.get("oabState")).toBe("SP")
+      expect(body.get("areas")).toBe(JSON.stringify(["Direito Civil"]))
       expect(body.get("calendlyUrl")).toBe("https://calendly.com/joao")
       expect(mockShowToast).not.toHaveBeenCalled()
     })
@@ -144,6 +161,22 @@ describe("ProfileForm", () => {
       await finish()
       await waitFor(() => expect(fbq).toHaveBeenCalledWith("track", "CompleteRegistration"))
       delete window.fbq
+    })
+  })
+
+  describe("practice type", () => {
+    it("sends practiceType and adapts the about label", async () => {
+      mockFetch.mockResolvedValue(jsonResponse(true, 200))
+      render(<ProfileForm />)
+      await userEvent.click(screen.getByLabelText("Escritório"))
+      await fillStep1()
+      await fillStep2()
+      expect(screen.getByLabelText("Sobre o escritório")).toBeInTheDocument()
+      await next()
+      await next()
+      await finish()
+      await waitFor(() => expect(mockReplace).toHaveBeenCalled())
+      expect((mockFetch.mock.calls[0][1].body as FormData).get("practiceType")).toBe("escritorio")
     })
   })
 

@@ -857,3 +857,71 @@ describe("PATCH /api/profile", () => {
     expect(upsertCall.update.public).toBe(true)
   })
 })
+
+describe("PATCH /api/profile — OAB and practice type", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
+    prismaMock.profile.findFirst.mockResolvedValue(null)
+    prismaMock.profile.update.mockResolvedValue({ id: "profile-1" })
+    prismaMock.address.upsert.mockResolvedValue({})
+    prismaMock.address.findUnique.mockResolvedValue(null)
+  })
+
+  const jsonPatch = (body: Record<string, unknown>) =>
+    PATCH(
+      new Request("http://localhost/api/profile", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ publicName: "X", ...body }),
+      }),
+    )
+  const formPatch = (fields: Record<string, string>) => {
+    const form = new FormData()
+    form.append("publicName", "X")
+    for (const [k, v] of Object.entries(fields)) form.append(k, v)
+    return PATCH(new Request("http://localhost/api/profile", { method: "PATCH", body: form }))
+  }
+  const lastData = () => prismaMock.profile.update.mock.calls.at(-1)![0].data
+
+  it("normalizes and saves OAB and practiceType via JSON, scoped to the active site", async () => {
+    const res = await jsonPatch({ oabNumber: "123.456-a", oabState: "sp", practiceType: "autonomo" })
+    expect(res.status).toBe(200)
+    expect(prismaMock.profile.update.mock.calls.at(-1)![0].where).toEqual({ id: "profile-1" })
+    expect(lastData()).toMatchObject({ oabNumber: "123456A", oabState: "SP", practiceType: "autonomo" })
+  })
+
+  it("leaves the fields untouched when the keys are absent (JSON and multipart)", async () => {
+    await jsonPatch({})
+    expect(lastData().oabNumber).toBeUndefined()
+    expect(lastData().oabState).toBeUndefined()
+    expect(lastData().practiceType).toBeUndefined()
+    await formPatch({})
+    expect(lastData().oabNumber).toBeUndefined()
+    expect(lastData().oabState).toBeUndefined()
+    expect(lastData().practiceType).toBeUndefined()
+  })
+
+  it("clears with empty strings", async () => {
+    await formPatch({ oabNumber: "", oabState: "", practiceType: "" })
+    expect(lastData()).toMatchObject({ oabNumber: null, oabState: null, practiceType: null })
+  })
+
+  it("saves via multipart when keys are present", async () => {
+    const res = await formPatch({ oabNumber: "9876", oabState: "MG", practiceType: "escritorio" })
+    expect(res.status).toBe(200)
+    expect(lastData()).toMatchObject({ oabNumber: "9876", oabState: "MG", practiceType: "escritorio" })
+  })
+
+  it.each([
+    [{ oabNumber: "1234567" }],
+    [{ oabNumber: "abc" }],
+    [{ oabState: "XX" }],
+    [{ practiceType: "empresa" }],
+  ])("returns 400 for %j", async (body) => {
+    const res = await jsonPatch(body)
+    expect(res.status).toBe(400)
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
+  })
+})

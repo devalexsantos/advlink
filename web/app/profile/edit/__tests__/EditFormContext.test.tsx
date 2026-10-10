@@ -76,6 +76,9 @@ const fakeProfileResponse = {
   profile: {
     publicName: "Dr. João Silva",
     headline: "Advogado Civilista",
+    oabNumber: "123456A",
+    oabState: "SP",
+    practiceType: "escritorio",
     aboutDescription: "Descrição sobre o Dr. João.",
     publicEmail: "joao@silva.adv.br",
     publicPhone: "11999990000",
@@ -243,6 +246,9 @@ describe("EditFormContext", () => {
       await waitFor(() => expect(result.current.isLoading).toBe(false))
       expect(result.current.form.getValues("publicName")).toBe("Dr. João Silva")
       expect(result.current.form.getValues("headline")).toBe("Advogado Civilista")
+      expect(result.current.form.getValues("oabNumber")).toBe("123456A")
+      expect(result.current.form.getValues("oabState")).toBe("SP")
+      expect(result.current.form.getValues("practiceType")).toBe("escritorio")
       expect(result.current.form.getValues("publicEmail")).toBe("joao@silva.adv.br")
       expect(result.current.form.getValues("publicPhone")).toBe("11999990000")
     })
@@ -1192,6 +1198,10 @@ describe("EditFormContext", () => {
       await waitForDom(() => expect(apiModule.updateProfile).toHaveBeenCalled())
       const callArg = vi.mocked(apiModule.updateProfile).mock.calls[0][0]
       expect(callArg).toBeInstanceOf(FormData)
+      // OAB fields are always sent (an absent key would keep the stored value)
+      expect((callArg as FormData).get("oabNumber")).toBe("123456A")
+      expect((callArg as FormData).get("oabState")).toBe("SP")
+      expect((callArg as FormData).get("practiceType")).toBe("escritorio")
     })
 
     it("calls showToast with 'Salvo com sucesso!' after form submit", async () => {

@@ -13,6 +13,7 @@ import { getRequestAttribution } from "@/lib/attribution-server"
 import { getActiveSiteId } from "@/lib/active-site"
 import { MAX_AREA_TITLE_LENGTH, MAX_ONBOARDING_AREAS } from "@/lib/activity-area-limits"
 import { rateLimitResponse, rateLimiters } from "@/lib/rate-limit"
+import { isValidPracticeType, normalizeOabNumber, normalizeUf } from "@/lib/oab"
 
 const OPENAI_TIMEOUT_MS = 25_000
 
@@ -56,6 +57,9 @@ export async function POST(req: Request) {
     let instagramUrl: string | undefined
     let calendlyUrl: string | undefined
     let avatarFile: File | undefined
+    let oabNumberRaw: unknown
+    let oabStateRaw: unknown
+    let practiceTypeRaw: unknown
 
     if (contentType.includes("application/json")) {
       const body = await req.json()
@@ -69,6 +73,9 @@ export async function POST(req: Request) {
       whatsapp = body.whatsapp
       instagramUrl = body.instagramUrl
       calendlyUrl = body.calendlyUrl
+      oabNumberRaw = body.oabNumber
+      oabStateRaw = body.oabState
+      practiceTypeRaw = body.practiceType
     } else if (contentType.includes("multipart/form-data")) {
       const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES)
       if (tooLarge) return tooLarge
@@ -83,6 +90,9 @@ export async function POST(req: Request) {
       whatsapp = String(form.get("whatsapp") ?? "") || undefined
       instagramUrl = String(form.get("instagramUrl") ?? "") || undefined
       calendlyUrl = String(form.get("calendlyUrl") ?? "") || undefined
+      oabNumberRaw = form.get("oabNumber") ?? undefined
+      oabStateRaw = form.get("oabState") ?? undefined
+      practiceTypeRaw = String(form.get("practiceType") ?? "") || undefined
       const f = form.get("photo")
       if (f && f instanceof File) avatarFile = f
     }
@@ -90,6 +100,22 @@ export async function POST(req: Request) {
     if (calendlyUrl && !/^https:\/\/calendly\.com\//i.test(calendlyUrl)) {
       return NextResponse.json({ error: "Link do Calendly inválido. Use https://calendly.com/..." }, { status: 400 })
     }
+
+    const oabNumber = normalizeOabNumber(oabNumberRaw)
+    if (!oabNumber) {
+      return NextResponse.json(
+        { error: "Informe um número de OAB válido (até 6 dígitos, com letra opcional, ex.: 123456 ou 123456A)." },
+        { status: 400 },
+      )
+    }
+    const oabState = normalizeUf(oabStateRaw)
+    if (!oabState) {
+      return NextResponse.json({ error: "Selecione a UF (estado) da sua inscrição na OAB." }, { status: 400 })
+    }
+    if (practiceTypeRaw !== undefined && practiceTypeRaw !== null && practiceTypeRaw !== "" && !isValidPracticeType(practiceTypeRaw)) {
+      return NextResponse.json({ error: "Tipo de atuação inválido. Use \"autonomo\" ou \"escritorio\"." }, { status: 400 })
+    }
+    const practiceType = isValidPracticeType(practiceTypeRaw) ? practiceTypeRaw : null
 
     // Areas feed the OpenAI prompt: cap count and title length (cost control).
     if (!Array.isArray(areas) || areas.some((a) => typeof a !== "string")) {
@@ -182,6 +208,9 @@ export async function POST(req: Request) {
         instagramUrl: instagramUrl ?? null,
         calendlyUrl: calendlyUrl ?? null,
         avatarUrl: avatarUrl ?? undefined,
+        oabNumber,
+        oabState,
+        practiceType,
         slug,
         metaTitle: displayName,
         metaDescription: about ?? null,
@@ -209,7 +238,8 @@ export async function POST(req: Request) {
 
     // Track product event
     const attribution = await getRequestAttribution()
-    trackEvent("site_created", { userId, meta: { slug, profileId, ...(attribution ? { attribution } : {}) } }).catch(() => {})
+    trackEvent("site_created", { userId, siteId: profileId, meta: { slug, profileId, ...(attribution ? { attribution } : {}) } }).catch(() => {})
+    trackEvent("onboarding_completed", { userId, siteId: profileId }).catch(() => {})
 
     return NextResponse.json({ ok: true })
   } catch (err: unknown) {

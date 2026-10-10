@@ -8,11 +8,13 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { OabWarnings } from "@/components/oab-warnings"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ArrowLeft, ArrowRight, Camera, Upload, X, ImagePlus } from "lucide-react"
 import dynamic from "next/dynamic"
 import { useToast } from "@/components/toast/ToastProvider"
+import { UF_LIST, normalizeOabNumber, isValidUf } from "@/lib/oab"
 
 // Lazy load cropper for client only
 const Cropper = dynamic(() => import("react-easy-crop"), { ssr: false })
@@ -31,6 +33,18 @@ const profileSchema = z.object({
     .max(120, { message: "Máximo de 120 caracteres." })
     .optional()
     .or(z.literal("").transform(() => undefined)),
+  oabNumber: z
+    .string()
+    .min(1, { message: "Informe o número da sua OAB." })
+    .refine((v) => normalizeOabNumber(v) !== null, {
+      message: "Número da OAB inválido. Use até 6 dígitos, com letra opcional (ex.: 123456 ou 123456A).",
+    }),
+  oabState: z
+    .string()
+    .min(1, { message: "Selecione a UF da sua OAB." })
+    .refine((v) => isValidUf(v), { message: "UF da OAB inválida." }),
+  // Unchecked radios come through react-hook-form as null — treat as "not answered".
+  practiceType: z.enum(["autonomo", "escritorio"]).nullish(),
   areas: z
     .array(z.string().min(1).max(120, { message: "Máximo de 120 caracteres por área." }))
     .min(1, { message: "Adicione pelo menos uma área de atuação." })
@@ -75,6 +89,9 @@ const FIELD_STEP: Partial<Record<keyof ProfileFormValues, number>> = {
   headline: 1,
   cellphone: 1,
   displayName: 1,
+  oabNumber: 1,
+  oabState: 1,
+  practiceType: 1,
   areas: 2,
   about: 3,
   email: 3,
@@ -84,16 +101,25 @@ const FIELD_STEP: Partial<Record<keyof ProfileFormValues, number>> = {
 }
 
 const defaultAreaSuggestions = [
-  "Civil",
-  "Penal",
-  "Trabalhista",
-  "Tributário",
-  "Família",
-  "Médico",
-  "Consumidor",
-  "Imobiliário",
-  "Empresarial",
-  "Previdenciário",
+  "Direito de Família e Sucessões",
+  "Direito Previdenciário (INSS)",
+  "Direito do Trabalho",
+  "Direito do Consumidor",
+  "Direito Criminal",
+  "Direito Civil",
+  "Direito Imobiliário e Condominial",
+  "Direito Empresarial e Societário",
+  "Direito Tributário",
+  "Direito Bancário",
+  "Direito Médico e da Saúde",
+  "Direito Digital e LGPD",
+  "Servidor Público",
+  "Direito Militar",
+  "Direito do Agronegócio",
+  "Direito Ambiental",
+  "Direito Eleitoral",
+  "Recuperação Judicial e Falências",
+  "Direito Internacional e Imigração",
 ]
 
 export function ProfileForm() {
@@ -122,6 +148,9 @@ export function ProfileForm() {
     defaultValues: {
       photo: undefined,
       displayName: "",
+      oabNumber: "",
+      oabState: "",
+      practiceType: undefined,
       headline: "",
       areas: [],
       about: "",
@@ -163,6 +192,7 @@ export function ProfileForm() {
 
 
   const selectedAreas = watch("areas")
+  const practiceType = watch("practiceType")
   const filteredSuggestions = useMemo(() => {
     const input = areaInput.trim().toLowerCase()
     if (!input) return defaultAreaSuggestions.filter(s => !selectedAreas.includes(s))
@@ -242,9 +272,12 @@ export function ProfileForm() {
   }
 
   async function onSubmit(values: ProfileFormValues) {
-    const { photo, displayName, headline, areas, about, email, phone, calendlyUrl, instagramUrl } = values
+    const { photo, displayName, oabNumber, oabState, practiceType: practice, headline, areas, about, email, phone, calendlyUrl, instagramUrl } = values
     const formData = new FormData()
     formData.set("displayName", displayName)
+    formData.set("oabNumber", normalizeOabNumber(oabNumber) ?? oabNumber)
+    formData.set("oabState", oabState)
+    if (practice) formData.set("practiceType", practice)
     formData.set("areas", JSON.stringify(areas))
     if (about) formData.set("about", about)
     if (headline) formData.set("headline", headline)
@@ -315,7 +348,7 @@ export function ProfileForm() {
 
   async function handleNext() {
     if (currentStep === 1) {
-      const ok = await trigger(["displayName", "headline", "cellphone", "photo"])
+      const ok = await trigger(["displayName", "oabNumber", "oabState", "practiceType", "headline", "cellphone", "photo"])
       if (!ok) return
       setCurrentStep(2)
       return
@@ -516,7 +549,9 @@ export function ProfileForm() {
         <Label htmlFor="headline" className="mb-2 block text-sm font-medium text-foreground">
           Título
         </Label>
-        <Input id="headline" type="text" placeholder="Ex.: Advogado (a) especialista em ..." {...register("headline")} />
+        <Input id="headline" type="text" placeholder="Ex.: Advocacia Cível, de Família e Sucessões" {...register("headline")} />
+        <p className="mt-1 text-xs text-muted-foreground">Use “especialista” apenas se tiver título de especialização (Prov. OAB 205/2021, art. 3º, III).</p>
+        <OabWarnings text={watch("headline")} />
         {errors.headline && (<p className="mt-2 text-sm text-red-400">{errors.headline.message as string}</p>)}
       </div>
 
@@ -552,12 +587,61 @@ export function ProfileForm() {
         <Input
           id="displayName"
           type="text"
-          placeholder="Seu nome para ser exibido"
+          placeholder={practiceType === "escritorio" ? "Nome do escritório" : "Seu nome para ser exibido"}
           {...register("displayName")}
         />
         {errors.displayName && (
           <p className="mt-2 text-sm text-red-400">{errors.displayName.message}</p>
         )}
+      </div>
+
+      {/* Como você atua */}
+      <fieldset className="mb-8">
+        <legend className="mb-2 block text-sm font-medium text-foreground">Como você atua?</legend>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {([
+            ["autonomo", "Advogado(a) autônomo(a)"],
+            ["escritorio", "Escritório"],
+          ] as const).map(([value, label]) => (
+            <label
+              key={value}
+              className="flex cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+            >
+              <input type="radio" value={value} className="accent-primary" {...register("practiceType")} />
+              {label}
+            </label>
+          ))}
+        </div>
+      </fieldset>
+
+      {/* OAB */}
+      <div className="mb-8">
+        <div className="grid grid-cols-[1fr_6rem] gap-3">
+          <div>
+            <Label htmlFor="oabNumber" className="mb-2 block text-sm font-medium text-foreground">
+              Número da OAB <span className="text-red-500" aria-hidden>*</span>
+            </Label>
+            <Input id="oabNumber" type="text" inputMode="text" autoComplete="off" placeholder="Ex.: 123456" {...register("oabNumber")} />
+          </div>
+          <div>
+            <Label htmlFor="oabState" className="mb-2 block text-sm font-medium text-foreground">
+              UF <span className="text-red-500" aria-hidden>*</span>
+            </Label>
+            <select
+              id="oabState"
+              className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm"
+              {...register("oabState")}
+            >
+              <option value="">UF</option>
+              {UF_LIST.map((uf) => (
+                <option key={uf} value={uf}>{uf}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <p className="mt-1 text-xs text-muted-foreground">Exibida no seu site, conforme exige o Código de Ética da OAB (art. 44).</p>
+        {errors.oabNumber && <p className="mt-2 text-sm text-red-400">{errors.oabNumber.message}</p>}
+        {errors.oabState && <p className="mt-2 text-sm text-red-400">{errors.oabState.message}</p>}
       </div>
 
       </>
@@ -636,14 +720,15 @@ export function ProfileForm() {
       {/* Sobre mim */}
       <div className="mb-4">
         <Label htmlFor="about" className="mb-2 block text-sm font-medium text-foreground">
-          Sobre
+          {practiceType === "escritorio" ? "Sobre o escritório" : practiceType === "autonomo" ? "Sobre você" : "Sobre"}
         </Label>
         <Textarea
           id="about"
           rows={4}
-          placeholder="Conte um pouco mais sobre você ou seu escritório"
+          placeholder={practiceType === "escritorio" ? "Conte um pouco mais sobre o escritório" : practiceType === "autonomo" ? "Conte um pouco mais sobre você" : "Conte um pouco mais sobre você ou seu escritório"}
           {...register("about")}
         />
+        <OabWarnings text={watch("about")} />
         {errors.about && (
           <p className="mt-2 text-sm text-red-400">{errors.about.message as string}</p>
         )}

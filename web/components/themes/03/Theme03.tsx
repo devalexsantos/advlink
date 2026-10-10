@@ -5,6 +5,7 @@ import { AreasCarousel } from "@/app/adv/[slug]/AreasCarousel"
 import { GalleryCarousel } from "@/app/adv/[slug]/GalleryCarousel"
 import { TeamCarousel } from "@/app/adv/[slug]/TeamCarousel"
 import { renderContent } from "@/lib/render-content"
+import { formatOab } from "@/lib/oab"
 import { Heart, Instagram, Mail, Phone, Scale, SquareArrowOutUpRight } from "lucide-react"
 import Link from "next/link"
 import { Fragment } from "react"
@@ -19,9 +20,9 @@ type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
 type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string; videoUrl?: string | null; buttonConfig?: { url: string; label: string; bgColor: string; textColor: string; borderRadius: number; iconName?: string } | null }
 type TeamMember = { id: string; name: string; description: string | null; avatarUrl: string | null; phone: string | null; whatsapp: string | null; email: string | null }
-type Profile = { publicName?: string | null; headline?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
+type Profile = { publicName?: string | null; headline?: string | null; oabNumber?: string | null; oabState?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
 
-export default function Theme03({ profile, areas, address, primary, text, secondary, links = [], gallery = [], constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [] }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean>; teamMembers?: TeamMember[] }) {
+export default function Theme03({ profile, areas, address, primary, text, secondary, links = [], gallery = [], constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [], privacyUrl }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean>; teamMembers?: TeamMember[]; privacyUrl?: string }) {
   const order = getSectionOrder(sectionOrder as SectionKey[] | undefined)
   const label = (key: SectionKey) => getSectionLabel(key, sectionLabels as SectionLabels)
   const icon = (key: SectionKey) => getIconComponent(getSectionIcon(key, sectionIcons))
@@ -361,6 +362,9 @@ export default function Theme03({ profile, areas, address, primary, text, second
           {profile.headline && (
             <p className="mt-2 text-2xl opacity-85">{profile.headline}</p>
           )}
+          {formatOab(profile.oabNumber, profile.oabState) && (
+            <p className="mt-1 text-sm tracking-wide opacity-70">{formatOab(profile.oabNumber, profile.oabState)}</p>
+          )}
 
           {/* Linha decorativa e ícone */}
           <div className="mt-4 flex items-center justify-center gap-3">
@@ -439,6 +443,12 @@ export default function Theme03({ profile, areas, address, primary, text, second
           <Link href="https://advlink.site" target="_blank" className="font-bold hover:underline">
             &nbsp;AdvLink
           </Link>
+          {privacyUrl ? (
+            <>
+              <span aria-hidden className="hidden md:inline">·</span>
+              <a href={privacyUrl} className="hover:underline">Privacidade</a>
+            </>
+          ) : null}
         </span>
       </footer>
 

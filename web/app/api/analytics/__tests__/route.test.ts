@@ -2,14 +2,18 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
 import { NextRequest } from "next/server"
 
-const { getServerSessionMock, prismaMock } = vi.hoisted(() => ({
+const { getServerSessionMock, prismaMock, cookieGetMock } = vi.hoisted(() => ({
   getServerSessionMock: vi.fn(),
+  cookieGetMock: vi.fn(),
   prismaMock: {
     profile: {
       findFirst: vi.fn(),
     },
     pageView: {
       count: vi.fn(),
+      groupBy: vi.fn(),
+    },
+    contactClick: {
       groupBy: vi.fn(),
     },
     $queryRaw: vi.fn(),
@@ -19,6 +23,10 @@ const { getServerSessionMock, prismaMock } = vi.hoisted(() => ({
 vi.mock("next-auth", () => ({ getServerSession: getServerSessionMock }))
 vi.mock("@/auth", () => ({ authOptions: {} }))
 vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
+// Real getActiveSiteId runs against the mocked prisma + cookie store, so ownership checks are covered.
+vi.mock("next/headers", () => ({
+  cookies: async () => ({ get: cookieGetMock, set: vi.fn() }),
+}))
 
 import { GET } from "@/app/api/analytics/route"
 
@@ -66,12 +74,18 @@ const setupHappyPath = () => {
       { city: "São Paulo", _count: 60 },
       { city: null, _count: 8 },
     ])
+  prismaMock.contactClick.groupBy.mockResolvedValue([
+    { kind: "whatsapp", _count: 7 },
+    { kind: "email", _count: 2 },
+  ])
 }
 
 describe("GET /api/analytics", () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     getServerSessionMock.mockResolvedValue(session)
+    cookieGetMock.mockReturnValue(undefined)
+    prismaMock.contactClick.groupBy.mockResolvedValue([])
   })
 
   it("returns 401 without session", async () => {
@@ -96,12 +110,101 @@ describe("GET /api/analytics", () => {
     expect(data.error).toBe("Perfil não encontrado")
   })
 
-  it("looks up profile by userId from session", async () => {
+  it("falls back to the user's first site when there is no active-site cookie", async () => {
     setupHappyPath()
     await GET(makeRequest())
     expect(prismaMock.profile.findFirst).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { userId: "user-1" } })
+      expect.objectContaining({ where: { userId: "user-1" }, orderBy: { createdAt: "asc" } })
     )
+    expect(prismaMock.pageView.count).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ profileId }) })
+    )
+  })
+
+  describe("multi-site", () => {
+    it("scopes every query to the active site from the cookie, not the user's first site", async () => {
+      setupHappyPath()
+      cookieGetMock.mockReturnValue({ value: "site-2" })
+      prismaMock.profile.findFirst.mockReset()
+      prismaMock.profile.findFirst.mockImplementation(async ({ where }: { where: { id?: string; userId: string } }) =>
+        where.id === "site-2" && where.userId === "user-1" ? { id: "site-2" } : { id: profileId }
+      )
+
+      const res = await GET(makeRequest())
+      expect(res.status).toBe(200)
+      expect(prismaMock.profile.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: "site-2", userId: "user-1" } })
+      )
+      expect(prismaMock.pageView.count).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ profileId: "site-2" }) })
+      )
+      expect(prismaMock.contactClick.groupBy).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ profileId: "site-2" }) })
+      )
+      for (const call of prismaMock.pageView.groupBy.mock.calls) {
+        expect(call[0].where.profileId).toBe("site-2")
+      }
+    })
+
+    it("ignores a cookie pointing to another user's site", async () => {
+      setupHappyPath()
+      cookieGetMock.mockReturnValue({ value: "someone-elses-site" })
+      prismaMock.profile.findFirst.mockReset()
+      prismaMock.profile.findFirst.mockImplementation(async ({ where }: { where: { id?: string } }) =>
+        where.id ? null : { id: profileId }
+      )
+
+      await GET(makeRequest())
+      expect(prismaMock.pageView.count).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ profileId }) })
+      )
+      expect(prismaMock.contactClick.groupBy).not.toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ profileId: "someone-elses-site" }) })
+      )
+    })
+  })
+
+  describe("contactClicks", () => {
+    it("returns total and per-channel counts, with zeros for channels without clicks", async () => {
+      setupHappyPath()
+      const res = await GET(makeRequest())
+      const data = await res.json()
+      expect(data.contactClicks).toEqual({
+        total: 9,
+        byKind: { whatsapp: 7, phone: 0, email: 2, link: 0 },
+      })
+    })
+
+    it("filters by the requested period", async () => {
+      setupHappyPath()
+      const before = Date.now()
+      await GET(makeRequest("days=7"))
+      const { where } = prismaMock.contactClick.groupBy.mock.calls[0][0]
+      const windowMs = before - where.createdAt.gte.getTime()
+      expect(Math.abs(windowMs - 7 * 24 * 60 * 60 * 1000)).toBeLessThan(5000)
+    })
+
+    it("returns zeros when there are no clicks", async () => {
+      setupHappyPath()
+      prismaMock.contactClick.groupBy.mockResolvedValue([])
+      const res = await GET(makeRequest())
+      const data = await res.json()
+      expect(data.contactClicks).toEqual({
+        total: 0,
+        byKind: { whatsapp: 0, phone: 0, email: 0, link: 0 },
+      })
+    })
+
+    it("ignores unknown kinds stored in the table", async () => {
+      setupHappyPath()
+      prismaMock.contactClick.groupBy.mockResolvedValue([
+        { kind: "phone", _count: 3 },
+        { kind: "fax", _count: 99 },
+      ])
+      const res = await GET(makeRequest())
+      const data = await res.json()
+      expect(data.contactClicks.total).toBe(3)
+    })
   })
 
   it("returns 200 with analytics data on happy path", async () => {

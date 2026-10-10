@@ -372,7 +372,7 @@ describe("EquipeSection", () => {
     })
 
     it("toast on error", async () => {
-      const createAsync = vi.fn().mockRejectedValue(new Error("server error"))
+      const createAsync = vi.fn().mockRejectedValue("server error")
       const showToast = vi.fn()
       mockUseEditForm.mockReturnValue(
         buildContextValue({
@@ -385,6 +385,27 @@ describe("EquipeSection", () => {
       await userEvent.type(screen.getByPlaceholderText("Nome do membro"), "Novo Membro")
       await userEvent.click(screen.getByRole("button", { name: /^salvar$/i }))
       await waitFor(() => expect(showToast).toHaveBeenCalledWith("Falha ao salvar membro"))
+    })
+
+    it("shows the API validation message and sends the OAB fields", async () => {
+      const createAsync = vi.fn().mockRejectedValue(new Error("UF da OAB inválida."))
+      const showToast = vi.fn()
+      mockUseEditForm.mockReturnValue(
+        buildContextValue({
+          createTeamMemberMutation: { mutateAsync: createAsync, isPending: false },
+          showToast,
+        })
+      )
+      render(<EquipeSection />)
+      await userEvent.click(screen.getByRole("button", { name: /adicionar membro/i }))
+      await userEvent.type(screen.getByPlaceholderText("Nome do membro"), "Novo Membro")
+      await userEvent.type(screen.getByLabelText("Número da OAB"), "654321")
+      await userEvent.selectOptions(screen.getByLabelText("UF"), "RJ")
+      await userEvent.click(screen.getByRole("button", { name: /^salvar$/i }))
+      await waitFor(() => expect(showToast).toHaveBeenCalledWith("UF da OAB inválida."))
+      const fd = createAsync.mock.calls[0][0] as FormData
+      expect(fd.get("oabNumber")).toBe("654321")
+      expect(fd.get("oabState")).toBe("RJ")
     })
   })
 

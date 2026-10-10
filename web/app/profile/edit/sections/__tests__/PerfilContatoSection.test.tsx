@@ -73,6 +73,9 @@ function FormWrapper({
     defaultValues: {
       publicName: "",
       headline: "",
+      oabNumber: "",
+      oabState: "",
+      practiceType: "",
       publicEmail: "",
       publicPhone: "",
       whatsapp: "",
@@ -108,6 +111,27 @@ describe("PerfilContatoSection", () => {
   it("renders the Título (headline) input", () => {
     render(<FormWrapper />)
     expect(screen.getByLabelText("Título")).toBeInTheDocument()
+  })
+
+  it("renders the OAB number, UF and the ethics hint", () => {
+    render(<FormWrapper />)
+    expect(screen.getByLabelText("Número da OAB")).toBeInTheDocument()
+    expect(screen.getByLabelText("UF")).toBeInTheDocument()
+    expect(screen.getByText(/código de ética da oab \(art\. 44\)/i)).toBeInTheDocument()
+  })
+
+  it("lets the user pick the practice type and renames the about section", async () => {
+    render(<FormWrapper />)
+    expect(screen.getByText("Sobre mim")).toBeInTheDocument()
+    await userEvent.click(screen.getByLabelText("Escritório"))
+    expect(screen.getByText("Sobre o escritório")).toBeInTheDocument()
+  })
+
+  it("pre-fills the saved OAB", () => {
+    render(<FormWrapper defaults={{ oabNumber: "123456A", oabState: "SP", practiceType: "autonomo" }} />)
+    expect(screen.getByLabelText("Número da OAB")).toHaveValue("123456A")
+    expect(screen.getByLabelText("UF")).toHaveValue("SP")
+    expect(screen.getByLabelText("Advogado(a) autônomo(a)")).toBeChecked()
   })
 
   it("renders Sobre mim section", () => {

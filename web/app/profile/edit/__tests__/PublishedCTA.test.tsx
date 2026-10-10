@@ -51,6 +51,11 @@ describe("PublishedCTA", () => {
     expect(screen.getByText(/Defina o link público/)).toBeInTheDocument()
   })
 
+  it("links to the promotion page when there is a slug", () => {
+    render(<PublishedCTA slug="teste" />)
+    expect(screen.getByRole("link", { name: /Divulgar meu site/ })).toHaveAttribute("href", "/profile/divulgar")
+  })
+
   it("renders the 'Alterar link' button", () => {
     render(<PublishedCTA slug="teste" />)
     expect(screen.getByText("Alterar link")).toBeInTheDocument()

@@ -10,7 +10,7 @@ type LinkItem = { id: string; title: string; description: string | null; url: st
 type Address = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
 type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string; videoUrl?: string | null; buttonConfig?: { url: string; label: string; bgColor: string; textColor: string; borderRadius: number; iconName?: string } | null }
-type TeamMember = { id: string; name: string; description: string | null; avatarUrl: string | null; phone: string | null; whatsapp: string | null; email: string | null }
+type TeamMember = { id: string; name: string; description: string | null; avatarUrl: string | null; phone: string | null; whatsapp: string | null; email: string | null; oabNumber?: string | null; oabState?: string | null }
 type Profile = {
   theme?: string | null
   primaryColor?: string | null
@@ -18,6 +18,8 @@ type Profile = {
   textColor?: string | null
   coverUrl?: string | null
   publicName?: string | null
+  oabNumber?: string | null
+  oabState?: string | null
   avatarUrl?: string | null
   whatsapp?: string | null
   publicEmail?: string | null

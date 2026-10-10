@@ -85,6 +85,17 @@ describe("proxy", () => {
     })
   })
 
+  describe("/previa/* (shared site preview)", () => {
+    it("is public: no login redirect, no rewrite, no CSP nonce", async () => {
+      getTokenMock.mockResolvedValue(null)
+      const res = await proxy(makeReq("https://app.advlink.site/previa/abcdefghijklmnopqrstuvwxyz012345"))
+      expect(res.status).toBe(200)
+      expect(res.headers.get("location")).toBeNull()
+      expect(res.headers.get("x-middleware-rewrite")).toBeNull()
+      expect(res.headers.get("content-security-policy")).toBeNull()
+    })
+  })
+
   describe("/adv/* only on the profile subdomain", () => {
     it("redirects app.advlink.site/adv/<slug> to the subdomain", async () => {
       const res = await proxy(
@@ -104,6 +115,22 @@ describe("proxy", () => {
     it("still rewrites the subdomain root to /adv/<slug>", async () => {
       const res = await proxy(makeReq("https://alex.advlink.site/"))
       expect(res.headers.get("x-middleware-rewrite")).toContain("/adv/alex")
+    })
+
+    it("rewrites /privacidade on the subdomain to /adv/<slug>/privacidade", async () => {
+      const res = await proxy(makeReq("https://alex.advlink.site/privacidade"))
+      expect(res.headers.get("x-middleware-rewrite")).toContain("/adv/alex/privacidade")
+    })
+
+    it("does not rewrite /privacidade on the app host or reserved subdomains", async () => {
+      const res = await proxy(makeReq("https://app.advlink.site/privacidade"))
+      expect(res.headers.get("x-middleware-rewrite")).toBeNull()
+    })
+
+    it("does not redirect /adv/<slug>/privacidade (reachable outside the subdomain)", async () => {
+      const res = await proxy(makeReq("https://app.advlink.site/adv/alex/privacidade"))
+      expect(res.status).toBe(200)
+      expect(res.headers.get("location")).toBeNull()
     })
 
     it("leaves /adv alone on hosts outside ROOT_DOMAIN (local dev)", async () => {

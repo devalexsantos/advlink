@@ -1,0 +1,24 @@
+name: Activation emails
+
+# Hourly: sends the activation drip (web/app/api/cron/activation-emails).
+# Secrets: ACTIVATION_EMAILS_URL, CRON_SECRET.
+on:
+  schedule:
+    - cron: "43 * * * *"
+  workflow_dispatch:
+
+jobs:
+  drip:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call activation emails
+        env:
+          URL: ${{ secrets.ACTIVATION_EMAILS_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "ACTIVATION_EMAILS_URL/CRON_SECRET not configured; skipping"
+            exit 0
+          fi
+          curl --fail-with-body -sS --max-time 240 -H "Authorization: Bearer $CRON_SECRET" "$URL"

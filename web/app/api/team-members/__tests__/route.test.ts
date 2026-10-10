@@ -388,3 +388,75 @@ describe("DELETE /api/team-members", () => {
     expect(body.ok).toBe(true)
   })
 })
+
+// ---------------------------------------------------------------------------
+// OAB on team members
+// ---------------------------------------------------------------------------
+describe("team members — OAB", () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    getServerSessionMock.mockResolvedValue(session)
+    getActiveSiteIdMock.mockResolvedValue("profile-1")
+    prismaMock.teamMember.create.mockResolvedValue(makeMember())
+    prismaMock.teamMember.update.mockResolvedValue(makeMember())
+  })
+
+  const post = (fields: Record<string, string>) => {
+    const form = new FormData()
+    form.append("name", "Dra. Maria")
+    for (const [k, v] of Object.entries(fields)) form.append(k, v)
+    return POST(new Request("http://localhost/api/team-members", { method: "POST", body: form }))
+  }
+  const patch = (fields: Record<string, string>) => {
+    const form = new FormData()
+    form.append("id", "tm-1")
+    for (const [k, v] of Object.entries(fields)) form.append(k, v)
+    return PATCH(new Request("http://localhost/api/team-members", { method: "PATCH", body: form }))
+  }
+
+  it("POST saves normalized OAB", async () => {
+    prismaMock.teamMember.findFirst.mockResolvedValue(null)
+    const res = await post({ oabNumber: "12.345-b", oabState: "pr" })
+    expect(res.status).toBe(200)
+    expect(prismaMock.teamMember.create.mock.calls[0][0].data).toMatchObject({
+      profileId: "profile-1",
+      oabNumber: "12345B",
+      oabState: "PR",
+    })
+  })
+
+  it("POST without OAB saves nulls", async () => {
+    prismaMock.teamMember.findFirst.mockResolvedValue(null)
+    await post({})
+    expect(prismaMock.teamMember.create.mock.calls[0][0].data).toMatchObject({ oabNumber: null, oabState: null })
+  })
+
+  it("POST returns 400 for invalid OAB without creating", async () => {
+    expect((await post({ oabNumber: "abc" })).status).toBe(400)
+    expect((await post({ oabState: "XX" })).status).toBe(400)
+    expect(prismaMock.teamMember.create).not.toHaveBeenCalled()
+  })
+
+  it("PATCH updates OAB only when keys are sent", async () => {
+    prismaMock.teamMember.findFirst.mockResolvedValue(makeMember({ oabNumber: "1", oabState: "SP" }))
+    await patch({ name: "X" })
+    let data = prismaMock.teamMember.update.mock.calls.at(-1)![0].data
+    expect(data.oabNumber).toBeUndefined()
+    expect(data.oabState).toBeUndefined()
+
+    await patch({ oabNumber: "654321", oabState: "BA" })
+    data = prismaMock.teamMember.update.mock.calls.at(-1)![0].data
+    expect(data).toMatchObject({ oabNumber: "654321", oabState: "BA" })
+
+    await patch({ oabNumber: "", oabState: "" })
+    data = prismaMock.teamMember.update.mock.calls.at(-1)![0].data
+    expect(data).toMatchObject({ oabNumber: null, oabState: null })
+  })
+
+  it("PATCH returns 400 for invalid OAB and checks ownership first", async () => {
+    prismaMock.teamMember.findFirst.mockResolvedValue(makeMember())
+    expect((await patch({ oabNumber: "1234567" })).status).toBe(400)
+    expect(prismaMock.teamMember.findFirst).toHaveBeenCalledWith({ where: { id: "tm-1", profileId: "profile-1" } })
+    expect(prismaMock.teamMember.update).not.toHaveBeenCalled()
+  })
+})

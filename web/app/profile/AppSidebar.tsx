@@ -21,6 +21,7 @@ import {
   PanelLeftOpen,
   BarChart3,
   MessageSquare,
+  Share2,
 } from "lucide-react"
 import {
   Sidebar,
@@ -118,6 +119,19 @@ export function AppSidebar() {
               >
                 <BarChart3 className="h-5 w-5" />
                 <span>Analytics</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={pathname === "/profile/divulgar"}
+                onClick={() => {
+                  router.push("/profile/divulgar")
+                  setOpenMobile(false)
+                }}
+                tooltip="Divulgar meu site"
+              >
+                <Share2 className="h-5 w-5" />
+                <span>Divulgar meu site</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

@@ -9,6 +9,7 @@ import PublishCheckout from "@/components/billing/PublishCheckout"
 import { formatCivilDate, useBillingStatus } from "@/components/billing/useBillingStatus"
 import { fetchProfile } from "./api"
 import ChangeSlugButton from "./ChangeSlugButton"
+import SharePreviewButton from "./SharePreviewButton"
 
 /** Banner for an unpublished site: publish (checkout), pending payment, or suspended. */
 export default function SubscribeCTA() {
@@ -57,6 +58,7 @@ export default function SubscribeCTA() {
           </a>
         )}
         <PublishCheckout compact />
+        <SharePreviewButton />
       </Banner>
     )
   }
@@ -77,6 +79,7 @@ export default function SubscribeCTA() {
         Publique por {formatBRL(PLAN.valueCents)}/mês. Cancele quando quiser.
       </p>
       <PublishCheckout />
+      <SharePreviewButton className="pt-1" />
     </Banner>
   )
 }

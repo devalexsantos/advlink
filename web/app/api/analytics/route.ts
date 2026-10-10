@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
+import { getActiveSiteId } from "@/lib/active-site"
+import { CONTACT_KINDS, isContactKind, type ContactKind } from "@/lib/contact-clicks"
 
 export const runtime = "nodejs"
 
@@ -12,17 +14,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Não autorizado" }, { status: 401 })
   }
 
-  const profile = await prisma.profile.findFirst({
-    where: { userId },
-    select: { id: true },
-  })
-  if (!profile) {
+  // Active site (cookie validated against userId, falls back to the user's first site).
+  const profileId = await getActiveSiteId(userId)
+  if (!profileId) {
     return NextResponse.json({ error: "Perfil não encontrado" }, { status: 404 })
   }
 
   const days = Math.min(Number(req.nextUrl.searchParams.get("days")) || 30, 90)
   const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000)
-  const profileId = profile.id
 
   const baseWhere = { profileId, createdAt: { gte: since } }
 
@@ -36,6 +35,7 @@ export async function GET(req: NextRequest) {
     cities,
     hourlyResult,
     dailyResult,
+    contactByKind,
   ] = await Promise.all([
     // Total views
     prisma.pageView.count({ where: baseWhere }),
@@ -106,7 +106,20 @@ export async function GET(req: NextRequest) {
       GROUP BY day
       ORDER BY day
     `,
+
+    // Contact clicks per channel (aggregate counts only — LGPD)
+    prisma.contactClick.groupBy({
+      by: ["kind"],
+      where: baseWhere,
+      _count: true,
+    }),
   ])
+
+  const byKind = Object.fromEntries(CONTACT_KINDS.map((k) => [k, 0])) as Record<ContactKind, number>
+  for (const row of contactByKind) {
+    if (isContactKind(row.kind)) byKind[row.kind] = row._count
+  }
+  const contactTotal = CONTACT_KINDS.reduce((sum, k) => sum + byKind[k], 0)
 
   return NextResponse.json({
     totalViews,
@@ -118,6 +131,7 @@ export async function GET(req: NextRequest) {
     cities: cities.map((c) => ({ city: c.city || "Desconhecida", count: c._count })),
     hourly: hourlyResult.map((h) => ({ hour: h.hour, count: Number(h.count) })),
     daily: dailyResult.map((d) => ({ day: d.day, count: Number(d.count) })),
+    contactClicks: { total: contactTotal, byKind },
     period: days,
   })
 }

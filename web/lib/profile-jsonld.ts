@@ -1,9 +1,12 @@
 import { getProfileUrl } from "@/lib/site-url"
+import { normalizeOabNumber, normalizeUf } from "@/lib/oab"
 
 type ProfileForJsonLd = {
   slug: string
   publicName: string | null
   headline?: string | null
+  oabNumber?: string | null
+  oabState?: string | null
   metaDescription?: string | null
   avatarUrl?: string | null
   publicPhone?: string | null
@@ -41,6 +44,11 @@ export function buildProfileJsonLd(profile: ProfileForJsonLd, address: AddressFo
   if (profile.publicPhone) data.telephone = profile.publicPhone
   if (profile.publicEmail) data.email = profile.publicEmail
   if (profile.instagramUrl) data.sameAs = [profile.instagramUrl]
+  const oabNumber = normalizeOabNumber(profile.oabNumber)
+  const oabState = normalizeUf(profile.oabState)
+  if (oabNumber && oabState) {
+    data.identifier = { "@type": "PropertyValue", propertyID: `OAB/${oabState}`, value: oabNumber }
+  }
   if (areaTitles.length) data.knowsAbout = areaTitles
 
   // Only when the lawyer chose to show the address on the page

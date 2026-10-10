@@ -11,6 +11,8 @@ type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
 type Profile = {
   publicName?: string | null
+  oabNumber?: string | null
+  oabState?: string | null
   coverUrl?: string | null
   avatarUrl?: string | null
   whatsapp?: string | null
@@ -25,7 +27,7 @@ type Profile = {
 }
 
 type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string; videoUrl?: string | null; buttonConfig?: { url: string; label: string; bgColor: string; textColor: string; borderRadius: number; iconName?: string } | null }
-type TeamMember = { id: string; name: string; description: string | null; avatarUrl: string | null; phone: string | null; whatsapp: string | null; email: string | null }
+type TeamMember = { id: string; name: string; description: string | null; avatarUrl: string | null; phone: string | null; whatsapp: string | null; email: string | null; oabNumber?: string | null; oabState?: string | null }
 type Props = {
   profile: Profile
   areas: Area[]

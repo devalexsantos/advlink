@@ -223,6 +223,9 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     defaultValues: {
       publicName: "",
       headline: "",
+      oabNumber: "",
+      oabState: "",
+      practiceType: "",
       aboutDescription: "",
       publicEmail: "",
       publicPhone: "",
@@ -326,6 +329,9 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     form.reset({
       publicName: p.publicName ?? "",
       headline: p.headline ?? "",
+      oabNumber: p.oabNumber ?? "",
+      oabState: p.oabState ?? "",
+      practiceType: p.practiceType ?? "",
       aboutDescription: p.aboutDescription ?? "",
       publicEmail: p.publicEmail ?? "",
       publicPhone: p.publicPhone ?? "",
@@ -596,6 +602,10 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     const fd = new FormData()
     fd.set("publicName", values.publicName)
     if (values.headline) fd.set("headline", values.headline)
+    // Always sent: an absent key keeps the stored value, "" clears it
+    fd.set("oabNumber", values.oabNumber ?? "")
+    fd.set("oabState", values.oabState ?? "")
+    fd.set("practiceType", values.practiceType ?? "")
     fd.set("aboutDescription", aboutMarkdown || "")
     if (values.publicEmail) fd.set("publicEmail", values.publicEmail)
     if (values.publicPhone) fd.set("publicPhone", values.publicPhone)

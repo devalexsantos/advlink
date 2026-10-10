@@ -64,6 +64,11 @@ describe("PublishCheckout", () => {
     expect(screen.queryByRole("status")).not.toBeInTheDocument()
   })
 
+  it("states the 7-day refund guarantee below the buttons", () => {
+    render(<PublishCheckout />)
+    expect(screen.getByText(/Garantia de 7 dias: desistiu, devolvemos o valor integral\./)).toBeInTheDocument()
+  })
+
   describe("starting a checkout", () => {
     it.each([
       ["Cartão ou boleto", "card_boleto"],

@@ -160,3 +160,21 @@ export async function deleteTeamMember(id: string) {
   await ensureOk(res, "Falha ao excluir membro")
   return res.json() as Promise<{ ok: boolean }>
 }
+
+export type PreviewLink = { url: string; expiresAt: string }
+
+/** Creates (or reuses) the 7-day shareable preview link of the active site. */
+export async function createPreviewLink(): Promise<PreviewLink> {
+  const res = await fetch("/api/preview-link", { method: "POST" })
+  if (res.status === 429) {
+    throw new Error("Você gerou muitos links em pouco tempo. Aguarde um instante e tente de novo.")
+  }
+  if (res.status === 403) {
+    const data = await res.json().catch(() => null)
+    throw new Error(
+      typeof data?.error === "string" && data.error ? data.error : "A prévia não está disponível para este site no momento."
+    )
+  }
+  await ensureOk(res, "Não foi possível gerar a prévia. Tente novamente.")
+  return res.json() as Promise<PreviewLink>
+}

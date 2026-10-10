@@ -10,14 +10,16 @@ datasource db {
 }
 
 model User {
-  id                   String    @id @default(cuid())
-  name                 String?
-  email                String?   @unique
-  emailVerified        DateTime?
-  image                String?
-  isActive             Boolean   @default(true)
-  passwordHash         String?
-  completed_onboarding Boolean   @default(false) @map("completed_onboarding")
+  id                      String    @id @default(cuid())
+  name                    String?
+  email                   String?   @unique
+  emailVerified           DateTime?
+  image                   String?
+  isActive                Boolean   @default(true)
+  passwordHash            String?
+  completed_onboarding    Boolean   @default(false) @map("completed_onboarding")
+  // Opt-out of activation/tips e-mails (account and billing e-mails are not affected).
+  marketingEmailsOptOutAt DateTime?
 
   accounts Account[]
   sessions Session[]
@@ -28,6 +30,20 @@ model User {
 
   tickets        Ticket[]
   ticketMessages TicketMessage[]
+  emailSends     EmailSend[]
+}
+
+// One row per lifecycle e-mail sent to a user (idempotency of the activation drip).
+model EmailSend {
+  id     String   @id @default(cuid())
+  userId String
+  kind   String
+  siteId String?
+  sentAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, kind])
 }
 
 model Account {
@@ -112,16 +128,27 @@ model Profile {
   sectionIcons       Json?
   sectionTitleHidden Json?
 
+  /// OAB registration of the site's lawyer (digits + optional 1-letter suffix, normalized by lib/oab)
+  oabNumber        String?
+  /// UF of the OAB registration (e.g. "SP")
+  oabState         String?
+  /// "autonomo" | "escritorio"
+  practiceType     String?
+  /// First time the site became published (set once by recomputeProfile)
+  firstPublishedAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   pageViews      PageView[]
+  contactClicks  ContactClick[]
   activityAreas  ActivityAreas[]
   links          Links[]
   gallery        Gallery[]
   address        Address?
   customSections CustomSection[]
   teamMembers    TeamMember[]
+  previewLinks   PreviewLink[]
 
   billingPaymentLinks  BillingPaymentLink[]
   billingSubscriptions BillingSubscription[]
@@ -148,6 +175,21 @@ model PageView {
 
   @@index([profileId, createdAt])
   @@index([profileId, visitorHash, createdAt])
+}
+
+/// Clique em botão de contato do site público (WhatsApp, telefone, e-mail, link externo).
+/// LGPD: só alimenta contagens agregadas. Não guarda telefone, URL de destino nem IP;
+/// visitorHash é o mesmo hash diário truncado do PageView, usado apenas para deduplicar.
+model ContactClick {
+  id          String   @id @default(cuid())
+  profileId   String
+  profile     Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  /// "whatsapp" | "phone" | "email" | "link"
+  kind        String
+  visitorHash String   @map("visitor_hash")
+  createdAt   DateTime @default(now())
+
+  @@index([profileId, createdAt])
 }
 
 model ActivityAreas {
@@ -296,11 +338,25 @@ model TeamMember {
   phone       String?
   whatsapp    String?
   email       String?
+  oabNumber   String?
+  oabState    String?
   position    Int
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([profileId, position])
+}
+
+/// Shareable, expiring link to preview an unpublished site (/previa/[token])
+model PreviewLink {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  profileId String
+  profile   Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([profileId])
 }
 
 model CustomSection {

@@ -16,7 +16,7 @@ import {
   BarChart,
   Bar,
 } from "recharts"
-import { Users, Eye } from "lucide-react"
+import { Users, Eye, MousePointerClick, MessageCircle, Phone, Mail, Link2 } from "lucide-react"
 import { fetchAnalytics } from "./api"
 import type { AnalyticsData } from "./types"
 
@@ -25,6 +25,13 @@ const PERIODS = [
   { label: "30 dias", value: 30 },
   { label: "90 dias", value: 90 },
 ]
+
+const CONTACT_CHANNELS = [
+  { kind: "whatsapp", label: "WhatsApp", icon: MessageCircle },
+  { kind: "phone", label: "Telefone", icon: Phone },
+  { kind: "email", label: "E-mail", icon: Mail },
+  { kind: "link", label: "Links", icon: Link2 },
+] as const
 
 const CHART_COLORS = [
   "var(--chart-1)",
@@ -83,7 +90,7 @@ export default function AnalyticsDashboard() {
       </div>
 
       {/* Overview cards */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
         <Card>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -114,7 +121,61 @@ export default function AnalyticsDashboard() {
             </div>
           </div>
         </Card>
+        <Card className="col-span-2 lg:col-span-1">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <MousePointerClick className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm text-muted-foreground">Contatos gerados pelo site</p>
+              {isLoading ? (
+                <Skeleton className="mt-1 h-7 w-16" />
+              ) : (
+                <p className="text-2xl font-bold" data-testid="contact-total">
+                  {data?.contactClicks?.total ?? 0}
+                </p>
+              )}
+            </div>
+          </div>
+        </Card>
       </div>
+
+      {/* Contact clicks by channel */}
+      <Card>
+        <h2 className="mb-4 text-sm font-semibold text-muted-foreground">Contatos por canal</h2>
+        {isLoading ? (
+          <div className="space-y-3">
+            {CONTACT_CHANNELS.map((c) => (
+              <Skeleton key={c.kind} className="h-6 w-full" />
+            ))}
+          </div>
+        ) : (
+          <ul className="space-y-3">
+            {CONTACT_CHANNELS.map(({ kind, label, icon: Icon }) => {
+              const count = data?.contactClicks?.byKind?.[kind] ?? 0
+              const total = data?.contactClicks?.total ?? 0
+              const pct = total > 0 ? Math.round((count / total) * 100) : 0
+              return (
+                <li key={kind} className="space-y-1.5" data-testid={`contact-channel-${kind}`}>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-muted-foreground" aria-hidden />
+                      {label}
+                    </span>
+                    <span className="font-medium text-muted-foreground">{count}</span>
+                  </div>
+                  <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                    <div className="h-full rounded-full bg-primary" style={{ width: `${pct}%` }} />
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        )}
+        <p className="mt-4 text-xs text-muted-foreground">
+          Cliques nos botões de contato do seu site. O agendamento pelo Calendly ainda não é contabilizado.
+        </p>
+      </Card>
 
       {/* Area chart — daily views */}
       <Card>

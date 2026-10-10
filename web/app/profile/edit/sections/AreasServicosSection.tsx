@@ -25,6 +25,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { OabWarnings } from "@/components/oab-warnings"
 import { useEditForm } from "../EditFormContext"
 import { useQueryClient } from "@tanstack/react-query"
 import type { Area } from "../types"
@@ -175,6 +176,7 @@ export default function AreasServicosSection() {
               <div>
                 <Label className="mb-2 block">Título</Label>
                 <Input value={editingArea.title} onChange={(e) => setEditingArea({ ...editingArea, title: e.target.value })} />
+                <OabWarnings text={editingArea.title} />
               </div>
               <div className="flex flex-col gap-2 mt-4">
                 <Label className="mb-2 block">Capa da área</Label>
@@ -214,6 +216,8 @@ export default function AreasServicosSection() {
                   placeholder="Descreva esta área de atuação..."
                   minHeight="300px"
                 />
+                <OabWarnings text={editorMarkdown} />
+                <p className="mt-2 text-xs text-muted-foreground">Descrições geradas por IA são um ponto de partida. Revise antes de publicar; a responsabilidade pelo conteúdo é sua (Prov. OAB 205/2021).</p>
               </div>
               <DialogFooter>
                 <Button onClick={async () => {

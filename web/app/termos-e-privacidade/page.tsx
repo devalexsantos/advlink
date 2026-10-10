@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { REFUND_WINDOW_DAYS } from "@/lib/billing/plan"
 
 export default function TermsPrivacyPage() {
   return (
@@ -42,6 +43,7 @@ export default function TermsPrivacyPage() {
               <li>Alguns recursos são pagos e exigem uma assinatura ativa.</li>
               <li>O pagamento (cartão, boleto ou Pix) é processado de forma segura pelo Asaas, parceiro externo de pagamentos; a cobrança é emitida em nome da NAIR APPS.</li>
               <li>Você pode cancelar a qualquer momento; o site permanece publicado até o fim do período já pago.</li>
+              <li>Você pode desistir da contratação em até {REFUND_WINDOW_DAYS} dias após o primeiro pagamento, com reembolso integral, solicitando pelo suporte.</li>
               <li>Em caso de atraso, o site fica no ar por mais 5 dias; depois sai do ar até o pagamento, e a assinatura é encerrada após 30 dias.</li>
               <li>Podemos alterar preços e planos, comunicando previamente quando aplicável.</li>
             </ul>
@@ -118,6 +120,17 @@ export default function TermsPrivacyPage() {
                 pelo e-mail indicado abaixo.
               </p>
             </div>
+          </section>
+
+          <section className="rounded-2xl border border-border bg-card p-6">
+            <h2 className="text-xl font-semibold mb-2">Visitantes dos sites dos assinantes (LGPD)</h2>
+            <p className="text-muted-foreground leading-relaxed">
+              Em relação aos visitantes dos sites publicados pelos assinantes, o assinante é o controlador dos dados e o
+              AdvLink atua como operador (LGPD, art. 39), tratando-os apenas para hospedar o site e gerar métricas de
+              visita sem cookies. Cada site tem um aviso de privacidade próprio, acessível pelo link “Privacidade” no
+              rodapé. Quando o assinante configura o Google Tag Manager, o AdvLink exibe um banner de consentimento e só
+              carrega o script depois que o visitante aceita.
+            </p>
           </section>
 
           <section className="rounded-2xl border border-border bg-card p-6">

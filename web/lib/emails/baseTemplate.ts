@@ -4,8 +4,10 @@ export function emailTemplate(options: {
   cta?: { label: string; url: string }
   preheader?: string
   footerNote?: string
+  /** Marketing/lifecycle e-mails only: renders the opt-out link in the footer. */
+  unsubscribeUrl?: string
 }): string {
-  const { title, body, cta, preheader, footerNote } = options
+  const { title, body, cta, preheader, footerNote, unsubscribeUrl } = options
 
   const preheaderHtml = preheader
     ? `<div style="display:none;font-size:1px;color:#f4f5f7;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;mso-hide:all;">${preheader}${"&zwnj;&nbsp;".repeat(90)}</div>`
@@ -33,6 +35,11 @@ export function emailTemplate(options: {
           <!--<![endif]-->
         </td>
       </tr>`
+    : ""
+
+  const unsubscribeHtml = unsubscribeUrl
+    ? `<br />
+                    <span style="font-size:11px;color:#9ca3af;">N&atilde;o quer mais receber estes e-mails? <a href="${unsubscribeUrl.replace(/"/g, "%22").replace(/</g, "%3C").replace(/>/g, "%3E")}" target="_blank" rel="noopener noreferrer" style="color:#6b7280;text-decoration:underline;">Descadastrar</a></span>`
     : ""
 
   const footerNoteHtml = footerNote
@@ -104,6 +111,7 @@ export function emailTemplate(options: {
                     &copy; 2026 AdvLink &mdash; Plataforma para advogados
                     <br />
                     <span style="font-size:11px;color:#9ca3af;">Este e-mail foi enviado por AdvLink. Caso n&atilde;o tenha solicitado, ignore esta mensagem.</span>
+                    ${unsubscribeHtml}
                   </td>
                 </tr>
               </table>

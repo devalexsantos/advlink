@@ -121,7 +121,7 @@ export async function recomputeProfile(deps: BillingDeps, profileId: string, att
 
   const profile = await prisma.profile.findUnique({
     where: { id: profileId },
-    select: { id: true, userId: true, billingStatus: true, suspendedByAdmin: true, isActive: true, churnedAt: true },
+    select: { id: true, userId: true, billingStatus: true, suspendedByAdmin: true, isActive: true, churnedAt: true, firstPublishedAt: true },
   })
   if (!profile) return null
 
@@ -182,10 +182,17 @@ export async function recomputeProfile(deps: BillingDeps, profileId: string, att
   }
 
   const published = isPublishedStatus(status) && !profile.suspendedByAdmin
+  const firstPublish = published && profile.firstPublishedAt == null
   // Compare-and-set on the status we read: concurrent webhooks (PAYMENT_CONFIRMED + SUBSCRIPTION_CREATED arrive
   // together) must not both fire the same transition's events/e-mail. The loser recomputes from the new state.
   const { count } = await prisma.profile.updateMany({
-    where: { id: profileId, billingStatus: profile.billingStatus, suspendedByAdmin: profile.suspendedByAdmin },
+    // firstPublishedAt joins the compare-and-set so only one writer can stamp it (and emit the event)
+    where: {
+      id: profileId,
+      billingStatus: profile.billingStatus,
+      suspendedByAdmin: profile.suspendedByAdmin,
+      ...(firstPublish ? { firstPublishedAt: null } : {}),
+    },
     data: {
       billingStatus: status,
       paidUntil: civilToDbDate(entitlement.coveredUntil),
@@ -193,6 +200,7 @@ export async function recomputeProfile(deps: BillingDeps, profileId: string, att
       isActive: published,
       ...(decision.churnNow ? { churnedAt: now } : {}),
       ...(isPublishedStatus(status) && profile.churnedAt ? { churnedAt: null } : {}),
+      ...(firstPublish ? { firstPublishedAt: now } : {}),
     },
   })
   if (count === 0) {
@@ -200,6 +208,9 @@ export async function recomputeProfile(deps: BillingDeps, profileId: string, att
     return recomputeProfile(deps, profileId, attempt + 1)
   }
 
+  if (firstPublish) {
+    trackEvent("site_first_published", { userId: profile.userId, siteId: profileId }).catch(() => {})
+  }
   const effects = transitionEffects(profile.billingStatus, status)
   for (const type of effects.events) {
     trackEvent(type, { userId: profile.userId, siteId: profileId, meta: { from: profile.billingStatus, to: status } }).catch(() => {})

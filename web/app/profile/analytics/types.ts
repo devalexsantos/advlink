@@ -8,5 +8,9 @@ export type AnalyticsData = {
   cities: { city: string; count: number }[]
   hourly: { hour: number; count: number }[]
   daily: { day: string; count: number }[]
+  contactClicks: {
+    total: number
+    byKind: { whatsapp: number; phone: number; email: number; link: number }
+  }
   period: number
 }

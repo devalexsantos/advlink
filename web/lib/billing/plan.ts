@@ -7,6 +7,9 @@ export const PLAN = {
   boletoDueDateLimitDays: 3,
 } as const
 
+/** Days after the first payment in which the lawyer can withdraw with a full refund (manual, via support/Asaas). */
+export const REFUND_WINDOW_DAYS = 7
+
 export function formatBRL(cents: number): string {
   return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 }

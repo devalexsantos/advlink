@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { CreditCard, Loader2, QrCode } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/toast/ToastProvider"
+import { REFUND_WINDOW_DAYS } from "@/lib/billing/plan"
 import { BILLING_STATUS_KEY, useBillingStatus } from "./useBillingStatus"
 
 type Method = "card_boleto" | "pix"
@@ -102,6 +103,10 @@ export default function PublishCheckout({ compact = false }: { compact?: boolean
           Pix
         </Button>
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        Garantia de {REFUND_WINDOW_DAYS} dias: desistiu, devolvemos o valor integral.
+      </p>
 
       {watching && (
         <p role="status" className="flex items-center gap-2 text-sm text-muted-foreground">

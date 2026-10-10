@@ -7,6 +7,7 @@ import { uploadToS3 } from "@/lib/s3"
 import { MAX_IMAGE_BYTES, imageUploadErrorResponse, rejectOversizedRequest, validateImageUpload, type ValidatedImage } from "@/lib/upload-validation"
 import { isReservedSlug } from "@/lib/reserved-slugs"
 import { getActiveSiteId } from "@/lib/active-site"
+import { isValidPracticeType, parseOptionalOab } from "@/lib/oab"
 
 export async function GET() {
   const session = await getServerSession(authOptions)
@@ -72,6 +73,10 @@ export async function PATCH(req: Request) {
   let neighborhood: string | undefined
   let city: string | undefined
   let state: string | undefined
+  // OAB / practice type: undefined = key not sent (keep current value)
+  let oabNumberRaw: unknown
+  let oabStateRaw: unknown
+  let practiceTypeRaw: unknown
 
   if (contentType.includes("application/json")) {
     const body = await req.json()
@@ -119,6 +124,9 @@ export async function PATCH(req: Request) {
     neighborhood = body.neighborhood
     city = body.city
     state = body.state
+    oabNumberRaw = body.oabNumber
+    oabStateRaw = body.oabState
+    practiceTypeRaw = body.practiceType
   } else if (contentType.includes("multipart/form-data")) {
     const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES, 2)
     if (tooLarge) return tooLarge
@@ -166,6 +174,9 @@ export async function PATCH(req: Request) {
     neighborhood = String(form.get("neighborhood") ?? "")
     city = String(form.get("city") ?? "")
     state = String(form.get("state") ?? "")
+    if (form.has("oabNumber")) oabNumberRaw = String(form.get("oabNumber") ?? "")
+    if (form.has("oabState")) oabStateRaw = String(form.get("oabState") ?? "")
+    if (form.has("practiceType")) practiceTypeRaw = String(form.get("practiceType") ?? "")
     const f = form.get("photo")
     if (f && f instanceof File) avatarFile = f
     const c = form.get("cover")
@@ -188,6 +199,16 @@ export async function PATCH(req: Request) {
   }
   if (theme !== undefined && !["modern", "classic", "corporate"].includes(theme)) {
     return NextResponse.json({ error: "Tema inválido" }, { status: 400 })
+  }
+  const oab = parseOptionalOab({ oabNumber: oabNumberRaw, oabState: oabStateRaw })
+  if (!oab.ok) return NextResponse.json({ error: oab.error }, { status: 400 })
+  let practiceType: string | null | undefined
+  if (practiceTypeRaw === null || practiceTypeRaw === "") practiceType = null
+  else if (practiceTypeRaw !== undefined) {
+    if (!isValidPracticeType(practiceTypeRaw)) {
+      return NextResponse.json({ error: "Tipo de atuação inválido. Use \"autonomo\" ou \"escritorio\"." }, { status: 400 })
+    }
+    practiceType = practiceTypeRaw
   }
 
   // Validate image files (magic bytes + size) before any upload.
@@ -328,6 +349,9 @@ export async function PATCH(req: Request) {
       keywords: nopt(keywords),
       gtmContainerId: validated.gtmContainerId,
       theme,
+      oabNumber: oab.data.oabNumber,
+      oabState: oab.data.oabState,
+      practiceType,
     },
   })
 

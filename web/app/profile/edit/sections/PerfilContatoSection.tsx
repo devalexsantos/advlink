@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
+import { OabWarnings } from "@/components/oab-warnings"
+import { UF_LIST } from "@/lib/oab"
 import { useEditForm } from "../EditFormContext"
 import { PublicSectionHeader } from "../SectionRenderer"
 
@@ -36,21 +38,91 @@ export default function PerfilContatoSection() {
           />
           {errors.publicName && <p className="mt-1 text-sm text-red-500">{errors.publicName.message}</p>}
         </div>
+        <fieldset>
+          <legend className="mb-1 block text-sm font-medium">Como você atua?</legend>
+          <Controller
+            control={control}
+            name="practiceType"
+            render={({ field }) => (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {([
+                  ["autonomo", "Advogado(a) autônomo(a)"],
+                  ["escritorio", "Escritório"],
+                ] as const).map(([value, label]) => (
+                  <label
+                    key={value}
+                    className="flex cursor-pointer items-center gap-2 rounded-md border border-input px-3 py-2 text-sm has-[:checked]:border-primary has-[:checked]:bg-primary/5"
+                  >
+                    <input
+                      type="radio"
+                      name="practiceType"
+                      value={value}
+                      checked={field.value === value}
+                      onChange={() => field.onChange(value)}
+                      className="accent-primary"
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            )}
+          />
+        </fieldset>
+        <div>
+          <div className="grid grid-cols-[1fr_6rem] gap-3 max-w-sm">
+            <div>
+              <Label htmlFor="oabNumber" className="mb-1 block text-sm">Número da OAB</Label>
+              <Controller
+                control={control}
+                name="oabNumber"
+                render={({ field }) => (
+                  <Input id="oabNumber" placeholder="Ex.: 123456" autoComplete="off" value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
+                )}
+              />
+            </div>
+            <div>
+              <Label htmlFor="oabState" className="mb-1 block text-sm">UF</Label>
+              <Controller
+                control={control}
+                name="oabState"
+                render={({ field }) => (
+                  <select
+                    id="oabState"
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    className="h-9 w-full rounded-md border border-input bg-transparent px-2 text-base shadow-xs outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 md:text-sm"
+                  >
+                    <option value="">UF</option>
+                    {UF_LIST.map((uf) => (
+                      <option key={uf} value={uf}>{uf}</option>
+                    ))}
+                  </select>
+                )}
+              />
+            </div>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">Exibida no seu site, conforme exige o Código de Ética da OAB (art. 44).</p>
+          {errors.oabNumber && <p className="mt-1 text-sm text-red-500">{errors.oabNumber.message}</p>}
+          {errors.oabState && <p className="mt-1 text-sm text-red-500">{errors.oabState.message}</p>}
+        </div>
         <div>
           <Label htmlFor="headline" className="mb-1 block text-sm">Título</Label>
           <Controller
             control={control}
             name="headline"
             render={({ field }) => (
-              <Input id="headline" placeholder="Ex.: Advogado(a) Especialista em Direito Civil" value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
+              <Input id="headline" placeholder="Ex.: Advocacia Cível, de Família e Sucessões" value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
             )}
           />
+          <p className="mt-1 text-xs text-muted-foreground">Use “especialista” apenas se tiver título de especialização (Prov. OAB 205/2021, art. 3º, III).</p>
+          <OabWarnings text={form.watch("headline")} />
         </div>
       </div>
 
       {/* Sobre mim */}
       <div className="rounded-xl border border-border bg-card p-5">
-        <Label className="mb-3 text-base block font-bold">Sobre mim</Label>
+        <Label className="mb-3 text-base block font-bold">{form.watch("practiceType") === "escritorio" ? "Sobre o escritório" : "Sobre mim"}</Label>
         <PublicSectionHeader sectionKey="sobre" inline />
         <RichTextEditor
           content={aboutMarkdown}
@@ -58,6 +130,7 @@ export default function PerfilContatoSection() {
           placeholder="Conte um pouco sobre você e sua atuação..."
           minHeight="200px"
         />
+        <OabWarnings text={aboutMarkdown} />
       </div>
 
       {/* Contato */}

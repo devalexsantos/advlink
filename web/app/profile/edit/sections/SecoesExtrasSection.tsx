@@ -10,6 +10,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { IconPicker } from "@/components/ui/icon-picker"
+import { OabWarnings } from "@/components/oab-warnings"
 import { useEditForm } from "../EditFormContext"
 import type { CustomSectionItem } from "../types"
 import { getVideoEmbedUrl } from "@/lib/video-embed"
@@ -363,6 +364,7 @@ export default function SecoesExtrasSection() {
                 {hideTitle && (
                   <p className="text-xs text-amber-600 mt-1">Este título não será exibido na página pública.</p>
                 )}
+                <OabWarnings text={title} />
               </div>
             )}
 
@@ -376,6 +378,7 @@ export default function SecoesExtrasSection() {
                   placeholder="Escreva o conteúdo da seção..."
                   minHeight="150px"
                 />
+                <OabWarnings text={description} />
               </div>
             )}
 
