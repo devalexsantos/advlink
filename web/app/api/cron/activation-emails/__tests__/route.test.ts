@@ -1,10 +1,11 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest"
 
-const { dripMock } = vi.hoisted(() => ({ dripMock: vi.fn() }))
+const { dripMock, monthlyMock } = vi.hoisted(() => ({ dripMock: vi.fn(), monthlyMock: vi.fn() }))
 vi.mock("@/lib/prisma", () => ({ prisma: {} }))
 vi.mock("@/lib/activation/drip", () => ({ runActivationDrip: dripMock }))
-vi.mock("@/lib/activation/sender", () => ({ sendActivationEmail: vi.fn() }))
+vi.mock("@/lib/activation/monthly-report", () => ({ runMonthlyReports: monthlyMock }))
+vi.mock("@/lib/activation/sender", () => ({ sendActivationEmail: vi.fn(), sendMonthlyReportEmail: vi.fn() }))
 
 import { GET, POST } from "../route"
 
@@ -21,6 +22,7 @@ describe("/api/cron/activation-emails", () => {
     vi.spyOn(console, "info").mockImplementation(() => {})
     process.env.CRON_SECRET = SECRET
     dripMock.mockResolvedValue({ welcome: 2, checklist: 0, oab_tips: 0, last_reminder: 0, share_kit: 1 })
+    monthlyMock.mockResolvedValue({ sent: 3, skipped: 1, failed: 0 })
   })
   afterEach(() => {
     delete process.env.CRON_SECRET
@@ -41,7 +43,18 @@ describe("/api/cron/activation-emails", () => {
   it("200 with counts for GET and POST", async () => {
     const res = await GET(req(`Bearer ${SECRET}`))
     expect(res.status).toBe(200)
-    expect(await res.json()).toMatchObject({ welcome: 2, share_kit: 1 })
+    expect(await res.json()).toMatchObject({
+      drip: { welcome: 2, share_kit: 1 },
+      monthly: { sent: 3, skipped: 1, failed: 0 },
+    })
     expect((await POST(req(`Bearer ${SECRET}`, "POST"))).status).toBe(200)
+  })
+
+  it("still returns the drip result when the monthly run throws", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => {})
+    monthlyMock.mockRejectedValue(new Error("db"))
+    const res = await GET(req(`Bearer ${SECRET}`))
+    expect(res.status).toBe(200)
+    expect(await res.json()).toMatchObject({ drip: { welcome: 2 }, monthly: { error: true } })
   })
 })
