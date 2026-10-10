@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { useWatch } from "react-hook-form"
 import { Check, ChevronDown, ChevronUp, Circle } from "lucide-react"
@@ -24,6 +24,7 @@ function plain(value: string | null | undefined): string {
 }
 
 function readCollapsed(): boolean {
+  if (typeof window === "undefined") return false
   try {
     return window.localStorage.getItem(COLLAPSED_KEY) === "1"
   } catch {
@@ -43,11 +44,8 @@ function writeCollapsed(value: boolean) {
 export default function SiteChecklist() {
   const { form, data, isLoading, isError, previewUrl, aboutMarkdown, areas, customSections, teamMembers } = useEditForm()
   const values = useWatch({ control: form.control })
-  const [collapsed, setCollapsed] = useState(false)
-
-  useEffect(() => {
-    setCollapsed(readCollapsed())
-  }, [])
+  // Safe during SSR/hydration: nothing renders until the profile query has data (client only)
+  const [collapsed, setCollapsed] = useState(readCollapsed)
 
   const items = useMemo<ChecklistItem[]>(() => {
     const v = values ?? {}
