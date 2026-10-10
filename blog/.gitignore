@@ -32,7 +32,6 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
-!.env.example
 
 # vercel
 .vercel
@@ -41,6 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# legacy newsletter JSON (pre-Resend volume); never commit subscriber e-mails
+# newsletter subscribers (persistent volume in production)
 /data/
-newsletter*.json
