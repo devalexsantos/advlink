@@ -27,8 +27,26 @@ describe("reviewText", () => {
     ["Não perca tempo", "captacao"],
     ["Contrate já", "captacao"],
     ["Processo 0001234-56.2020.8.26.0100 ganho", "numero-de-processo"],
+    ["No seu caso, o prazo é de dois anos", "caso-concreto"],
+    ["Analisamos seu caso em 24 horas", "caso-concreto"],
+    ["Análise do seu caso sem compromisso", "caso-concreto"],
+    ["Conte-nos sobre o seu caso", "caso-concreto"],
   ])("detecta %s", (text, rule) => {
     expect(rules(text)).toContain(rule)
+  })
+
+  it("caso-concreto: usa o termo mais específico e explica a vedação", () => {
+    const [finding] = reviewText("Analisamos seu caso")
+    expect(finding).toMatchObject({ rule: "caso-concreto", term: "analisamos seu caso" })
+    expect(finding.message).toMatch(/art\. 42, I/)
+    expect(reviewText("NO SEU CASO")[0]).toMatchObject({ rule: "caso-concreto", term: "no seu caso" })
+  })
+
+  it("caso-concreto: não dispara em textos gerais sobre casos", () => {
+    expect(rules("Em casos de divórcio consensual, o procedimento pode ser feito em cartório.")).not.toContain("caso-concreto")
+    expect(rules("O caso fortuito e a força maior afastam a responsabilidade.")).not.toContain("caso-concreto")
+    expect(rules("Cada caso tem suas particularidades.")).not.toContain("caso-concreto")
+    expect(rules("Ele mencionou o seu casaco.")).not.toContain("caso-concreto")
   })
 
   it("não dispara em texto informativo limpo", () => {

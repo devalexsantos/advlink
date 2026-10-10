@@ -50,6 +50,35 @@ describe("billing e-mails", () => {
     expect(arg.html).toContain("automaticamente")
   })
 
+  it("links to the active custom domain instead of the subdomain", async () => {
+    prismaMock.profile.findUnique.mockResolvedValue({
+      slug: "joao-silva",
+      customDomain: { host: "escritorio.adv.br", status: "active" },
+      user: { email: "joao@exemplo.com" },
+    })
+    await notifyBilling(base("activated"))
+    const html = sendMock.mock.calls[0][0].html
+    expect(html).toContain("https://escritorio.adv.br/")
+    expect(html).not.toContain("joao-silva.advlink.site")
+  })
+
+  it("activated/reactivated: monthly by default, yearly when the open subscription is yearly", async () => {
+    await notifyBilling(base("activated"))
+    expect(sendMock.mock.calls[0][0].html).toContain("automaticamente a cada mês")
+    expect(prismaMock.profile.findUnique.mock.calls[0][0].select.billingSubscriptions).toMatchObject({ where: { status: "ACTIVE" } })
+
+    prismaMock.profile.findUnique.mockResolvedValue({
+      slug: "joao-silva",
+      user: { email: "joao@exemplo.com" },
+      billingSubscriptions: [{ cycle: "YEARLY" }],
+    })
+    await notifyBilling(base("activated"))
+    await notifyBilling(base("reactivated"))
+    expect(sendMock.mock.calls[1][0].html).toContain("automaticamente a cada ano")
+    expect(sendMock.mock.calls[2][0].html).toContain("automaticamente a cada ano")
+    expect(sendMock.mock.calls[1][0].html).not.toContain("a cada mês")
+  })
+
   it("reactivated: site is back online", async () => {
     await notifyBilling(base("reactivated"))
     const arg = sendMock.mock.calls[0][0]

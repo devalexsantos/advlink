@@ -153,7 +153,8 @@ describe("SectionRenderer", () => {
   it("renders PublicSectionHeader for areas tab with publicSectionKeys", () => {
     mockSearchParams.mockReturnValue("areas")
     render(<SectionRenderer />)
-    expect(screen.getByText("Título na página pública")).toBeInTheDocument()
+    // areas maps ["servicos", "faq"] — one header per public section
+    expect(screen.getAllByText("Título na página pública")).toHaveLength(2)
   })
 
   it("does not render PublicSectionHeader for tabs without publicSectionKeys", () => {

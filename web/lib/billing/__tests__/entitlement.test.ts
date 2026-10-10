@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest"
 import { parseCivilDate as d, civilDateOf, addDays } from "@/lib/billing/civil-date"
-import { addOneMonth, computeEntitlement, type EntitlementPayment } from "@/lib/billing/entitlement"
+import { addMonths, addOneMonth, computeEntitlement, type EntitlementPayment } from "@/lib/billing/entitlement"
 
 const pay = (dueDate: string, status = "CONFIRMED", revoked = false): EntitlementPayment => ({ dueDate: d(dueDate), status, revoked })
 
@@ -58,5 +58,29 @@ describe("computeEntitlement", () => {
     for (let i = 0; i < 30; i++) {
       expect(computeEntitlement([...ps].sort(() => Math.random() - 0.5), d("2026-12-20"))).toEqual(expected)
     }
+  })
+})
+
+describe("yearly charges", () => {
+  const yearly = (dueDate: string, status = "CONFIRMED"): EntitlementPayment => ({ dueDate: d(dueDate), status, revoked: false, cycle: "YEARLY" })
+
+  it("addMonths(12) clamps 29/02 like Asaas", () => {
+    expect(addMonths(d("2026-10-06"), 12)).toBe("2027-10-06")
+    expect(addMonths(d("2028-02-29"), 12)).toBe("2029-02-28")
+  })
+
+  it("a paid yearly charge covers 12 months, then 5 grace days, then EXPIRED", () => {
+    const ps = [yearly("2026-10-06")]
+    expect(computeEntitlement(ps, d("2026-10-06"))).toEqual({ state: "PAID", coveredUntil: "2027-10-05", graceUntil: "2027-10-10" })
+    expect(computeEntitlement(ps, d("2027-06-01")).state).toBe("PAID")
+    expect(computeEntitlement(ps, d("2027-10-05")).state).toBe("PAID")
+    expect(computeEntitlement(ps, d("2027-10-06")).state).toBe("GRACE")
+    expect(computeEntitlement(ps, d("2027-10-10")).state).toBe("GRACE")
+    expect(computeEntitlement(ps, d("2027-10-11")).state).toBe("EXPIRED")
+  })
+
+  it("missing or unknown cycle counts as monthly; a refunded yearly charge covers nothing", () => {
+    expect(computeEntitlement([{ dueDate: d("2026-10-06"), status: "CONFIRMED", revoked: false, cycle: null }], d("2026-10-06")).coveredUntil).toBe("2026-11-05")
+    expect(computeEntitlement([{ ...yearly("2026-10-06", "REFUNDED"), revoked: true }], d("2026-10-07")).state).toBe("NONE")
   })
 })

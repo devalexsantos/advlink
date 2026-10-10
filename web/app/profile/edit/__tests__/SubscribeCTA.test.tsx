@@ -60,7 +60,7 @@ describe("SubscribeCTA", () => {
 
     it("shows the price and cancellation promise", () => {
       render(<SubscribeCTA />)
-      expect(screen.getByText(/Publique por R\$\s49,00\/mês\. Cancele quando quiser\./)).toBeInTheDocument()
+      expect(screen.getByText(/Publique a partir de R\$\s49,00\/mês, ou economize 2 meses no plano anual\. Cancele quando quiser\./)).toBeInTheDocument()
     })
 
     it("lets the user change the future address before paying", async () => {

@@ -3,7 +3,7 @@
 import Link from "next/link"
 import { CheckCircle2, ExternalLink, Share2 } from "lucide-react"
 import { useQuery } from "@tanstack/react-query"
-import { getProfileUrl } from "@/lib/site-url"
+import { getSiteUrl } from "@/lib/site-url"
 import ChangeSlugButton from "./ChangeSlugButton"
 
 type Props = {
@@ -16,13 +16,17 @@ export default function PublishedCTA({ slug }: Props) {
     queryFn: async () => {
       const res = await fetch("/api/profile", { cache: "no-store" })
       if (!res.ok) throw new Error("Falha ao carregar perfil")
-      return res.json() as Promise<{ profile: { slug?: string | null } | null }>
+      return res.json() as Promise<{
+        profile: { slug?: string | null } | null
+        customDomain?: { host: string; status: string } | null
+      }>
     },
   })
 
   const effectiveSlug = data?.profile?.slug ?? slug ?? ""
   const hasSlug = effectiveSlug.trim().length > 0
-  const href = hasSlug ? getProfileUrl(effectiveSlug).replace(/\/$/, "") : undefined
+  const customDomainHost = data?.customDomain?.status === "active" ? data.customDomain.host : null
+  const href = hasSlug ? getSiteUrl({ slug: effectiveSlug, customDomainHost }).replace(/\/$/, "") : undefined
 
   return (
     <>

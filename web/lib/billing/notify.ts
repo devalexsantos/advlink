@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma"
 import type { BillingNotification } from "./sync"
+import { normalizeCycle } from "./plan"
+import { activeHostOf } from "@/lib/site-url"
 import {
   sendBillingEmail,
   sendCancellationConfirmationEmail,
@@ -11,11 +13,17 @@ const DEFAULT_TEAM_EMAIL = "advlinkcontato@gmail.com"
 async function loadOwner(profileId: string) {
   const profile = await prisma.profile.findUnique({
     where: { id: profileId },
-    select: { slug: true, user: { select: { email: true } } },
+    select: {
+      slug: true,
+      customDomain: { select: { host: true, status: true } },
+      user: { select: { email: true } },
+      // Cycle of the open subscription: the e-mails say how often the next charges come
+      billingSubscriptions: { where: { status: "ACTIVE" }, orderBy: { createdAt: "desc" }, take: 1, select: { cycle: true } },
+    },
   })
   const email = profile?.user?.email
   if (!profile || !email) return null
-  return { slug: profile.slug, email }
+  return { slug: profile.slug, host: activeHostOf(profile.customDomain), email, cycle: normalizeCycle(profile.billingSubscriptions?.[0]?.cycle) }
 }
 
 /** E-mails to the lawyer on billing transitions. Never throws: failures are logged. */
@@ -30,8 +38,10 @@ export async function notifyBilling(n: BillingNotification): Promise<void> {
       notice: n.notice,
       to: owner.email,
       siteSlug: owner.slug,
+      siteHost: owner.host,
       graceUntil: n.entitlement.graceUntil,
       invoiceUrl: n.invoiceUrl,
+      cycle: owner.cycle,
     })
   } catch (err) {
     console.error("[billing] falha ao enviar e-mail", { profileId: n.profileId, notice: n.notice }, err)

@@ -116,8 +116,13 @@ export const rateLimiters = {
   analyticsByIpSlug: named("analytics:ip-slug", 60, HOUR),
   /** Public contact-click beacon: own budget per IP+slug so clicks never eat page-view quota. */
   contactClickByIpSlug: named("contact-click:ip-slug", 30, HOUR),
+  /** Public contact form (POST /api/leads): per IP+slug (spam on one site) and per IP (across sites). */
+  leadByIpSlug: named("lead:ip-slug", 5, HOUR),
+  leadByIp: named("lead:ip", 20, HOUR),
   /** Preview link generation (creates rows + product events), per user. */
   previewLinkByUser: named("preview-link:user", 20, HOUR),
+  /** Custom-domain verification (DNS lookups + Easypanel calls + outbound HTTPS), per user. */
+  customDomainVerifyByUser: named("custom-domain-verify:user", 20, HOUR),
 }
 
 /**

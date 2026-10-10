@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import crypto from "crypto"
 import geoip from "geoip-lite"
 import { getClientIp, rateLimiters } from "@/lib/rate-limit"
-import { isContactKind, type ContactKind } from "@/lib/contact-clicks"
+import { BOT_UA_PATTERN, dailyVisitorHash } from "@/lib/visitor-hash"
+import { isBeaconContactKind, type BeaconContactKind } from "@/lib/contact-clicks"
 
 export const runtime = "nodejs"
 
-const BOT_PATTERN = /bot|crawler|spider|lighthouse|headless|prerender|wget|curl|httpie/i
 
 function parseDevice(ua: string): string {
   if (/tablet|ipad/i.test(ua)) return "tablet"
@@ -39,18 +38,12 @@ function classifyReferrer(ref: string | null | undefined): string {
 
 const DEDUPE_WINDOW_MS = 30 * 60 * 1000
 
-// Visitor hash: SHA-256(IP + UA + date) truncated. Rotates daily, so it can't follow a visitor
-// across days and never stores the IP itself.
-function dailyVisitorHash(ip: string, ua: string): string {
-  const today = new Date().toISOString().slice(0, 10)
-  return crypto.createHash("sha256").update(`${ip}|${ua}|${today}`).digest("hex").slice(0, 16)
-}
 
 /**
  * Contact-click beacon ({ slug, type: "contact", kind }). LGPD: only aggregate counts are kept —
  * no phone number, destination URL or IP is stored; the daily visitor hash exists only to dedupe.
  */
-async function trackContactClick(req: NextRequest, slug: string, kind: ContactKind, ua: string) {
+async function trackContactClick(req: NextRequest, slug: string, kind: BeaconContactKind, ua: string) {
   const profile = await prisma.profile.findFirst({
     where: { slug },
     select: { id: true, isActive: true },
@@ -96,12 +89,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false }, { status: 400 })
     }
     const isContact = type === "contact"
-    if (isContact && !isContactKind(kind)) {
+    // "form" is a valid ContactKind but is only recorded server-side by POST /api/leads.
+    if (isContact && !isBeaconContactKind(kind)) {
       return NextResponse.json({ ok: false }, { status: 400 })
     }
 
     const ua = req.headers.get("user-agent") || ""
-    if (BOT_PATTERN.test(ua)) {
+    if (BOT_UA_PATTERN.test(ua)) {
       return NextResponse.json({ ok: true })
     }
 

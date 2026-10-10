@@ -1,5 +1,5 @@
 import { describe, it, expect, afterEach, vi } from "vitest"
-import { getAppOrigin, getProfileHost, getProfileUrl, getRootDomain } from "@/lib/site-url"
+import { activeHostOf, getAppOrigin, getProfileHost, getProfileUrl, getRootDomain, getSiteUrl } from "@/lib/site-url"
 
 describe("site-url", () => {
   afterEach(() => vi.unstubAllEnvs())
@@ -35,5 +35,19 @@ describe("site-url", () => {
     expect(getAppOrigin()).toBe("https://app.advlink.site")
     env({ NEXTAUTH_URL: "https://app.example.com" })
     expect(getAppOrigin()).toBe("https://app.example.com")
+  })
+
+  it("getSiteUrl prefers the custom domain (always https)", () => {
+    env({ ROOT_DOMAIN: "localhost:3000" })
+    expect(getSiteUrl({ slug: "joao", customDomainHost: "escritorio.adv.br" })).toBe("https://escritorio.adv.br/")
+    expect(getSiteUrl({ slug: "joao", customDomainHost: null })).toBe("http://joao.localhost:3000/")
+    expect(getSiteUrl({ slug: "joao" })).toBe("http://joao.localhost:3000/")
+  })
+
+  it("activeHostOf returns the host only for active domains", () => {
+    expect(activeHostOf({ host: "a.com.br", status: "active" })).toBe("a.com.br")
+    expect(activeHostOf({ host: "a.com.br", status: "provisioning" })).toBeNull()
+    expect(activeHostOf(null)).toBeNull()
+    expect(activeHostOf(undefined)).toBeNull()
   })
 })

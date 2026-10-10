@@ -49,13 +49,13 @@ export async function GET(
         where: { environment },
         orderBy: { createdAt: "desc" },
         take: 1,
-        select: { status: true, valueCents: true, billingType: true, nextDueDate: true, canceledAt: true, cancelReason: true },
+        select: { status: true, valueCents: true, cycle: true, billingType: true, nextDueDate: true, canceledAt: true, cancelReason: true },
       },
       billingPayments: {
         where: { environment },
         orderBy: { dueDate: "desc" },
         take: 5,
-        select: { id: true, status: true, valueCents: true, billingType: true, dueDate: true, paymentDate: true, revoked: true, invoiceUrl: true },
+        select: { id: true, status: true, valueCents: true, cycle: true, billingType: true, dueDate: true, paymentDate: true, revoked: true, invoiceUrl: true },
       },
     },
   })

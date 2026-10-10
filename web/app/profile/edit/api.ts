@@ -1,4 +1,4 @@
-import type { Area, LinkItem, GalleryItem, CustomSectionItem, TeamMemberItem, FetchProfileResponse } from "./types"
+import type { AreaFaq, Area, LinkItem, GalleryItem, CustomSectionItem, TeamMemberItem, FetchProfileResponse } from "./types"
 
 /**
  * Throws an Error whose message is safe to show the user: the API's own `error` for 4xx
@@ -40,6 +40,20 @@ export async function patchArea(area: Area) {
   const res = await fetch("/api/activity-areas", { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(area) })
   await ensureOk(res, "Falha ao salvar área")
   return res.json() as Promise<{ area: Area }>
+}
+
+export async function saveAreaFaqs(areaId: string, faqs: { question: string; answer: string }[]) {
+  const res = await fetch("/api/activity-areas/faqs", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ areaId, faqs }) })
+  await ensureOk(res, "Falha ao salvar perguntas frequentes")
+  return res.json() as Promise<{ faqs: AreaFaq[] }>
+}
+
+export async function suggestAreaFaqs(areaId: string) {
+  const res = await fetch("/api/activity-areas/generate-faq", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ areaId }) })
+  if (res.status === 429) throw new Error("Muitas sugestões em pouco tempo. Aguarde um pouco e tente novamente.")
+  if (res.status === 503) throw new Error("A sugestão com IA está indisponível no momento.")
+  await ensureOk(res, "Falha ao gerar sugestões")
+  return res.json() as Promise<{ faqs: { question: string; answer: string }[] }>
 }
 
 export async function reorderAreas(order: { id: string; position: number }[]) {

@@ -9,6 +9,7 @@ import {
   canceledSitesWhere,
   currentMonthRange,
 } from "@/app/api/admin/_lib/billing"
+import { monthlyEquivalentCents } from "@/lib/billing/plan"
 
 export const dynamic = "force-dynamic"
 
@@ -32,10 +33,12 @@ export async function GET(req: Request) {
   const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)
   const month = currentMonthRange(now)
 
-  const [byStatus, recentlyCancelled, mrr, monthRevenue, subscriptions, totalSubscriptions] = await Promise.all([
+  const [byStatus, recentlyCancelled, mrrByCycle, monthRevenue, subscriptions, totalSubscriptions] = await Promise.all([
     prisma.profile.groupBy({ by: ["billingStatus"], _count: { _all: true } }),
     prisma.profile.count({ where: canceledSitesWhere(environment, { gte: thirtyDaysAgo }) }),
-    prisma.billingSubscription.aggregate({
+    // Per cycle: a yearly subscription contributes 1/12 of its value to the MRR
+    prisma.billingSubscription.groupBy({
+      by: ["cycle"],
       where: { environment, status: "ACTIVE", profile: { billingStatus: { in: PAID_BILLING_STATUSES } } },
       _sum: { valueCents: true },
     }),
@@ -58,6 +61,7 @@ export async function GET(req: Request) {
         id: true,
         status: true,
         valueCents: true,
+        cycle: true,
         billingType: true,
         nextDueDate: true,
         canceledAt: true,
@@ -79,6 +83,7 @@ export async function GET(req: Request) {
     prisma.billingSubscription.count({ where: { environment } }),
   ])
 
+  const mrrCents = mrrByCycle.reduce((sum, g) => sum + monthlyEquivalentCents(g._sum.valueCents ?? 0, g.cycle), 0)
   const count = (status: string) => byStatus.find((g) => g.billingStatus === status)?._count._all ?? 0
 
   return NextResponse.json({
@@ -88,7 +93,7 @@ export async function GET(req: Request) {
     delinquent: count("SUSPENDED"),
     pending: count("PENDING"),
     recentlyCancelled,
-    mrrCents: mrr._sum.valueCents ?? 0,
+    mrrCents,
     monthRevenueCents: monthRevenue._sum.valueCents ?? 0,
     monthNetRevenueCents: monthRevenue._sum.netValueCents ?? 0,
     monthPayments: monthRevenue._count._all,

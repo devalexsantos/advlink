@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { classifyContactHref, isContactKind } from "@/lib/contact-clicks"
+import { classifyContactHref, isBeaconContactKind, isContactKind } from "@/lib/contact-clicks"
 
 const HOST = "joao.advlink.site"
 
@@ -32,10 +32,20 @@ describe("classifyContactHref", () => {
 })
 
 describe("isContactKind", () => {
-  it("accepts only the four channels", () => {
+  it("accepts only the known channels", () => {
     expect(isContactKind("whatsapp")).toBe(true)
     expect(isContactKind("link")).toBe(true)
+    expect(isContactKind("form")).toBe(true)
     expect(isContactKind("sms")).toBe(false)
     expect(isContactKind(undefined)).toBe(false)
+  })
+})
+
+describe("isBeaconContactKind", () => {
+  it("rejects the server-only form channel", () => {
+    expect(isBeaconContactKind("whatsapp")).toBe(true)
+    expect(isBeaconContactKind("link")).toBe(true)
+    expect(isBeaconContactKind("form")).toBe(false)
+    expect(isBeaconContactKind("sms")).toBe(false)
   })
 })

@@ -22,6 +22,9 @@ import {
   BarChart3,
   MessageSquare,
   Share2,
+  Inbox,
+  Newspaper,
+  Globe,
 } from "lucide-react"
 import {
   Sidebar,
@@ -123,6 +126,32 @@ export function AppSidebar() {
             </SidebarMenuItem>
             <SidebarMenuItem>
               <SidebarMenuButton
+                isActive={pathname.startsWith("/profile/contatos")}
+                onClick={() => {
+                  router.push("/profile/contatos")
+                  setOpenMobile(false)
+                }}
+                tooltip="Mensagens"
+              >
+                <Inbox className="h-5 w-5" />
+                <span>Mensagens</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={pathname.startsWith("/profile/artigos")}
+                onClick={() => {
+                  router.push("/profile/artigos")
+                  setOpenMobile(false)
+                }}
+                tooltip="Artigos"
+              >
+                <Newspaper className="h-5 w-5" />
+                <span>Artigos</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
                 isActive={pathname === "/profile/divulgar"}
                 onClick={() => {
                   router.push("/profile/divulgar")
@@ -132,6 +161,19 @@ export function AppSidebar() {
               >
                 <Share2 className="h-5 w-5" />
                 <span>Divulgar meu site</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={pathname.startsWith("/profile/dominio")}
+                onClick={() => {
+                  router.push("/profile/dominio")
+                  setOpenMobile(false)
+                }}
+                tooltip="Domínio próprio"
+              >
+                <Globe className="h-5 w-5" />
+                <span>Domínio próprio</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

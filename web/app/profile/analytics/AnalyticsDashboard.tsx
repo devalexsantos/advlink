@@ -16,7 +16,7 @@ import {
   BarChart,
   Bar,
 } from "recharts"
-import { Users, Eye, MousePointerClick, MessageCircle, Phone, Mail, Link2 } from "lucide-react"
+import { Users, Eye, MousePointerClick, MessageCircle, Phone, Mail, Link2, ClipboardList } from "lucide-react"
 import { fetchAnalytics } from "./api"
 import type { AnalyticsData } from "./types"
 
@@ -31,6 +31,7 @@ const CONTACT_CHANNELS = [
   { kind: "phone", label: "Telefone", icon: Phone },
   { kind: "email", label: "E-mail", icon: Mail },
   { kind: "link", label: "Links", icon: Link2 },
+  { kind: "form", label: "Formulário", icon: ClipboardList },
 ] as const
 
 const CHART_COLORS = [

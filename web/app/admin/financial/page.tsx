@@ -17,8 +17,10 @@ import {
   billingStatusLabel,
   billingStatusVariant,
   billingTypeLabel,
+  cycleLabel,
   formatCents,
   formatCivilDate,
+  formatSubscriptionValue,
   subscriptionStatusLabel,
 } from "@/app/admin/_lib/billing-labels"
 
@@ -26,6 +28,7 @@ interface SubscriptionRow {
   id: string
   status: string
   valueCents: number
+  cycle?: string | null
   billingType: string | null
   nextDueDate: string | null
   canceledAt: string | null
@@ -146,7 +149,10 @@ export default function AdminFinancialPage() {
                     {sub.profile.slug && <p className="text-xs text-muted-foreground">{sub.profile.slug}</p>}
                   </TableCell>
                   <TableCell className="text-sm">{sub.profile.user.email || "—"}</TableCell>
-                  <TableCell className="text-sm font-medium">{formatCents(sub.valueCents)}</TableCell>
+                  <TableCell className="text-sm">
+                    <span className="font-medium">{formatSubscriptionValue(sub.valueCents, sub.cycle)}</span>
+                    <p className="text-xs text-muted-foreground">{cycleLabel(sub.cycle)}</p>
+                  </TableCell>
                   <TableCell>
                     <Badge variant={billingStatusVariant(sub.profile.billingStatus)}>
                       {billingStatusLabel(sub.profile.billingStatus)}

@@ -236,6 +236,13 @@ export default function DivulgarClient({ site }: { site: DivulgarSite }) {
           </div>
         </CardContent>
       </Card>
+
+      <p className="text-center text-sm text-muted-foreground">
+        Quer um endereço só seu?{" "}
+        <Link href="/profile/dominio" className="font-medium text-foreground underline underline-offset-4">
+          Conectar domínio próprio
+        </Link>
+      </p>
     </div>
   )
 }

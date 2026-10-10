@@ -1,10 +1,11 @@
 "use client"
 
-import { useState } from "react"
-import { GripVertical, Pencil, Plus, Save, Trash2, Upload, X, Info } from "lucide-react"
+import { useEffect, useRef, useState } from "react"
+import { GripVertical, Pencil, Plus, Save, Trash2, Upload, X, Info, ArrowUp, ArrowDown, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
 import {
@@ -29,6 +30,19 @@ import { OabWarnings } from "@/components/oab-warnings"
 import { useEditForm } from "../EditFormContext"
 import { useQueryClient } from "@tanstack/react-query"
 import type { Area } from "../types"
+import { saveAreaFaqs, suggestAreaFaqs } from "../api"
+
+const MAX_FAQS = 8
+const FAQ_QUESTION_MAX = 150
+const FAQ_ANSWER_MAX = 700
+
+type FaqDraft = { key: number; question: string; answer: string }
+
+function cleanFaqs(list: { question: string; answer: string }[]) {
+  return list
+    .map((f) => ({ question: f.question.trim(), answer: f.answer.trim() }))
+    .filter((f) => f.question && f.answer)
+}
 
 function SortableAreaItem({ area, onEdit, onDelete }: { area: Area; onEdit: () => void; onDelete: () => void }) {
   const {
@@ -100,6 +114,61 @@ export default function AreasServicosSection() {
 
   const qc = useQueryClient()
   const [activeArea, setActiveArea] = useState<Area | null>(null)
+
+  // FAQ draft for the area being edited (initialised when the dialog opens)
+  const faqKey = useRef(0)
+  const [faqs, setFaqs] = useState<FaqDraft[]>([])
+  const [faqSuggesting, setFaqSuggesting] = useState(false)
+  const [faqError, setFaqError] = useState<string | null>(null)
+  const editingAreaId = editingArea?.id ?? null
+  useEffect(() => {
+    setFaqs((editingArea?.faqs ?? []).map((f) => ({ key: faqKey.current++, question: f.question, answer: f.answer })))
+    setFaqError(null)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [editingAreaId])
+
+  function updateFaq(key: number, patch: Partial<FaqDraft>) {
+    setFaqs((prev) => prev.map((f) => (f.key === key ? { ...f, ...patch } : f)))
+  }
+  function moveFaq(index: number, dir: -1 | 1) {
+    setFaqs((prev) => {
+      const target = index + dir
+      if (target < 0 || target >= prev.length) return prev
+      const next = [...prev]
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
+  }
+  async function handleSuggestFaqs() {
+    if (!editingArea || faqSuggesting || faqs.length >= MAX_FAQS) return
+    setFaqSuggesting(true)
+    setFaqError(null)
+    try {
+      const { faqs: suggested } = await suggestAreaFaqs(editingArea.id)
+      setFaqs((prev) => {
+        const room = MAX_FAQS - prev.length
+        const added = suggested.slice(0, room).map((f) => ({ key: faqKey.current++, question: f.question, answer: f.answer }))
+        return [...prev, ...added]
+      })
+    } catch (err) {
+      setFaqError(err instanceof Error && err.message ? err.message : "Não foi possível gerar sugestões.")
+    } finally {
+      setFaqSuggesting(false)
+    }
+  }
+  /** Persists the FAQ list when it changed. Returns false (and shows the error) if it fails. */
+  async function persistFaqs(area: Area): Promise<boolean> {
+    const cleaned = cleanFaqs(faqs)
+    const initial = (area.faqs ?? []).map((f) => ({ question: f.question, answer: f.answer }))
+    if (JSON.stringify(cleaned) === JSON.stringify(initial)) return true
+    try {
+      await saveAreaFaqs(area.id, cleaned)
+      return true
+    } catch (err) {
+      setFaqError(err instanceof Error && err.message ? err.message : "Não foi possível salvar as perguntas frequentes.")
+      return false
+    }
+  }
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -219,6 +288,60 @@ export default function AreasServicosSection() {
                 <OabWarnings text={editorMarkdown} />
                 <p className="mt-2 text-xs text-muted-foreground">Descrições geradas por IA são um ponto de partida. Revise antes de publicar; a responsabilidade pelo conteúdo é sua (Prov. OAB 205/2021).</p>
               </div>
+              <div>
+                <div className="mb-1 mt-8 flex flex-wrap items-center justify-between gap-2">
+                  <Label className="block">Perguntas frequentes</Label>
+                  <Button type="button" size="sm" variant="outline" className="gap-2 cursor-pointer" onClick={handleSuggestFaqs} disabled={faqSuggesting || faqs.length >= MAX_FAQS}>
+                    <Sparkles className="h-4 w-4" /> {faqSuggesting ? "Gerando sugestões..." : "Sugerir perguntas com IA"}
+                  </Button>
+                </div>
+                <p className="mb-3 text-xs text-muted-foreground">Até {MAX_FAQS} perguntas. Elas aparecem no seu site e ajudam seus visitantes a entender esta área.</p>
+                <div className="space-y-3">
+                  {faqs.map((f, i) => (
+                    <div key={f.key} className="space-y-2 rounded-lg border border-border bg-background p-3">
+                      <div className="flex items-start gap-2">
+                        <div className="flex-1 space-y-2">
+                          <Input
+                            aria-label={`Pergunta ${i + 1}`}
+                            placeholder="Pergunta"
+                            maxLength={FAQ_QUESTION_MAX}
+                            value={f.question}
+                            onChange={(e) => updateFaq(f.key, { question: e.target.value })}
+                          />
+                          <Textarea
+                            aria-label={`Resposta ${i + 1}`}
+                            placeholder="Resposta"
+                            maxLength={FAQ_ANSWER_MAX}
+                            rows={3}
+                            value={f.answer}
+                            onChange={(e) => updateFaq(f.key, { answer: e.target.value })}
+                          />
+                          <OabWarnings text={f.question + "\n" + f.answer} />
+                        </div>
+                        <div className="flex flex-col gap-1">
+                          <Button type="button" size="icon" variant="ghost" className="h-8 w-8 cursor-pointer" aria-label={`Subir pergunta ${i + 1}`} disabled={i === 0} onClick={() => moveFaq(i, -1)}>
+                            <ArrowUp className="h-4 w-4" />
+                          </Button>
+                          <Button type="button" size="icon" variant="ghost" className="h-8 w-8 cursor-pointer" aria-label={`Descer pergunta ${i + 1}`} disabled={i === faqs.length - 1} onClick={() => moveFaq(i, 1)}>
+                            <ArrowDown className="h-4 w-4" />
+                          </Button>
+                          <Button type="button" size="icon" variant="ghost" className="h-8 w-8 cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10" aria-label={`Remover pergunta ${i + 1}`} onClick={() => setFaqs((prev) => prev.filter((x) => x.key !== f.key))}>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-3">
+                  <Button type="button" size="sm" variant="secondary" className="gap-2 cursor-pointer" disabled={faqs.length >= MAX_FAQS} onClick={() => setFaqs((prev) => [...prev, { key: faqKey.current++, question: "", answer: "" }])}>
+                    <Plus className="h-4 w-4" /> Adicionar pergunta
+                  </Button>
+                  {faqs.length >= MAX_FAQS && <span className="ml-2 text-xs text-muted-foreground">Limite de {MAX_FAQS} perguntas atingido.</span>}
+                </div>
+                {faqError && <p role="alert" className="mt-2 text-sm text-red-500">{faqError}</p>}
+                <p className="mt-2 text-xs text-muted-foreground">Sugestões geradas por IA. Revise antes de publicar: as respostas devem ser gerais e informativas, sem analisar casos concretos.</p>
+              </div>
               <DialogFooter>
                 <Button onClick={async () => {
                   if (!editingArea || areaSaving) return
@@ -233,16 +356,22 @@ export default function AreasServicosSection() {
                       if (!res.ok) { alert("Falha ao salvar área"); return }
                       const data = await res.json()
                       setAreas((prev) => prev.map((a) => (a.id === data.area.id ? data.area : a)))
+                      const faqsOk = await persistFaqs(editingArea)
                       await qc.invalidateQueries({ queryKey: ["profile"] })
                       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+                      if (!faqsOk) return
                       setAreaCoverFile(null); setAreaCoverPreview(null); setRemoveAreaCover(false); setEditingArea(null)
                     } else {
+                      const { faqs: _faqs, ...areaPayload } = editingArea
+                      void _faqs
                       await patchAreaMutation.mutateAsync({
-                        ...editingArea, description: draftMdRef.current,
+                        ...areaPayload, description: draftMdRef.current,
                         coverImageUrl: removeAreaCover ? null : editingArea.coverImageUrl,
                       })
+                      const faqsOk = await persistFaqs(editingArea)
                       await qc.invalidateQueries({ queryKey: ["profile"] })
                       await qc.refetchQueries({ queryKey: ["profile"], type: "active" })
+                      if (!faqsOk) return
                       setEditingArea(null); setRemoveAreaCover(false)
                     }
                   } finally { setAreaSaving(false) }

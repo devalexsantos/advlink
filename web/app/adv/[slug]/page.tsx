@@ -2,7 +2,7 @@ import { prisma } from "@/lib/prisma"
 import type { Metadata } from "next"
 import { Wrench } from "lucide-react"
 import { notFound } from "next/navigation"
-import { getAppOrigin, getProfileUrl } from "@/lib/site-url"
+import { activeHostOf, getAppOrigin, getSiteUrl } from "@/lib/site-url"
 import { findPublicProfile, loadPublicProfileRelations } from "@/lib/public-profile"
 import PublicProfileView from "./PublicProfileView"
 
@@ -73,12 +73,12 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
 
 export async function generateMetadata({ params }: { params: RouteParams }): Promise<Metadata> {
   const { slug } = await params
-  const profile = await prisma.profile.findFirst({ where: { slug }, select: { metaTitle: true, metaDescription: true, publicName: true, aboutDescription: true, avatarUrl: true, isActive: true } })
+  const profile = await prisma.profile.findFirst({ where: { slug }, select: { metaTitle: true, metaDescription: true, publicName: true, aboutDescription: true, avatarUrl: true, isActive: true, customDomain: { select: { host: true, status: true } } } })
   if (!profile) return { title: "Perfil não encontrado", robots: { index: false, follow: false } }
   const title = profile.metaTitle || profile.publicName || "Advogado"
   const description = profile.metaDescription || stripMarkup(profile.aboutDescription || "").slice(0, 300)
   const image = profile.avatarUrl || undefined
-  const url = getProfileUrl(slug)
+  const url = getSiteUrl({ slug, customDomainHost: activeHostOf(profile.customDomain) })
   return {
     title,
     description,

@@ -1,5 +1,7 @@
 import { z } from "zod"
 import { normalizeOabNumber, UF_LIST } from "@/lib/oab"
+import { isValidCnpj } from "@/lib/cnpj"
+import { WHATSAPP_MESSAGE_MAX } from "@/lib/whatsapp"
 
 export const profileEditSchema = z.object({
   publicName: z.string().min(2, "Informe pelo menos 2 caracteres."),
@@ -38,6 +40,19 @@ export const profileEditSchema = z.object({
     .string()
     .optional()
     .or(z.literal("").transform(() => undefined)),
+  linkedinUrl: z.string().optional().or(z.literal("").transform(() => undefined)),
+  facebookUrl: z.string().optional().or(z.literal("").transform(() => undefined)),
+  youtubeUrl: z.string().optional().or(z.literal("").transform(() => undefined)),
+  whatsappMessage: z.string().max(WHATSAPP_MESSAGE_MAX, `Máximo de ${WHATSAPP_MESSAGE_MAX} caracteres.`).optional().or(z.literal("").transform(() => undefined)),
+  officeHours: z.string().max(80, "Máximo de 80 caracteres.").optional().or(z.literal("").transform(() => undefined)),
+  languages: z.string().max(80, "Máximo de 80 caracteres.").optional().or(z.literal("").transform(() => undefined)),
+  firmName: z.string().max(120, "Máximo de 120 caracteres.").optional().or(z.literal("").transform(() => undefined)),
+  firmType: z.enum(["individual", "sociedade", ""]).optional(),
+  firmOabRegistration: z.string().max(40, "Máximo de 40 caracteres.").optional().or(z.literal("").transform(() => undefined)),
+  firmCnpj: z
+    .string()
+    .optional()
+    .refine((v) => !v || isValidCnpj(v), { message: "CNPJ inválido. Confira os números." }),
   calendlyUrl: z
     .string()
     .optional()
@@ -65,12 +80,20 @@ export const profileEditSchema = z.object({
 
 export type ProfileEditValues = z.infer<typeof profileEditSchema>
 
+export type AreaFaq = {
+  id?: string
+  question: string
+  answer: string
+  position?: number
+}
+
 export type Area = {
   id: string
   title: string
   description: string | null
   coverImageUrl?: string | null
   position?: number
+  faqs?: AreaFaq[]
 }
 
 export type LinkItem = {
@@ -147,6 +170,18 @@ export type ProfileData = {
   whatsapp?: string | null
   whatsappIsFixed?: boolean | null
   instagramUrl?: string | null
+  linkedinUrl?: string | null
+  facebookUrl?: string | null
+  youtubeUrl?: string | null
+  whatsappMessage?: string | null
+  firmName?: string | null
+  firmType?: "individual" | "sociedade" | null
+  firmOabRegistration?: string | null
+  firmCnpj?: string | null
+  officeHours?: string | null
+  languages?: string | null
+  onlineService?: boolean | null
+  leadFormEnabled?: boolean | null
   calendlyUrl?: string | null
   avatarUrl?: string | null
   coverUrl?: string | null

@@ -9,6 +9,7 @@ const { prismaMock } = vi.hoisted(() => ({
     gallery: { findMany: vi.fn().mockResolvedValue([]) },
     customSection: { findMany: vi.fn().mockResolvedValue([]) },
     teamMember: { findMany: vi.fn().mockResolvedValue([]) },
+    article: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }))
 
@@ -67,12 +68,35 @@ describe("Public Profile Page (/adv/[slug])", () => {
     expect(rendered).toContain("Trabalhista")
   })
 
+  it("emits a FAQPage JSON-LD only when an area has FAQs", async () => {
+    prismaMock.profile.findFirst.mockResolvedValue({
+      id: "p1", slug: "joao", userId: "u1", isActive: true, theme: "classic", publicName: "Dr. João", address: null,
+    })
+    prismaMock.activityAreas.findMany.mockResolvedValueOnce([
+      { title: "Sucessões", faqs: [{ id: "f1", question: "O que é inventário?", answer: "É a partilha de bens.", position: 0 }] },
+    ])
+    const withFaq = JSON.stringify(await PublicProfilePage({ params: Promise.resolve({ slug: "joao" }) }))
+    expect(withFaq).toContain("FAQPage")
+    expect(withFaq).toContain("O que é inventário?")
+    expect(prismaMock.activityAreas.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { profileId: "p1" },
+        include: { faqs: { orderBy: { position: "asc" }, select: { id: true, question: true, answer: true, position: true } } },
+      }),
+    )
+
+    prismaMock.activityAreas.findMany.mockResolvedValueOnce([{ title: "Sucessões", faqs: [] }])
+    const withoutFaq = JSON.stringify(await PublicProfilePage({ params: Promise.resolve({ slug: "joao" }) }))
+    expect(withoutFaq).toContain("LegalService")
+    expect(withoutFaq).not.toContain("FAQPage")
+  })
+
   it("falls back to the classic theme for unknown theme values", async () => {
     prismaMock.profile.findFirst.mockResolvedValue({ id: "p1", slug: "x", userId: "u1", isActive: true, theme: null, address: null })
     const result = (await PublicProfilePage({ params: Promise.resolve({ slug: "x" }) })) as {
       props: { children: unknown[] }
     }
-    // children: [banner, json-ld, gtm, tracker, modern, classic, corporate] — only the classic slot renders an element
+    // children: [banner, json-ld, faq json-ld, gtm, tracker, modern, classic, corporate] — only the classic slot renders an element
     const themeSlots = result.props.children.slice(-3)
     expect(themeSlots.map((c) => Boolean(c))).toEqual([false, true, false])
   })
@@ -82,7 +106,10 @@ describe("Public Profile Page (/adv/[slug])", () => {
     const el = (await Page({ params: Promise.resolve({ slug: "x" }) })) as { type: unknown; props: Record<string, unknown> }
     expect(el.type).toBe(PublicProfileView)
     expect(el.props).toMatchObject({ slug: "x", showTracker: true, gtmContainerId: "GTM-ABCD123" })
-    expect(prismaMock.profile.findFirst).toHaveBeenCalledWith({ where: { slug: "x" }, include: { address: true } })
+    expect(prismaMock.profile.findFirst).toHaveBeenCalledWith({
+      where: { slug: "x" },
+      include: { address: true, customDomain: { select: { host: true, status: true } } },
+    })
     expect(prismaMock.teamMember.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { profileId: "p1" } }))
   })
 

@@ -6,7 +6,12 @@ import { GalleryCarousel } from "@/app/adv/[slug]/GalleryCarousel"
 import { TeamCarousel } from "@/app/adv/[slug]/TeamCarousel"
 import { renderContent } from "@/lib/render-content"
 import { formatOab } from "@/lib/oab"
-import { Heart, Instagram, Mail, Phone, SquareArrowOutUpRight } from "lucide-react"
+import { buildWhatsAppUrl } from "@/lib/whatsapp"
+import FaqSection, { hasFaqs } from "@/components/themes/FaqSection"
+import ArticlesSection, { hasArticles, type ArticleSummary } from "@/components/themes/ArticlesSection"
+import LeadFormSection from "@/components/themes/LeadFormSection"
+import { buildServiceLine, buildFirmLine } from "@/components/themes/profile-info"
+import { Facebook, Heart, Instagram, Linkedin, Mail, Phone, SquareArrowOutUpRight, Youtube } from "lucide-react"
 import Link from "next/link"
 import { Fragment } from "react"
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon"
@@ -14,22 +19,24 @@ import { getSectionOrder, getSectionLabel, getSectionIcon, type SectionKey, type
 import { getIconComponent } from "@/lib/icon-renderer"
 import CustomSectionRenderer from "@/components/themes/CustomSectionRenderer"
 
-type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
+type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null; faqs?: { id: string; question: string; answer: string; position?: number }[] }
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
 type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string; videoUrl?: string | null; buttonConfig?: { url: string; label: string; bgColor: string; textColor: string; borderRadius: number; iconName?: string } | null }
 type TeamMember = { id: string; name: string; description: string | null; avatarUrl: string | null; phone: string | null; whatsapp: string | null; email: string | null }
-type Profile = { publicName?: string | null; headline?: string | null; oabNumber?: string | null; oabState?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
+type Profile = { leadFormEnabled?: boolean | null; publicName?: string | null; headline?: string | null; oabNumber?: string | null; oabState?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; linkedinUrl?: string | null; facebookUrl?: string | null; youtubeUrl?: string | null; whatsappMessage?: string | null; firmName?: string | null; firmType?: string | null; firmOabRegistration?: string | null; firmCnpj?: string | null; officeHours?: string | null; languages?: string | null; onlineService?: boolean | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
 
 const fade = { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.6 } }
 const fadeInView = { initial: { opacity: 0 }, whileInView: { opacity: 1 }, viewport: { once: true }, transition: { duration: 0.6 } }
 
-export default function Theme04({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [], privacyUrl }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean>; teamMembers?: TeamMember[]; privacyUrl?: string }) {
+export default function Theme04({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [], privacyUrl, articles, siteBaseUrl, leadFormDisabled = false, slug }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean>; teamMembers?: TeamMember[]; privacyUrl?: string; articles?: ArticleSummary[]; siteBaseUrl?: string; leadFormDisabled?: boolean; slug?: string }) {
   const order = getSectionOrder(sectionOrder as SectionKey[] | undefined)
   const label = (key: SectionKey) => getSectionLabel(key, sectionLabels as SectionLabels)
   const icon = (key: SectionKey) => getIconComponent(getSectionIcon(key, sectionIcons))
   const hidden = (key: SectionKey) => sectionTitleHidden?.[key] === true
+  const serviceLine = buildServiceLine(profile)
+  const firmLine = buildFirmLine(profile)
 
   const sectionRenderers: Record<string, () => React.ReactNode> = {
     servicos: () => areas.length > 0 ? (
@@ -45,10 +52,44 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
           text={text}
           secondary={secondary}
           whatsapp={profile.whatsapp}
+          whatsappMessage={profile.whatsappMessage}
           publicPhone={profile.publicPhone}
           publicEmail={profile.publicEmail}
         />
         <div className="mt-14 mx-auto max-w-6xl border-t" style={{ borderColor: `${text}25` }} />
+      </motion.section>
+    ) : null,
+
+    faq: () => hasFaqs(areas) ? (
+      <motion.section {...fadeInView} className="relative z-10 px-6 py-14 text-center">
+        {!hidden("faq") && (
+          <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            {(() => { const I = icon("faq"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("faq")}
+          </h2>
+        )}
+        <FaqSection areas={areas} text={text} borderColor={`${text}20`} headingColor={secondary} itemClassName="rounded-none border-2 bg-white/5" />
+      </motion.section>
+    ) : null,
+
+    artigos: () => hasArticles(articles) ? (
+      <motion.section {...fadeInView} className="relative z-10 px-6 py-14 text-center">
+        {!hidden("artigos") && (
+          <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            {(() => { const I = icon("artigos"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("artigos")}
+          </h2>
+        )}
+        <ArticlesSection articles={articles} baseUrl={siteBaseUrl} text={text} borderColor={`${text}20`} headingColor={secondary} cardClassName="rounded-none border-2 bg-white/5" />
+      </motion.section>
+    ) : null,
+
+    contato: () => profile.leadFormEnabled ? (
+      <motion.section {...fadeInView} className="relative z-10 px-6 py-14 text-center">
+        {!hidden("contato") && (
+          <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            {(() => { const I = icon("contato"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("contato")}
+          </h2>
+        )}
+        <LeadFormSection slug={slug ?? ""} areas={areas.map((a) => a.title)} privacyUrl={privacyUrl} text={text} borderColor={`${text}33`} buttonBg={secondary} buttonText={primary} disabled={leadFormDisabled} fieldClassName="rounded-none border-2 bg-white/5" />
       </motion.section>
     ) : null,
 
@@ -264,10 +305,10 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
             )}
 
             {/* Contact buttons — square with border */}
-            <div className="flex gap-3 mt-3">
+            <div className="flex flex-wrap gap-3 mt-3">
               {profile.whatsapp && (
                 <a
-                  href={`https://wa.me/${profile.whatsapp.replace(/\D/g, "")}`}
+                  href={buildWhatsAppUrl(profile.whatsapp, profile.whatsappMessage)}
                   target="_blank"
                   rel="noreferrer"
                   className="rounded-none w-11 h-11 flex items-center justify-center border-2 transition-opacity hover:opacity-80"
@@ -279,12 +320,49 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
               {profile.instagramUrl && (
                 <a
                   href={profile.instagramUrl}
+                  aria-label="Instagram"
                   target="_blank"
                   rel="noreferrer"
                   className="rounded-none w-11 h-11 flex items-center justify-center border-2 transition-opacity hover:opacity-80"
                   style={{ backgroundColor: `${text}15`, color: text, borderColor: `${text}50` }}
                 >
                   <Instagram className="w-5 h-5" />
+                </a>
+              )}
+              {profile.linkedinUrl && (
+                <a
+                  href={profile.linkedinUrl}
+                  aria-label="LinkedIn"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-none w-11 h-11 flex items-center justify-center border-2 transition-opacity hover:opacity-80"
+                  style={{ backgroundColor: `${text}15`, color: text, borderColor: `${text}50` }}
+                >
+                  <Linkedin className="w-5 h-5" />
+                </a>
+              )}
+              {profile.facebookUrl && (
+                <a
+                  href={profile.facebookUrl}
+                  aria-label="Facebook"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-none w-11 h-11 flex items-center justify-center border-2 transition-opacity hover:opacity-80"
+                  style={{ backgroundColor: `${text}15`, color: text, borderColor: `${text}50` }}
+                >
+                  <Facebook className="w-5 h-5" />
+                </a>
+              )}
+              {profile.youtubeUrl && (
+                <a
+                  href={profile.youtubeUrl}
+                  aria-label="YouTube"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-none w-11 h-11 flex items-center justify-center border-2 transition-opacity hover:opacity-80"
+                  style={{ backgroundColor: `${text}15`, color: text, borderColor: `${text}50` }}
+                >
+                  <Youtube className="w-5 h-5" />
                 </a>
               )}
               {profile.publicEmail && (
@@ -306,6 +384,9 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
                 </a>
               )}
             </div>
+            {serviceLine && (
+              <p className="text-sm opacity-75">{serviceLine}</p>
+            )}
           </div>
         </motion.div>
       </section>
@@ -323,6 +404,7 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
       <footer className="relative z-10 mt-10">
         <div className="mx-6 md:mx-12 border-t" style={{ borderColor: `${text}25` }} />
         <div className="px-6 py-6 text-center text-sm">
+          {firmLine && <p className="mb-2 text-xs opacity-75">{firmLine}</p>}
           <span className="flex flex-col md:flex-row justify-center items-center gap-2">
             © {new Date().getFullYear()} - Feito com <Heart className="w-4 h-4" /> por
             <Link href="https://advlink.site" target="_blank" className="font-bold hover:underline">
@@ -344,7 +426,7 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
         <div className={`${constrainToContainer ? "absolute" : "fixed"} bottom-4 right-4 z-50 flex flex-col items-end gap-3`}>
           {profile.whatsappIsFixed && profile.whatsapp ? (
             <a
-              href={`https://wa.me/${profile.whatsapp.replace(/\D/g, "")}`}
+              href={buildWhatsAppUrl(profile.whatsapp, profile.whatsappMessage)}
               target="_blank"
               rel="noreferrer"
               aria-label="Abrir WhatsApp"

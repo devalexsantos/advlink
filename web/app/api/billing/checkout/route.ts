@@ -9,18 +9,17 @@ import { trackEvent } from "@/lib/product-events"
 import { getBillingDeps } from "@/lib/billing/deps"
 import { isPaidStatus } from "@/lib/billing/entitlement"
 import { recomputeProfile } from "@/lib/billing/sync"
-import type { LinkBillingType } from "@/lib/billing/asaas-client"
+import { normalizeCycle } from "@/lib/billing/plan"
 
 const bodySchema = z.object({
-  method: z.enum(["card_boleto", "pix"]),
+  // Single hosted link (card, boleto or Pix on the Asaas page); the old Pix-only button was removed
+  method: z.literal("card_boleto"),
+  /** Monthly (R$ 49) or yearly (R$ 490) recurring link */
+  cycle: z.enum(["MONTHLY", "YEARLY"]).default("MONTHLY"),
   /** Lawyer chose to drop an unpaid pending charge and pay another way */
   replacePending: z.boolean().optional(),
 })
 
-const LINK_TYPE: Record<z.infer<typeof bodySchema>["method"], LinkBillingType> = {
-  card_boleto: "UNDEFINED",
-  pix: "PIX",
-}
 const UNPAID_OPEN = new Set(["PENDING", "OVERDUE"])
 
 /** Starts (or resumes) the Asaas checkout of the active site: returns the hosted payment link. */
@@ -34,7 +33,7 @@ export async function POST(req: Request) {
 
   const parsed = bodySchema.safeParse(await req.json().catch(() => null))
   if (!parsed.success) return NextResponse.json({ error: "Forma de pagamento inválida" }, { status: 400 })
-  const { method, replacePending } = parsed.data
+  const { method, cycle, replacePending } = parsed.data
 
   const deps = getBillingDeps()
   if (!deps) {
@@ -98,29 +97,47 @@ export async function POST(req: Request) {
     }
   }
 
-  const billingType = LINK_TYPE[method]
+  // Only one open link per site: switching cycle closes the open link(s) of the other cycle, so the
+  // lawyer can't end up paying both a monthly and a yearly subscription
+  const otherLinks = await prisma.billingPaymentLink.findMany({
+    where: { profileId, environment: env, status: "ACTIVE", cycle: { not: cycle } },
+  })
+  for (const other of otherLinks) {
+    try {
+      await deps.asaas.disablePaymentLink(other.asaasId, normalizeCycle(other.cycle))
+    } catch (err) {
+      console.error("[billing] falha ao desativar link do outro ciclo", { profileId, link: other.asaasId, err: String(err) })
+      return NextResponse.json(
+        { code: "GATEWAY_ERROR", error: "Não foi possível trocar o plano agora. Tente novamente em alguns minutos." },
+        { status: 502 }
+      )
+    }
+    await prisma.billingPaymentLink.update({ where: { id: other.id }, data: { status: "DISABLED", closedAt: new Date() } })
+  }
+
+  const billingType = "UNDEFINED"
   let link = await prisma.billingPaymentLink.findFirst({
-    where: { profileId, environment: env, billingType, status: "ACTIVE" },
+    where: { profileId, environment: env, billingType, cycle, status: "ACTIVE" },
     orderBy: { createdAt: "desc" },
   })
   if (!link) {
     let created: { id: string; url: string }
     try {
-      created = await deps.asaas.createPaymentLink({ billingType, externalReference: profileId })
+      created = await deps.asaas.createPaymentLink({ billingType, cycle, externalReference: profileId })
     } catch (err) {
-      console.error("[billing] falha ao criar link de pagamento", { profileId, method, err: String(err) })
-      trackEvent("checkout_failed", { userId, siteId: profileId, meta: { method, error: String(err).slice(0, 300) } }).catch(() => {})
+      console.error("[billing] falha ao criar link de pagamento", { profileId, method, cycle, err: String(err) })
+      trackEvent("checkout_failed", { userId, siteId: profileId, meta: { method, cycle, error: String(err).slice(0, 300) } }).catch(() => {})
       return NextResponse.json(
         { code: "GATEWAY_ERROR", error: "Não foi possível abrir o pagamento agora. Tente novamente em alguns minutos." },
         { status: 502 }
       )
     }
     link = await prisma.billingPaymentLink.create({
-      data: { environment: env, asaasId: created.id, profileId, billingType, url: created.url },
+      data: { environment: env, asaasId: created.id, profileId, billingType, cycle, url: created.url },
     })
   }
   await recomputeProfile(deps, profileId)
-  trackEvent("checkout_started", { userId, siteId: profileId, meta: { method } }).catch(() => {})
+  trackEvent("checkout_started", { userId, siteId: profileId, meta: { method, cycle } }).catch(() => {})
 
   return NextResponse.json({ url: link.url })
 }

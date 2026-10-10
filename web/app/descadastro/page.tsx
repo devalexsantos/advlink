@@ -19,7 +19,7 @@ export default async function DescadastroPage({ searchParams }: { searchParams: 
         </>
       ) : (
         <>
-          <h1 className="text-xl font-semibold">Pronto, você não receberá mais e-mails de dicas e lembretes</h1>
+          <h1 className="text-xl font-semibold">Pronto, você não receberá mais e-mails de dicas e relatórios do seu site</h1>
           <p className="text-muted-foreground">E-mails de conta e cobrança continuam sendo enviados normalmente.</p>
         </>
       )}

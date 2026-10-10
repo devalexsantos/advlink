@@ -175,7 +175,7 @@ describe("POST /api/analytics/track", () => {
       })
     })
 
-    it.each([undefined, "sms", "", 42])("returns 400 for invalid kind %s", async (kind) => {
+    it.each([undefined, "sms", "", 42, "form"])("returns 400 for invalid kind %s", async (kind) => {
       const res = await POST(makeReq({ slug: "joao", type: "contact", kind }))
       expect(res.status).toBe(400)
       expect(prismaMock.contactClick.create).not.toHaveBeenCalled()

@@ -171,7 +171,7 @@ describe("GET /api/analytics", () => {
       const data = await res.json()
       expect(data.contactClicks).toEqual({
         total: 9,
-        byKind: { whatsapp: 7, phone: 0, email: 2, link: 0 },
+        byKind: { whatsapp: 7, phone: 0, email: 2, link: 0, form: 0 },
       })
     })
 
@@ -191,7 +191,7 @@ describe("GET /api/analytics", () => {
       const data = await res.json()
       expect(data.contactClicks).toEqual({
         total: 0,
-        byKind: { whatsapp: 0, phone: 0, email: 0, link: 0 },
+        byKind: { whatsapp: 0, phone: 0, email: 0, link: 0, form: 0 },
       })
     })
 

@@ -137,6 +137,28 @@ model Profile {
   /// First time the site became published (set once by recomputeProfile)
   firstPublishedAt DateTime?
 
+  linkedinUrl     String?
+  facebookUrl     String?
+  youtubeUrl      String?
+  /// Default text of the site's WhatsApp links (wa.me ?text=)
+  whatsappMessage String?
+
+  /// Law firm (sociedade de advocacia) shown in the footer: "individual" | "sociedade"
+  firmName            String?
+  firmType            String?
+  firmOabRegistration String?
+  /// Digits only
+  firmCnpj            String?
+
+  /// Free text, e.g. "Seg. a sex., 9h às 18h"
+  officeHours   String?
+  /// Free text, e.g. "Português, Inglês"
+  languages     String?
+  onlineService Boolean @default(false)
+
+  /// Shows the pre-intake contact form ("contato" section) on the public site
+  leadFormEnabled Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -149,6 +171,9 @@ model Profile {
   customSections CustomSection[]
   teamMembers    TeamMember[]
   previewLinks   PreviewLink[]
+  leads          Lead[]
+  articles       Article[]
+  customDomain   CustomDomain?
 
   billingPaymentLinks  BillingPaymentLink[]
   billingSubscriptions BillingSubscription[]
@@ -201,11 +226,27 @@ model ActivityAreas {
   coverImageUrl String?
   description   String?
   position      Int
+  faqs          ActivityAreaFaq[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([profileId, position], map: "ActivityAreas_profileId_position_idx")
+}
+
+/// Informative Q&A of a practice area (plain text), rendered in the public "faq" section
+model ActivityAreaFaq {
+  id       String        @id @default(cuid())
+  areaId   String
+  area     ActivityAreas @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  question String
+  answer   String
+  position Int
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([areaId, position])
 }
 
 model Links {
@@ -397,6 +438,7 @@ model BillingPaymentLink {
   profileId   String
   profile     Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
   billingType String // UNDEFINED (card + boleto) | PIX
+  cycle       String    @default("MONTHLY") // MONTHLY | YEARLY
   url         String
   status      String    @default("ACTIVE") // ACTIVE | CONSUMED | DISABLED
   createdAt   DateTime  @default(now())
@@ -414,6 +456,7 @@ model BillingSubscription {
   profile         Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
   asaasCustomerId String
   billingType     String?
+  cycle           String    @default("MONTHLY") // MONTHLY | YEARLY
   valueCents      Int
   status          String // ACTIVE | INACTIVE | EXPIRED | DELETED (Asaas status, DELETED when deleted)
   nextDueDate     String? // YYYY-MM-DD
@@ -434,6 +477,8 @@ model BillingPayment {
   profile             Profile  @relation(fields: [profileId], references: [id], onDelete: Cascade)
   subscriptionAsaasId String?
   billingType         String
+  /// Cycle of the subscription that generated the charge: how long it covers
+  cycle               String   @default("MONTHLY")
   valueCents          Int
   netValueCents       Int?
   status              String // Asaas payment status (PENDING, CONFIRMED, RECEIVED, OVERDUE, REFUNDED...)
@@ -466,4 +511,65 @@ model WebhookEvent {
 
   @@unique([provider, environment, eventId])
   @@index([processedAt])
+}
+
+/// Message sent through the site's pre-intake form (deleted after 90 days by the maintenance cron)
+model Lead {
+  id        String    @id @default(cuid())
+  profileId String
+  profile   Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  name      String
+  email     String?
+  phone     String?
+  areaTitle String?
+  message   String
+  consentAt DateTime
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([profileId, createdAt])
+  @@index([createdAt])
+}
+
+/// Article of the lawyer's mini-blog (<site>/artigos/<slug>)
+model Article {
+  id              String    @id @default(cuid())
+  profileId       String
+  profile         Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  slug            String
+  title           String
+  excerpt         String?
+  /// Sanitized HTML
+  content         String
+  coverImageUrl   String?
+  /// draft | published
+  status          String    @default("draft")
+  publishedAt     DateTime?
+  metaDescription String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([profileId, slug])
+  @@index([profileId, status, publishedAt])
+}
+
+/// Lawyer's own domain served by the app (Traefik route created through the Easypanel API)
+model CustomDomain {
+  id                String    @id @default(cuid())
+  profileId         String    @unique
+  profile           Profile   @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  /// Lowercase host without scheme/port, e.g. "escritorio.adv.br"
+  host              String    @unique
+  /// pending_dns | provisioning | active | error
+  status            String    @default("pending_dns")
+  /// Expected value of the TXT record _advlink.<host>
+  verifyToken       String
+  easypanelDomainId String?
+  lastCheckedAt     DateTime?
+  activatedAt       DateTime?
+  error             String?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([status])
 }

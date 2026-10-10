@@ -4,9 +4,9 @@ import Theme03 from "@/components/themes/03/Theme03"
 import Theme04 from "@/components/themes/04/Theme04"
 import { ProfileTracker } from "@/components/analytics/ProfileTracker"
 import { GtmConsent } from "@/components/analytics/GtmConsent"
-import { getProfileUrl } from "@/lib/site-url"
-import { buildProfileJsonLd, jsonLdScript } from "@/lib/profile-jsonld"
+import { buildFaqJsonLd, buildProfileJsonLd, jsonLdScript } from "@/lib/profile-jsonld"
 import type { PublicProfileData } from "@/lib/public-profile"
+import { activeHostOf, getSiteUrl } from "@/lib/site-url"
 
 const THEMES = ["modern", "classic", "corporate"] as const
 type ThemeName = (typeof THEMES)[number]
@@ -42,12 +42,15 @@ export default function PublicProfileView({ data, slug, showTracker, gtmContaine
   const theme: ThemeName = THEMES.includes(profile.theme as ThemeName) ? (profile.theme as ThemeName) : "classic"
   // Re-checked here for rows saved before the API validated it: the ID is interpolated into a script
   const gtmId = gtmContainerId && GTM_ID.test(gtmContainerId) ? gtmContainerId : null
-  const privacyUrl = privacyUrlProp ?? `${getProfileUrl(profile.slug ?? slug)}privacidade`
+  const siteUrl = getSiteUrl({ slug: profile.slug ?? slug, customDomainHost: activeHostOf(profile.customDomain) })
+  const privacyUrl = privacyUrlProp ?? `${siteUrl}privacidade`
   const jsonLd = buildProfileJsonLd(
     { ...profile, slug: profile.slug ?? slug },
     address,
-    areas.map((a) => a.title)
+    areas.map((a) => a.title),
+    siteUrl,
   )
+  const faqJsonLd = buildFaqJsonLd(areas)
 
   const themeProps = {
     profile,
@@ -66,12 +69,17 @@ export default function PublicProfileView({ data, slug, showTracker, gtmContaine
     sectionTitleHidden: profile.sectionTitleHidden as Record<string, boolean> | undefined,
     teamMembers,
     privacyUrl,
+    articles: (data as { articles?: ComponentProps<typeof Theme03>["articles"] }).articles,
+    slug: profile.slug ?? slug,
+    siteBaseUrl: siteUrl,
+    leadFormDisabled: !showTracker || !profile.isActive,
   }
 
   return (
     <div>
       {banner}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
+      {faqJsonLd && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(faqJsonLd) }} />}
       {gtmId && <GtmConsent gtmContainerId={gtmId} privacyUrl={privacyUrl} />}
       {showTracker && <ProfileTracker slug={slug} />}
       {theme === "modern" && <Theme02 {...themeProps} />}

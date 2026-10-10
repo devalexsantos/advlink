@@ -48,7 +48,7 @@ import { render, screen, fireEvent, waitFor as waitForDom } from "@testing-libra
 import userEvent from "@testing-library/user-event"
 import { EditFormProvider, useEditForm } from "@/app/profile/edit/EditFormContext"
 import * as apiModule from "@/app/profile/edit/api"
-import { DEFAULT_SECTION_ORDER } from "@/lib/section-order"
+import { DEFAULT_SECTION_ORDER, getSectionOrder } from "@/lib/section-order"
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -85,6 +85,15 @@ const fakeProfileResponse = {
     whatsapp: "11999990001",
     instagramUrl: "https://instagram.com/joao",
     calendlyUrl: "https://calendly.com/joao",
+    linkedinUrl: "https://www.linkedin.com/in/joao",
+    whatsappMessage: "Olá, vim pelo site.",
+    firmName: "Silva Advogados",
+    firmType: "sociedade",
+    firmOabRegistration: "999",
+    firmCnpj: "11222333000181",
+    officeHours: "Seg. a sex.",
+    languages: "Português",
+    onlineService: true,
     avatarUrl: "https://s3.example.com/avatar.jpg",
     coverUrl: "https://s3.example.com/cover.jpg",
     primaryColor: "#1A1A2E",
@@ -309,10 +318,11 @@ describe("EditFormContext", () => {
       expect(result.current.theme).toBe("modern")
     })
 
-    it("sets sectionOrder from profile data", async () => {
+    it("sets sectionOrder from profile data (built-in keys added later are filled in)", async () => {
       const { result } = renderHook(() => useEditForm(), { wrapper: makeWrapper(queryClient) })
       await waitFor(() => expect(result.current.isLoading).toBe(false))
-      expect(result.current.sectionOrder).toEqual(fakeProfileResponse.profile.sectionOrder)
+      expect(result.current.sectionOrder).toEqual(getSectionOrder(fakeProfileResponse.profile.sectionOrder))
+      expect(result.current.sectionOrder).toContain("faq")
     })
 
     it("sets sectionLabels from profile data", async () => {
@@ -1202,6 +1212,20 @@ describe("EditFormContext", () => {
       expect((callArg as FormData).get("oabNumber")).toBe("123456A")
       expect((callArg as FormData).get("oabState")).toBe("SP")
       expect((callArg as FormData).get("practiceType")).toBe("escritorio")
+      // New contact / firm / service keys are always sent
+      const fd = callArg as FormData
+      expect(fd.get("linkedinUrl")).toBe("https://www.linkedin.com/in/joao")
+      expect(fd.get("facebookUrl")).toBe("")
+      expect(fd.get("youtubeUrl")).toBe("")
+      expect(fd.get("whatsappMessage")).toBe("Olá, vim pelo site.")
+      expect(fd.get("firmName")).toBe("Silva Advogados")
+      expect(fd.get("firmType")).toBe("sociedade")
+      expect(fd.get("firmOabRegistration")).toBe("999")
+      expect(fd.get("firmCnpj")).toBe("11.222.333/0001-81")
+      expect(fd.get("officeHours")).toBe("Seg. a sex.")
+      expect(fd.get("languages")).toBe("Português")
+      expect(fd.get("onlineService")).toBe("true")
+      expect(fd.get("leadFormEnabled")).toBe("false")
     })
 
     it("calls showToast with 'Salvo com sucesso!' after form submit", async () => {

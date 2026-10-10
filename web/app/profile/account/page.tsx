@@ -3,7 +3,7 @@ import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { getActiveSiteId } from "@/lib/active-site"
 import { getProfileHost } from "@/lib/site-url"
-import { formatBRL, REFUND_WINDOW_DAYS } from "@/lib/billing/plan"
+import { cycleSuffix, formatBRL, normalizeCycle, REFUND_WINDOW_DAYS } from "@/lib/billing/plan"
 import { dbDateToCivil } from "@/lib/billing/civil-date"
 import { isPaidStatus } from "@/lib/billing/entitlement"
 import PublishCheckout from "@/components/billing/PublishCheckout"
@@ -98,7 +98,13 @@ export default async function AccountPage() {
             <span className="text-muted-foreground">Status:</span> <span className={`font-semibold ${badge.className}`}>{badge.label}</span>
             {profile?.suspendedByAdmin && <span className="ml-2 font-semibold text-red-700">(suspenso pela equipe)</span>}
           </p>
-          {openSub && <p><span className="text-muted-foreground">Plano:</span> {formatBRL(openSub.valueCents)}/mês, renovação automática</p>}
+          {openSub && (
+            <p>
+              <span className="text-muted-foreground">Plano:</span> {normalizeCycle(openSub.cycle) === "YEARLY" ? "anual" : "mensal"},{" "}
+              {formatBRL(openSub.valueCents)}
+              {cycleSuffix(openSub.cycle)}, renovação automática
+            </p>
+          )}
           {published && paidUntil && (
             <p>
               <span className="text-muted-foreground">{openSub ? "Pago até:" : "No ar até:"}</span> {formatCivil(paidUntil)}

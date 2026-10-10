@@ -9,6 +9,8 @@ export type BillingStatusResponse = {
   paidUntil: string | null
   graceUntil: string | null
   renews: boolean
+  /** Cycle of the open subscription, null without one */
+  cycle?: "MONTHLY" | "YEARLY" | null
   pendingPayment: { invoiceUrl: string | null; dueDate: string; billingType: string; status: string } | null
 }
 

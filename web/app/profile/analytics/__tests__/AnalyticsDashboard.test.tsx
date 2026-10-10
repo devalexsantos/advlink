@@ -72,7 +72,7 @@ const FULL_DATA = {
   ],
   hourly: [{ hour: 14, count: 200 }],
   daily: [{ day: "2024-01-15", count: 150 }],
-  contactClicks: { total: 37, byKind: { whatsapp: 25, phone: 6, email: 4, link: 2 } },
+  contactClicks: { total: 37, byKind: { whatsapp: 25, phone: 6, email: 4, link: 2, form: 3 } },
   period: 30,
 }
 
@@ -329,6 +329,7 @@ describe("AnalyticsDashboard", () => {
         expect(screen.getByTestId("contact-channel-phone")).toHaveTextContent(/Telefone\s*6/)
         expect(screen.getByTestId("contact-channel-email")).toHaveTextContent(/E-mail\s*4/)
         expect(screen.getByTestId("contact-channel-link")).toHaveTextContent(/Links\s*2/)
+        expect(screen.getByTestId("contact-channel-form")).toHaveTextContent(/Formulário\s*3/)
       })
     })
 

@@ -86,6 +86,9 @@ vi.mock("@/components/ui/rich-text-editor", () => ({
   ),
 }))
 
+const apiMocks = vi.hoisted(() => ({ saveAreaFaqs: vi.fn(), suggestAreaFaqs: vi.fn() }))
+vi.mock("@/app/profile/edit/api", () => apiMocks)
+
 import AreasServicosSection from "@/app/profile/edit/sections/AreasServicosSection"
 
 const area1: Area = { id: "area-1", title: "Direito Civil", description: null }
@@ -762,5 +765,111 @@ describe("AreasServicosSection", () => {
     expect(result).toBe("blob:http://localhost/new-area-url")
 
     vi.unstubAllGlobals()
+  })
+
+  describe("FAQ block", () => {
+    const areaWithFaqs: Area = {
+      id: "area-1",
+      title: "Direito Civil",
+      description: null,
+      faqs: [
+        { id: "f1", question: "Q1?", answer: "A1", position: 1 },
+        { id: "f2", question: "Q2?", answer: "A2", position: 2 },
+      ],
+    }
+
+    function setup(area: Area = areaWithFaqs) {
+      const patch = vi.fn().mockResolvedValue({ area })
+      mockUseEditForm.mockReturnValue(
+        buildContextValue({ editingArea: area, patchAreaMutation: { mutateAsync: patch, isPending: false } }),
+      )
+      render(<AreasServicosSection />)
+      return { patch }
+    }
+
+    it("initialises rows from editingArea.faqs and shows the AI note", () => {
+      setup()
+      expect(screen.getByLabelText("Pergunta 1")).toHaveValue("Q1?")
+      expect(screen.getByLabelText("Resposta 2")).toHaveValue("A2")
+      expect(screen.getByLabelText("Pergunta 1")).toHaveAttribute("maxlength", "150")
+      expect(screen.getByLabelText("Resposta 1")).toHaveAttribute("maxlength", "700")
+      expect(screen.getByText(/sugestões geradas por ia\. revise antes de publicar/i)).toBeInTheDocument()
+    })
+
+    it("adds, reorders and removes rows", async () => {
+      setup()
+      await userEvent.click(screen.getByRole("button", { name: /adicionar pergunta/i }))
+      expect(screen.getByLabelText("Pergunta 3")).toHaveValue("")
+      await userEvent.click(screen.getByRole("button", { name: "Descer pergunta 1" }))
+      expect(screen.getByLabelText("Pergunta 1")).toHaveValue("Q2?")
+      expect(screen.getByLabelText("Pergunta 2")).toHaveValue("Q1?")
+      await userEvent.click(screen.getByRole("button", { name: "Remover pergunta 1" }))
+      expect(screen.getByLabelText("Pergunta 1")).toHaveValue("Q1?")
+      expect(screen.queryByLabelText("Pergunta 3")).not.toBeInTheDocument()
+    })
+
+    it("limits to 8 rows", async () => {
+      setup({ ...areaWithFaqs, faqs: Array.from({ length: 8 }, (_, i) => ({ question: `Q${i}`, answer: `A${i}` })) })
+      expect(screen.getByRole("button", { name: /adicionar pergunta/i })).toBeDisabled()
+      expect(screen.getByRole("button", { name: /sugerir perguntas com ia/i })).toBeDisabled()
+    })
+
+    it("appends AI suggestions respecting the max", async () => {
+      apiMocks.suggestAreaFaqs.mockResolvedValue({
+        faqs: Array.from({ length: 10 }, (_, i) => ({ question: `S${i}`, answer: `R${i}` })),
+      })
+      setup()
+      await userEvent.click(screen.getByRole("button", { name: /sugerir perguntas com ia/i }))
+      expect(apiMocks.suggestAreaFaqs).toHaveBeenCalledWith("area-1")
+      await waitFor(() => expect(screen.getByLabelText("Pergunta 8")).toHaveValue("S5"))
+      expect(screen.getByLabelText("Pergunta 1")).toHaveValue("Q1?")
+      expect(screen.queryByLabelText("Pergunta 9")).not.toBeInTheDocument()
+    })
+
+    it("shows an inline error when the AI suggestion fails", async () => {
+      apiMocks.suggestAreaFaqs.mockRejectedValue(new Error("A sugestão com IA está indisponível no momento."))
+      setup()
+      await userEvent.click(screen.getByRole("button", { name: /sugerir perguntas com ia/i }))
+      expect(await screen.findByRole("alert")).toHaveTextContent("indisponível")
+    })
+
+    it("saves the cleaned list after the area save", async () => {
+      apiMocks.saveAreaFaqs.mockResolvedValue({ faqs: [] })
+      const { patch } = setup()
+      await userEvent.click(screen.getByRole("button", { name: /adicionar pergunta/i }))
+      await userEvent.type(screen.getByLabelText("Pergunta 3"), "  Nova pergunta ")
+      await userEvent.type(screen.getByLabelText("Resposta 3"), "Nova resposta")
+      await userEvent.click(screen.getByRole("button", { name: /adicionar pergunta/i }))
+      await userEvent.type(screen.getByLabelText("Pergunta 4"), "Só pergunta")
+      await userEvent.click(screen.getByRole("button", { name: /salvar alterações/i }))
+      await waitFor(() => expect(apiMocks.saveAreaFaqs).toHaveBeenCalled())
+      expect(patch).toHaveBeenCalled()
+      expect(apiMocks.saveAreaFaqs).toHaveBeenCalledWith("area-1", [
+        { question: "Q1?", answer: "A1" },
+        { question: "Q2?", answer: "A2" },
+        { question: "Nova pergunta", answer: "Nova resposta" },
+      ])
+    })
+
+    it("does not call the FAQ endpoint when nothing changed", async () => {
+      const { patch } = setup()
+      await userEvent.click(screen.getByRole("button", { name: /salvar alterações/i }))
+      await waitFor(() => expect(patch).toHaveBeenCalled())
+      expect(apiMocks.saveAreaFaqs).not.toHaveBeenCalled()
+    })
+
+    it("keeps the dialog open and shows the error when saving FAQs fails", async () => {
+      apiMocks.saveAreaFaqs.mockRejectedValue(new Error("Máximo de 8 perguntas."))
+      const setEditingArea = vi.fn()
+      const patch = vi.fn().mockResolvedValue({ area: areaWithFaqs })
+      mockUseEditForm.mockReturnValue(
+        buildContextValue({ editingArea: areaWithFaqs, setEditingArea, patchAreaMutation: { mutateAsync: patch, isPending: false } }),
+      )
+      render(<AreasServicosSection />)
+      await userEvent.click(screen.getByRole("button", { name: "Remover pergunta 2" }))
+      await userEvent.click(screen.getByRole("button", { name: /salvar alterações/i }))
+      expect(await screen.findByRole("alert")).toHaveTextContent("Máximo de 8")
+      expect(setEditingArea).not.toHaveBeenCalledWith(null)
+    })
   })
 })

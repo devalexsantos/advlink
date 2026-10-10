@@ -1,11 +1,12 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
+import type { ComponentProps } from "react"
 import Preview02 from "./Preview02"
 import Preview03 from "./Preview03"
 import Preview04 from "./Preview04"
 
-type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null }
+type Area = { id: string; title: string; description: string | null; coverImageUrl?: string | null; faqs?: { id: string; question: string; answer: string; position?: number }[] }
 type LinkItem = { id: string; title: string; description: string | null; url: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
@@ -22,6 +23,17 @@ type Profile = {
   oabState?: string | null
   avatarUrl?: string | null
   whatsapp?: string | null
+  linkedinUrl?: string | null
+  facebookUrl?: string | null
+  youtubeUrl?: string | null
+  whatsappMessage?: string | null
+  firmName?: string | null
+  firmType?: string | null
+  firmOabRegistration?: string | null
+  firmCnpj?: string | null
+  officeHours?: string | null
+  languages?: string | null
+  onlineService?: boolean | null
   publicEmail?: string | null
   publicPhone?: string | null
   calendlyUrl?: string | null
@@ -61,13 +73,14 @@ export default function Preview() {
   const sectionTitleHidden = profile.sectionTitleHidden ?? undefined
   const customSections = data?.customSections ?? []
   const teamMembers = data?.teamMembers ?? []
+  const articles = (data as unknown as { articles?: ComponentProps<typeof Preview02>["articles"] })?.articles
   if (theme === "classic") {
-    return <Preview03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} />
+    return <Preview03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} articles={articles} />
   }
   if (theme === "corporate") {
-    return <Preview04 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} />
+    return <Preview04 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} articles={articles} />
   }
-  return <Preview02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} />
+  return <Preview02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} articles={articles} />
 }
 
 

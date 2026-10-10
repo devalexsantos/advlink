@@ -1,12 +1,13 @@
 // In-memory Asaas for tests (ported from Escavador's file-based FakeAsaas).
 import type { AsaasApi, AsaasPayment, AsaasSubscription, LinkBillingType, PaymentLinkInput } from "./asaas-client"
-import { PLAN } from "./plan"
+import { PLANS, type BillingCycle } from "./plan"
 
 interface FakeLink {
   id: string
   url: string
   active: boolean
   billingType: LinkBillingType
+  cycle: BillingCycle
   externalReference: string
 }
 
@@ -26,12 +27,14 @@ export class FakeAsaas implements AsaasApi {
   async createPaymentLink(input: PaymentLinkInput) {
     const id = this.next("lnk")
     this.links[id] = { id, url: `https://sandbox.asaas.com/c/${id}`, active: true, ...input }
-    this.calls.push(`createPaymentLink:${input.billingType}:${input.externalReference}`)
+    this.calls.push(`createPaymentLink:${input.billingType}:${input.cycle}:${input.externalReference}`)
     return { id, url: this.links[id].url }
   }
 
-  async disablePaymentLink(id: string) {
+  async disablePaymentLink(id: string, cycle: BillingCycle) {
     if (!this.links[id]) throw new Error(`link ${id} não existe`)
+    // The real API rejects an update whose subscriptionCycle differs from the link's
+    if (this.links[id].cycle !== cycle) throw new Error(`link ${id} é ${this.links[id].cycle}, não ${cycle}`)
     this.links[id].active = false
     this.calls.push(`disablePaymentLink:${id}`)
   }
@@ -65,9 +68,10 @@ export class FakeAsaas implements AsaasApi {
     const subscription: AsaasSubscription = {
       id: this.next("sub"),
       status: "ACTIVE",
-      value: PLAN.valueCents / 100,
+      value: PLANS[link.cycle].valueCents / 100,
       customer: "cus_fake",
       billingType: opts.billingType ?? "CREDIT_CARD",
+      cycle: link.cycle,
       externalReference: link.externalReference,
     }
     this.subscriptions[subscription.id] = subscription
@@ -75,7 +79,7 @@ export class FakeAsaas implements AsaasApi {
     return { payment, subscription }
   }
 
-  /** Next monthly charge of an existing subscription. */
+  /** Next charge (monthly or yearly, per the subscription) of an existing subscription. */
   addPayment(subscriptionId: string, opts: { status: string; dueDate: string; billingType?: string }) {
     const sub = this.subscriptions[subscriptionId]
     const payment: AsaasPayment = {
