@@ -5,6 +5,7 @@ import useEmblaCarousel from "embla-carousel-react"
 import { Button } from "@/components/ui/button"
 import { Mail, Phone, User } from "lucide-react"
 import { WhatsAppIcon } from "@/components/icons/WhatsAppIcon"
+import { formatOab } from "@/lib/oab"
 
 type TeamMember = {
   id: string
@@ -14,6 +15,8 @@ type TeamMember = {
   phone: string | null
   whatsapp: string | null
   email: string | null
+  oabNumber?: string | null
+  oabState?: string | null
 }
 
 export function TeamCarousel({
@@ -105,6 +108,13 @@ export function TeamCarousel({
                   >
                     {member.name}
                   </p>
+
+                  {/* OAB */}
+                  {formatOab(member.oabNumber, member.oabState) && (
+                    <p className="text-xs text-center mt-0.5" style={{ color: `${text}b3` }}>
+                      {formatOab(member.oabNumber, member.oabState)}
+                    </p>
+                  )}
 
                   {/* Description */}
                   {member.description && (

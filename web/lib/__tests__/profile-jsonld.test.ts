@@ -31,6 +31,17 @@ describe("buildProfileJsonLd()", () => {
     expect(data).not.toHaveProperty("review")
   })
 
+  it("adds the OAB registration as an identifier when complete", () => {
+    expect(buildProfileJsonLd({ ...profile, oabNumber: "123456A", oabState: "sp" }, null, [])).toMatchObject({
+      identifier: { "@type": "PropertyValue", propertyID: "OAB/SP", value: "123456A" },
+    })
+  })
+
+  it("omits the identifier when the OAB is missing or incomplete", () => {
+    expect(buildProfileJsonLd(profile, null, [])).not.toHaveProperty("identifier")
+    expect(buildProfileJsonLd({ ...profile, oabNumber: "123456", oabState: null }, null, [])).not.toHaveProperty("identifier")
+  })
+
   it("includes the address only when it is public", () => {
     const address = { public: true, street: "Rua A", number: "10", city: "São Paulo", state: "SP", zipCode: "01000-000" }
     expect(buildProfileJsonLd(profile, address, [])).toMatchObject({

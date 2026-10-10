@@ -5,6 +5,7 @@ import { AreasCarousel } from "@/app/adv/[slug]/AreasCarousel"
 import { GalleryCarousel } from "@/app/adv/[slug]/GalleryCarousel"
 import { TeamCarousel } from "@/app/adv/[slug]/TeamCarousel"
 import { renderContent } from "@/lib/render-content"
+import { formatOab } from "@/lib/oab"
 import { Heart, Instagram, Mail, Phone, SquareArrowOutUpRight } from "lucide-react"
 import Link from "next/link"
 import { Fragment } from "react"
@@ -19,7 +20,7 @@ type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
 type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string; videoUrl?: string | null; buttonConfig?: { url: string; label: string; bgColor: string; textColor: string; borderRadius: number; iconName?: string } | null }
 type TeamMember = { id: string; name: string; description: string | null; avatarUrl: string | null; phone: string | null; whatsapp: string | null; email: string | null }
-type Profile = { publicName?: string | null; headline?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
+type Profile = { publicName?: string | null; headline?: string | null; oabNumber?: string | null; oabState?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
 
 const fade = { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.6 } }
 const fadeInView = { initial: { opacity: 0 }, whileInView: { opacity: 1 }, viewport: { once: true }, transition: { duration: 0.6 } }
@@ -257,6 +258,9 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
             )}
             {profile.headline && (
               <p className={`text-lg ${forceMobile ? "" : "md:text-xl"} opacity-85`}>{profile.headline}</p>
+            )}
+            {formatOab(profile.oabNumber, profile.oabState) && (
+              <p className="text-sm tracking-wide opacity-70">{formatOab(profile.oabNumber, profile.oabState)}</p>
             )}
 
             {/* Contact buttons — square with border */}
