@@ -5,8 +5,8 @@ import GoogleProvider from "next-auth/providers/google"
 import EmailProvider from "next-auth/providers/email"
 import { prisma } from "@/lib/prisma"
 import bcrypt from "bcryptjs"
-import { createSignInEmailHtml, createSignInEmailText } from "@/lib/emails/authEmail"
-import nodemailer from "nodemailer"
+import { sendLoginEmail } from "@/lib/emails/sendLoginEmail"
+import { EMAIL_FROM } from "@/lib/resend"
 import { getRequestAttribution } from "@/lib/attribution-server"
 import { trackEvent } from "@/lib/product-events"
 
@@ -16,51 +16,11 @@ export const authOptions: NextAuthOptions = {
   providers: [
     EmailProvider({
       maxAge: 24 * 60 * 60,
-      server: (() => {
-        const isProd = process.env.NODE_ENV === "production"
-        const hasSmtpEnv = Boolean(process.env.EMAIL_SERVER_HOST)
-        // If running locally without SMTP envs, default to local mail server (e.g., MailHog/Mailpit)
-        if (!isProd && !hasSmtpEnv) {
-          return {
-            host: "127.0.0.1",
-            port: 1025,
-            secure: false,
-            ignoreTLS: true,
-          }
-        }
-
-        const port = Number(process.env.EMAIL_SERVER_PORT || 587)
-        const useSecure = port === 465
-
-        return {
-          host: process.env.EMAIL_SERVER_HOST!,
-          port,
-          auth: (process.env.EMAIL_SERVER_USER && process.env.EMAIL_SERVER_PASSWORD)
-            ? {
-                user: process.env.EMAIL_SERVER_USER!,
-                pass: process.env.EMAIL_SERVER_PASSWORD!,
-              }
-            : undefined,
-          // 465 -> implicit TLS; 587/others -> STARTTLS
-          secure: useSecure,
-          requireTLS: !useSecure,
-          ignoreTLS: false,
-        }
-      })(),
-      from: process.env.EMAIL_FROM || "AdvLink <no-reply@advlink.local>",
-      async sendVerificationRequest({ identifier, url, provider }) {
-        // Use the same server config above to avoid divergence between envs
-        const transport = nodemailer.createTransport(provider.server as any)
-        const subject = "Seu link de acesso à AdvLink"
-        const html = createSignInEmailHtml({ url })
-        const text = createSignInEmailText({ url })
-        await transport.sendMail({
-          to: identifier,
-          from: provider.from as string,
-          subject,
-          text,
-          html,
-        })
+      // No SMTP `server` needed: next-auth's default is unused because sendVerificationRequest is custom.
+      // Delivery: Resend in production, Mailpit in dev (see lib/emails/sendLoginEmail.ts).
+      from: EMAIL_FROM,
+      async sendVerificationRequest({ identifier, url }) {
+        await sendLoginEmail({ to: identifier, url })
       },
     }),
     Credentials({
