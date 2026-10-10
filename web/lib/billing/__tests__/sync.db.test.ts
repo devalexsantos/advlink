@@ -70,11 +70,12 @@ describe.skipIf(!TEST_URL)("billing sync (Postgres)", () => {
     expect(await paymentEvent(payment.id)).toBe("ACTIVE")
 
     const p = await profile()
-    expect(p).toMatchObject({ billingStatus: "ACTIVE", isActive: true })
+    expect(p).toMatchObject({ billingStatus: "ACTIVE", isActive: true, firstPublishedAt: now })
+    expect(trackEventMock).toHaveBeenCalledWith("site_first_published", { userId: p.userId, siteId: profileId })
     expect(p.paidUntil?.toISOString().slice(0, 10)).toBe("2026-11-05")
     expect(asaas.links[link].active).toBe(false)
     expect(notified.map((n) => n.notice)).toEqual(["activated"])
-    expect(trackEventMock.mock.calls.map((c) => c[0])).toEqual(["subscription_started", "site_published"])
+    expect(trackEventMock.mock.calls.map((c) => c[0])).toEqual(["site_first_published", "subscription_started", "site_published"])
   })
 
   it("starting a checkout marks a new site as PENDING", async () => {
@@ -89,7 +90,7 @@ describe.skipIf(!TEST_URL)("billing sync (Postgres)", () => {
     await paymentEvent(payment.id, "PAYMENT_RECEIVED")
     await paymentEvent(payment.id, "PAYMENT_UPDATED")
     expect(notified).toHaveLength(1)
-    expect(trackEventMock).toHaveBeenCalledTimes(2)
+    expect(trackEventMock).toHaveBeenCalledTimes(3)
     expect(await db.billingPayment.count()).toBe(1)
   })
 
@@ -103,14 +104,14 @@ describe.skipIf(!TEST_URL)("billing sync (Postgres)", () => {
     ])
     expect(await profile()).toMatchObject({ billingStatus: "ACTIVE", isActive: true })
     expect(notified.map((n) => n.notice)).toEqual(["activated"])
-    expect(trackEventMock.mock.calls.map((c) => c[0])).toEqual(["subscription_started", "site_published"])
+    expect(trackEventMock.mock.calls.map((c) => c[0])).toEqual(["site_first_published", "subscription_started", "site_published"])
   })
 
   it("an unpaid boleto does not publish (BIL-7)", async () => {
     const link = await createLink()
     const { payment } = asaas.simulatePayment(link, { status: "PENDING", dueDate: "2026-10-09", billingType: "BOLETO" })
     expect(await paymentEvent(payment.id, "PAYMENT_CREATED")).toBe("PENDING")
-    expect((await profile()).isActive).toBe(false)
+    expect(await profile()).toMatchObject({ isActive: false, firstPublishedAt: null })
 
     asaas.setPaymentStatus(payment.id, "RECEIVED")
     expect(await paymentEvent(payment.id, "PAYMENT_RECEIVED")).toBe("ACTIVE")
@@ -165,6 +166,9 @@ describe.skipIf(!TEST_URL)("billing sync (Postgres)", () => {
     const back = await profile()
     expect(back).toMatchObject({ isActive: true, churnedAt: null })
     expect(notified.at(-1)?.notice).toBe("reactivated")
+    // firstPublishedAt is stamped once, at the first activation; reactivation keeps it and emits nothing new
+    expect(back.firstPublishedAt).toEqual(new Date("2026-10-06T15:00:00Z"))
+    expect(trackEventMock.mock.calls.filter((c) => c[0] === "site_first_published")).toHaveLength(1)
   })
 
   it("an admin suspension is never undone by a payment event (BIL-10)", async () => {
@@ -172,7 +176,8 @@ describe.skipIf(!TEST_URL)("billing sync (Postgres)", () => {
     await db.profile.update({ where: { id: profileId }, data: { suspendedByAdmin: true } })
     const { payment } = asaas.simulatePayment(link, { status: "CONFIRMED", dueDate: "2026-10-06" })
     await paymentEvent(payment.id)
-    expect(await profile()).toMatchObject({ billingStatus: "ACTIVE", isActive: false })
+    expect(await profile()).toMatchObject({ billingStatus: "ACTIVE", isActive: false, firstPublishedAt: null })
+    expect(trackEventMock).not.toHaveBeenCalledWith("site_first_published", expect.anything())
   })
 
   it("a second unpaid subscription opened through the link is canceled once one is paid", async () => {
