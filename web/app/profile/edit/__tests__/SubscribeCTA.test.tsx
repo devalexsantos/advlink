@@ -7,7 +7,7 @@ const { fetchProfileMock, useBillingStatusMock } = vi.hoisted(() => ({
   useBillingStatusMock: vi.fn(),
 }))
 
-vi.mock("@/app/profile/edit/api", () => ({ fetchProfile: fetchProfileMock }))
+vi.mock("@/app/profile/edit/api", () => ({ fetchProfile: fetchProfileMock, createPreviewLink: vi.fn() }))
 vi.mock("@/app/profile/edit/ChangeSlugButton", () => ({
   default: ({ effectiveSlug }: { effectiveSlug: string }) => <button type="button">Alterar link ({effectiveSlug})</button>,
 }))
@@ -51,6 +51,11 @@ describe("SubscribeCTA", () => {
       expect(screen.getByText("Sua página ainda não está publicada.")).toBeInTheDocument()
       expect(screen.getByTestId("publish-checkout")).toHaveAttribute("data-compact", "false")
       expect(await screen.findByText("joao-silva-1-x7k.advlink.site")).toBeInTheDocument()
+    })
+
+    it("offers to share a preview of the unpublished site", () => {
+      render(<SubscribeCTA />)
+      expect(screen.getByRole("button", { name: "Compartilhar prévia" })).toBeInTheDocument()
     })
 
     it("shows the price and cancellation promise", () => {

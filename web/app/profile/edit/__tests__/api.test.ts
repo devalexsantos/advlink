@@ -29,6 +29,7 @@ import {
   patchTeamMember,
   reorderTeamMembers,
   deleteTeamMember,
+  createPreviewLink,
 } from "@/app/profile/edit/api"
 
 function makeOkResponse(body: unknown) {
@@ -562,5 +563,27 @@ describe("ensureOk", () => {
 
   it("uses the fallback when a 4xx body is not JSON", async () => {
     await expect(ensureOk(res(400), "fallback")).rejects.toThrow("fallback")
+  })
+})
+
+describe("createPreviewLink", () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("POSTs to /api/preview-link and returns url and expiry", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ url: "https://app/previa/t", expiresAt: "2026-10-17" }) })
+    await expect(createPreviewLink()).resolves.toEqual({ url: "https://app/previa/t", expiresAt: "2026-10-17" })
+    expect(mockFetch).toHaveBeenCalledWith("/api/preview-link", { method: "POST" })
+  })
+
+  it("explains 429 as a rate limit", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 429, json: async () => ({}) })
+    await expect(createPreviewLink()).rejects.toThrow(/muitos links/)
+  })
+
+  it("uses the API message on 403 and a fallback otherwise", async () => {
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 403, json: async () => ({ error: "Site suspenso." }) })
+    await expect(createPreviewLink()).rejects.toThrow("Site suspenso.")
+    mockFetch.mockResolvedValueOnce({ ok: false, status: 403, json: async () => { throw new Error("x") } })
+    await expect(createPreviewLink()).rejects.toThrow(/não está disponível/)
   })
 })
