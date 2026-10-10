@@ -1,24 +1,18 @@
 import { NextResponse } from "next/server";
-import fs from "fs/promises";
-import path from "path";
+import { getNewsletterConfig } from "@/lib/newsletter/config";
+import { normalizeEmail } from "@/lib/newsletter/email";
+import { sendConfirmation } from "@/lib/newsletter/service";
 
-// Stored on the persistent volume mounted at /app/data (see Dockerfile / Easypanel).
-// Not versioned in git: it contains subscribers' e-mails.
-const DATA_DIR = path.join(process.cwd(), "data");
-const DATA_FILE = path.join(DATA_DIR, "newsletter.json");
+// Double opt-in, step 1. Subscribers live in Resend Contacts; nothing is stored here.
+// The response is identical whether or not the address is already subscribed.
+const ACCEPTED_MESSAGE = "Quase lá! Enviamos um link de confirmação para o seu e-mail.";
 
-const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const MAX_EMAIL_LENGTH = 254;
-
-// Per-instance limit (single container): 5 sign-ups per IP per hour
-const RATE_LIMIT = 5;
+// Per-instance limits (single container)
+const RATE_LIMIT = 5; // sign-ups per IP per hour
 const RATE_WINDOW_MS = 60 * 60 * 1000;
+const EMAIL_COOLDOWN_MS = 10 * 60 * 1000; // at most one confirmation e-mail per address every 10 min
 const hits = new Map<string, { count: number; resetAt: number }>();
-
-interface Subscriber {
-  email: string;
-  subscribedAt: string;
-}
+const lastSentTo = new Map<string, number>();
 
 function clientIp(request: Request): string {
   const realIp = request.headers.get("x-real-ip")?.trim();
@@ -41,37 +35,27 @@ function isRateLimited(ip: string, now = Date.now()): boolean {
   return entry.count > RATE_LIMIT;
 }
 
-async function readSubscribers(): Promise<Subscriber[]> {
-  try {
-    return JSON.parse(await fs.readFile(DATA_FILE, "utf-8"));
-  } catch {
-    return [];
+// Stops the form from being used to flood one inbox from many IPs
+function isInCooldown(email: string, now = Date.now()): boolean {
+  if (lastSentTo.size > 10_000) {
+    for (const [key, at] of lastSentTo) if (now - at >= EMAIL_COOLDOWN_MS) lastSentTo.delete(key);
   }
-}
-
-// Write to a temp file and rename: a crash mid-write never leaves a truncated list behind
-async function writeSubscribers(subscribers: Subscriber[]) {
-  await fs.mkdir(DATA_DIR, { recursive: true });
-  const tmp = `${DATA_FILE}.${process.pid}.${Date.now()}.tmp`;
-  await fs.writeFile(tmp, JSON.stringify(subscribers, null, 2), "utf-8");
-  await fs.rename(tmp, DATA_FILE);
-}
-
-// Serialize read-modify-write so concurrent sign-ups don't overwrite each other
-let queue: Promise<unknown> = Promise.resolve();
-function withLock<T>(fn: () => Promise<T>): Promise<T> {
-  const run = queue.then(fn, fn);
-  queue = run.catch(() => {});
-  return run;
+  const last = lastSentTo.get(email);
+  if (last !== undefined && now - last < EMAIL_COOLDOWN_MS) return true;
+  lastSentTo.set(email, now);
+  return false;
 }
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => null);
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ success: false, message: "Requisição inválida." }, { status: 400 });
+    }
 
     // Honeypot: real users never see/fill this field; bots do. Pretend it worked.
     if (typeof body.website === "string" && body.website.trim() !== "") {
-      return NextResponse.json({ success: true, message: "Inscrição realizada com sucesso!" });
+      return NextResponse.json({ success: true, message: ACCEPTED_MESSAGE });
     }
 
     if (isRateLimited(clientIp(request))) {
@@ -81,45 +65,35 @@ export async function POST(request: Request) {
       );
     }
 
-    const email = typeof body.email === "string" ? body.email.trim().toLowerCase() : "";
+    if (typeof body.email !== "string" || body.email.trim() === "") {
+      return NextResponse.json({ success: false, message: "O e-mail é obrigatório." }, { status: 400 });
+    }
 
+    const email = normalizeEmail(body.email);
     if (!email) {
+      return NextResponse.json({ success: false, message: "Formato de e-mail inválido." }, { status: 400 });
+    }
+
+    const config = getNewsletterConfig();
+    if (!config) {
       return NextResponse.json(
-        { success: false, message: "O e-mail é obrigatório." },
-        { status: 400 }
+        { success: false, message: "A newsletter está indisponível no momento. Tente mais tarde." },
+        { status: 503 }
       );
     }
 
-    if (email.length > MAX_EMAIL_LENGTH || !EMAIL_REGEX.test(email)) {
-      return NextResponse.json(
-        { success: false, message: "Formato de e-mail inválido." },
-        { status: 400 }
-      );
+    if (!isInCooldown(email)) {
+      try {
+        await sendConfirmation(config, email);
+      } catch (err) {
+        lastSentTo.delete(email);
+        throw err;
+      }
     }
 
-    const added = await withLock(async () => {
-      const subscribers = await readSubscribers();
-      if (subscribers.some((s) => s.email === email)) return false;
-      subscribers.push({ email, subscribedAt: new Date().toISOString() });
-      await writeSubscribers(subscribers);
-      return true;
-    });
-
-    if (!added) {
-      return NextResponse.json(
-        { success: false, message: "Este e-mail já está inscrito." },
-        { status: 409 }
-      );
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: "Inscrição realizada com sucesso!",
-    });
-  } catch {
-    return NextResponse.json(
-      { success: false, message: "Erro interno. Tente novamente." },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: true, message: ACCEPTED_MESSAGE });
+  } catch (err) {
+    console.error("[newsletter] subscribe failed:", err instanceof Error ? err.message : "unknown error");
+    return NextResponse.json({ success: false, message: "Erro interno. Tente novamente." }, { status: 500 });
   }
 }

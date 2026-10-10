@@ -17,7 +17,7 @@ This is a monorepo with multiple services.
 └── CLAUDE.md               ← project instructions
 ```
 
-**Production:** VPS with Docker managed by **Easypanel**. Each service (`web`, `lp`, `blog`) is built from its own Dockerfile. `web` runs `prisma migrate deploy` on container boot. `blog` needs a persistent volume at `/app/data`. See the `release` skill.
+**Production:** VPS with Docker managed by **Easypanel**. Each service (`web`, `lp`, `blog`) is built from its own Dockerfile. `web` runs `prisma migrate deploy` on container boot. `blog` no longer needs a volume: newsletter subscribers live in Resend Contacts (the old `/app/data` volume is only kept until the legacy JSON is imported, see `blog/CLAUDE.md`). See the `release` skill.
 
 **Status (Oct 2026):** in production, no paying customers yet. Priorities: stabilize and secure → validate the full funnel → growth/marketing.
 
