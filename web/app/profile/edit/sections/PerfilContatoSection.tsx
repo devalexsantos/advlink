@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip"
 import { RichTextEditor } from "@/components/ui/rich-text-editor"
+import { OabWarnings } from "@/components/oab-warnings"
 import { useEditForm } from "../EditFormContext"
 import { PublicSectionHeader } from "../SectionRenderer"
 
@@ -42,9 +43,11 @@ export default function PerfilContatoSection() {
             control={control}
             name="headline"
             render={({ field }) => (
-              <Input id="headline" placeholder="Ex.: Advogado(a) Especialista em Direito Civil" value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
+              <Input id="headline" placeholder="Ex.: Advocacia Cível, de Família e Sucessões" value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
             )}
           />
+          <p className="mt-1 text-xs text-muted-foreground">Use “especialista” apenas se tiver título de especialização (Prov. OAB 205/2021, art. 3º, III).</p>
+          <OabWarnings text={form.watch("headline")} />
         </div>
       </div>
 
@@ -58,6 +61,7 @@ export default function PerfilContatoSection() {
           placeholder="Conte um pouco sobre você e sua atuação..."
           minHeight="200px"
         />
+        <OabWarnings text={aboutMarkdown} />
       </div>
 
       {/* Contato */}

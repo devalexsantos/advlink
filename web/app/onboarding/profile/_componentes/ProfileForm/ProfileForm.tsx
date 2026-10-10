@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
+import { OabWarnings } from "@/components/oab-warnings"
 import { Label } from "@/components/ui/label"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { ArrowLeft, ArrowRight, Camera, Upload, X, ImagePlus } from "lucide-react"
@@ -516,7 +517,9 @@ export function ProfileForm() {
         <Label htmlFor="headline" className="mb-2 block text-sm font-medium text-foreground">
           Título
         </Label>
-        <Input id="headline" type="text" placeholder="Ex.: Advogado (a) especialista em ..." {...register("headline")} />
+        <Input id="headline" type="text" placeholder="Ex.: Advocacia Cível, de Família e Sucessões" {...register("headline")} />
+        <p className="mt-1 text-xs text-muted-foreground">Use “especialista” apenas se tiver título de especialização (Prov. OAB 205/2021, art. 3º, III).</p>
+        <OabWarnings text={watch("headline")} />
         {errors.headline && (<p className="mt-2 text-sm text-red-400">{errors.headline.message as string}</p>)}
       </div>
 
@@ -644,6 +647,7 @@ export function ProfileForm() {
           placeholder="Conte um pouco mais sobre você ou seu escritório"
           {...register("about")}
         />
+        <OabWarnings text={watch("about")} />
         {errors.about && (
           <p className="mt-2 text-sm text-red-400">{errors.about.message as string}</p>
         )}

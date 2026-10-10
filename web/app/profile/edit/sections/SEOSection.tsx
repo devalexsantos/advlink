@@ -4,6 +4,7 @@ import { Controller } from "react-hook-form"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { OabWarnings } from "@/components/oab-warnings"
 import { useEditForm } from "../EditFormContext"
 
 export default function SEOSection() {
@@ -20,9 +21,10 @@ export default function SEOSection() {
             control={control}
             name="metaTitle"
             render={({ field }) => (
-              <Input id="metaTitle" maxLength={80} placeholder="Título curto e persuasivo (até 80 caracteres)" value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
+              <Input id="metaTitle" maxLength={80} placeholder="Título curto, objetivo e informativo (até 80 caracteres)" value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
             )}
           />
+          <OabWarnings text={form.watch("metaTitle")} />
         </div>
         <div>
           <Label htmlFor="metaDescription" className="mb-1 block text-sm">Meta Description</Label>
@@ -30,9 +32,10 @@ export default function SEOSection() {
             control={control}
             name="metaDescription"
             render={({ field }) => (
-              <Textarea id="metaDescription" rows={3} placeholder="Descrição curta e persuasiva" value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
+              <Textarea id="metaDescription" rows={3} placeholder="Descrição curta, objetiva e informativa" value={field.value ?? ""} onChange={field.onChange} onBlur={field.onBlur} />
             )}
           />
+          <OabWarnings text={form.watch("metaDescription")} />
         </div>
       </div>
 

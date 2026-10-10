@@ -27,6 +27,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { OabWarnings } from "@/components/oab-warnings"
 import { useEditForm } from "../EditFormContext"
 import { PublicSectionHeader } from "../SectionRenderer"
 import type { TeamMemberItem } from "../types"
@@ -488,6 +489,7 @@ export default function EquipeSection() {
                 rows={3}
                 className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring resize-none"
               />
+              <OabWarnings text={formData.description} />
             </div>
 
             {/* Phone */}

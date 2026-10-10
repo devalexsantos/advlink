@@ -25,6 +25,7 @@ import {
   arrayMove,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
+import { OabWarnings } from "@/components/oab-warnings"
 import { useEditForm } from "../EditFormContext"
 import { useQueryClient } from "@tanstack/react-query"
 import type { LinkItem } from "../types"
@@ -190,6 +191,7 @@ export default function LinksSection() {
                   minHeight="120px"
                   toolbarVariant="full"
                 />
+                <OabWarnings text={editingLink.description ?? ""} />
               </div>
               <div className="flex flex-col gap-2 mt-2">
                 <Label className="mb-2 block">Capa</Label>
