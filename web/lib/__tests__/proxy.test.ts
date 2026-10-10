@@ -1,10 +1,15 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from "vitest"
 
-const { getTokenMock } = vi.hoisted(() => ({ getTokenMock: vi.fn() }))
+const { getTokenMock, prismaMock } = vi.hoisted(() => ({
+  getTokenMock: vi.fn(),
+  prismaMock: { customDomain: { findUnique: vi.fn(), findFirst: vi.fn() } },
+}))
 vi.mock("next-auth/jwt", () => ({ getToken: getTokenMock }))
+vi.mock("@/lib/prisma", () => ({ prisma: prismaMock }))
 
 import { proxy } from "@/proxy"
+import { clearCustomHostCache } from "@/lib/custom-domain"
 import { NextRequest } from "next/server"
 
 function makeReq(url: string, init: { method?: string; headers?: Record<string, string> } = {}) {
@@ -20,6 +25,9 @@ describe("proxy", () => {
     vi.clearAllMocks()
     process.env.ROOT_DOMAIN = "advlink.site"
     getTokenMock.mockResolvedValue({ sub: "u1" })
+    prismaMock.customDomain.findUnique.mockResolvedValue(null)
+    prismaMock.customDomain.findFirst.mockResolvedValue(null)
+    clearCustomHostCache()
   })
 
   describe("CSRF origin check on /api", () => {
@@ -244,6 +252,158 @@ describe("proxy", () => {
     it("does not set a cookie without UTM or external referrer", async () => {
       const res = await proxy(makeReq("https://app.advlink.site/login"))
       expect(res.cookies.get("advlink_attribution")).toBeUndefined()
+    })
+  })
+
+  describe("custom domains (lawyer's own domain)", () => {
+    function knownDomain(status = "active") {
+      prismaMock.customDomain.findUnique.mockResolvedValue({ status, profileId: "p1", profile: { slug: "joao" } })
+    }
+
+    it("answers 404 on unknown hosts, for every path", async () => {
+      for (const path of ["/", "/login", "/api/profile", "/admin"]) {
+        const res = await proxy(makeReq(`https://desconhecido.com.br${path}`))
+        expect(res.status).toBe(404)
+      }
+      expect(prismaMock.customDomain.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { host: "desconhecido.com.br" } }),
+      )
+    })
+
+    it("rewrites the public pages to the site and tags them with the site id", async () => {
+      knownDomain()
+      const cases: Array<[string, string]> = [
+        ["/", "/adv/joao"],
+        ["/privacidade", "/adv/joao/privacidade"],
+        ["/artigos", "/adv/joao/artigos"],
+        ["/artigos/meu-artigo", "/adv/joao/artigos/meu-artigo"],
+      ]
+      for (const [path, target] of cases) {
+        const res = await proxy(makeReq(`https://escritorio.adv.br${path}`))
+        expect(new URL(res.headers.get("x-middleware-rewrite")!).pathname).toBe(target)
+        expect(res.headers.get("x-advlink-site")).toBe("p1")
+        expect(res.headers.get("content-security-policy")).toBeNull()
+      }
+    })
+
+    it("also serves provisioning domains (needed for the HTTPS check)", async () => {
+      knownDomain("provisioning")
+      const res = await proxy(makeReq("https://escritorio.adv.br/"))
+      expect(res.headers.get("x-advlink-site")).toBe("p1")
+    })
+
+    it("does not serve pending domains", async () => {
+      knownDomain("pending_dns")
+      expect((await proxy(makeReq("https://escritorio.adv.br/"))).status).toBe(404)
+    })
+
+    it("answers 404 for app pages, admin, /adv and other APIs (no auth gate)", async () => {
+      knownDomain()
+      getTokenMock.mockResolvedValue(null)
+      for (const path of ["/login", "/profile/edit", "/admin", "/admin/login", "/adv/joao", "/onboarding/profile", "/api/profile", "/api/admin/users", "/artigos/Bad_Slug"]) {
+        const res = await proxy(makeReq(`https://escritorio.adv.br${path}`))
+        expect(res.status).toBe(404)
+        expect(res.headers.get("location")).toBeNull()
+      }
+      expect(getTokenMock).not.toHaveBeenCalled()
+    })
+
+    it("lets the page-view beacon, the contact form and static assets through", async () => {
+      knownDomain()
+      for (const path of ["/api/analytics/track", "/api/leads"]) {
+        const res = await proxy(
+          makeReq(`https://escritorio.adv.br${path}`, { method: "POST", headers: { origin: "https://escritorio.adv.br" } }),
+        )
+        expect(res.headers.get("x-middleware-next")).toBe("1")
+      }
+      for (const path of ["/_next/static/chunks/a.js", "/logo.png", "/favicon.ico"]) {
+        const res = await proxy(makeReq(`https://escritorio.adv.br${path}`))
+        expect(res.headers.get("x-middleware-next")).toBe("1")
+      }
+    })
+
+    it("still blocks cross-origin POSTs to the allowed APIs", async () => {
+      knownDomain()
+      const res = await proxy(
+        makeReq("https://escritorio.adv.br/api/leads", { method: "POST", headers: { origin: "https://evil.com" } }),
+      )
+      expect(res.status).toBe(403)
+    })
+
+    it("ignores the port and case of the Host header", async () => {
+      knownDomain()
+      const res = await proxy(makeReq("https://escritorio.adv.br/", { headers: { host: "Escritorio.ADV.br:443" } }))
+      expect(res.headers.get("x-advlink-site")).toBe("p1")
+      expect(prismaMock.customDomain.findUnique).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { host: "escritorio.adv.br" } }),
+      )
+    })
+
+    it("answers 503 when the lookup fails", async () => {
+      prismaMock.customDomain.findUnique.mockRejectedValue(new Error("db down"))
+      expect((await proxy(makeReq("https://escritorio.adv.br/"))).status).toBe(503)
+    })
+
+    it("redirects the subdomain pages to the active custom domain (301, keeps path and query)", async () => {
+      prismaMock.customDomain.findFirst.mockResolvedValue({ host: "escritorio.adv.br" })
+      const res = await proxy(makeReq("https://joao.advlink.site/artigos/x?utm_source=ig"))
+      expect(res.status).toBe(301)
+      expect(res.headers.get("location")).toBe("https://escritorio.adv.br/artigos/x?utm_source=ig")
+      expect(prismaMock.customDomain.findFirst).toHaveBeenCalledWith({
+        where: { status: "active", profile: { slug: "joao" } },
+        select: { host: true },
+      })
+    })
+
+    it("does not redirect subdomain APIs or sites without an active domain", async () => {
+      prismaMock.customDomain.findFirst.mockResolvedValue({ host: "escritorio.adv.br" })
+      const api = await proxy(makeReq("https://joao.advlink.site/api/analytics/track"))
+      expect(api.status).toBe(200)
+      expect(api.headers.get("location")).toBeNull()
+
+      clearCustomHostCache()
+      prismaMock.customDomain.findFirst.mockResolvedValue(null)
+      const page = await proxy(makeReq("https://maria.advlink.site/"))
+      expect(page.headers.get("x-middleware-rewrite")).toContain("/adv/maria")
+    })
+
+    it("never treats the app or reserved subdomains as custom hosts", async () => {
+      const res = await proxy(makeReq("https://app.advlink.site/login"))
+      expect(res.status).toBe(200)
+      expect(prismaMock.customDomain.findUnique).not.toHaveBeenCalled()
+      expect(prismaMock.customDomain.findFirst).not.toHaveBeenCalled()
+    })
+  })
+
+  describe("local dev hosts keep working", () => {
+    it("ROOT_DOMAIN=localhost:3000: app on localhost, profiles on <slug>.localhost", async () => {
+      process.env.ROOT_DOMAIN = "localhost:3000"
+      const sub = await proxy(makeReq("http://novo-alex.localhost:3000/"))
+      expect(sub.headers.get("x-middleware-rewrite")).toContain("/adv/novo-alex")
+
+      getTokenMock.mockResolvedValue(null)
+      const app = await proxy(makeReq("http://localhost:3000/profile/edit"))
+      expect(app.status).toBe(307)
+      expect(new URL(app.headers.get("location")!).pathname).toBe("/login")
+      expect(prismaMock.customDomain.findUnique).not.toHaveBeenCalled()
+    })
+
+    it("treats IPs, *.localhost and DEV_ALLOWED_ORIGINS as platform hosts", async () => {
+      process.env.DEV_ALLOWED_ORIGINS = "*.trycloudflare.com, tunnel.example.dev"
+      try {
+        for (const url of [
+          "http://127.0.0.1:3000/login",
+          "http://foo.localhost:3000/login",
+          "https://abc.trycloudflare.com/login",
+          "https://tunnel.example.dev/login",
+        ]) {
+          const res = await proxy(makeReq(url))
+          expect(res.status).toBe(200)
+        }
+        expect(prismaMock.customDomain.findUnique).not.toHaveBeenCalled()
+      } finally {
+        delete process.env.DEV_ALLOWED_ORIGINS
+      }
     })
   })
 })

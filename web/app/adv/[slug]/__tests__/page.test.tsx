@@ -106,7 +106,10 @@ describe("Public Profile Page (/adv/[slug])", () => {
     const el = (await Page({ params: Promise.resolve({ slug: "x" }) })) as { type: unknown; props: Record<string, unknown> }
     expect(el.type).toBe(PublicProfileView)
     expect(el.props).toMatchObject({ slug: "x", showTracker: true, gtmContainerId: "GTM-ABCD123" })
-    expect(prismaMock.profile.findFirst).toHaveBeenCalledWith({ where: { slug: "x" }, include: { address: true } })
+    expect(prismaMock.profile.findFirst).toHaveBeenCalledWith({
+      where: { slug: "x" },
+      include: { address: true, customDomain: { select: { host: true, status: true } } },
+    })
     expect(prismaMock.teamMember.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { profileId: "p1" } }))
   })
 

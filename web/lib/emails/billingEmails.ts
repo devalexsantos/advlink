@@ -1,6 +1,6 @@
 import { getResend, EMAIL_FROM } from "@/lib/resend"
 import { emailTemplate } from "./baseTemplate"
-import { getAppOrigin, getProfileUrl } from "@/lib/site-url"
+import { getAppOrigin, getSiteUrl } from "@/lib/site-url"
 
 export type BillingEmailNotice = "activated" | "reactivated" | "overdue" | "suspended" | "canceled"
 
@@ -8,6 +8,8 @@ export interface BillingEmailInput {
   notice: BillingEmailNotice
   to: string
   siteSlug: string | null
+  /** Active custom domain of the site, used as its URL when present. */
+  siteHost?: string | null
   graceUntil: string | null
   invoiceUrl: string | null
   /** Cycle of the subscription (MONTHLY when missing): wording of the renewal sentence. */
@@ -40,7 +42,7 @@ const small = (text: string) => `<p style="margin:0;color:#6b7280;font-size:13px
 
 export function buildBillingEmail(input: BillingEmailInput): { subject: string; html: string } {
   const { notice, siteSlug, graceUntil, invoiceUrl } = input
-  const siteUrl = siteSlug ? getProfileUrl(siteSlug) : `${getAppOrigin()}/profile/account`
+  const siteUrl = siteSlug ? getSiteUrl({ slug: siteSlug, customDomainHost: input.siteHost }) : `${getAppOrigin()}/profile/account`
   const siteLink = `<a href="${escapeHtml(siteUrl)}" style="color:#0a2463;">${escapeHtml(siteUrl)}</a>`
   const accountUrl = `${getAppOrigin()}/profile/account`
   const payUrl = safeUrl(invoiceUrl)

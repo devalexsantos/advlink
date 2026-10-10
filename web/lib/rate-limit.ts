@@ -121,6 +121,8 @@ export const rateLimiters = {
   leadByIp: named("lead:ip", 20, HOUR),
   /** Preview link generation (creates rows + product events), per user. */
   previewLinkByUser: named("preview-link:user", 20, HOUR),
+  /** Custom-domain verification (DNS lookups + Easypanel calls + outbound HTTPS), per user. */
+  customDomainVerifyByUser: named("custom-domain-verify:user", 20, HOUR),
 }
 
 /**

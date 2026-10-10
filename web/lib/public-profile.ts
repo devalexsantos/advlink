@@ -1,14 +1,31 @@
 import type { Profile, Address } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { HOME_ARTICLES_LIMIT, listPublishedArticles } from "@/lib/articles"
+import { activeHostOf, getSiteUrl } from "@/lib/site-url"
 
 export type PublicProfileWhere = { slug: string } | { id: string }
 
-export type PublicProfileRecord = Profile & { address: Address | null }
+export type PublicProfileRecord = Profile & {
+  address: Address | null
+  customDomain?: { host: string; status: string } | null
+}
 
-/** The profile row (with address) behind a public page, or null. */
+/** The profile row (with address and custom domain) behind a public page, or null. */
 export function findPublicProfile(where: PublicProfileWhere): Promise<PublicProfileRecord | null> {
-  return prisma.profile.findFirst({ where, include: { address: true } })
+  return prisma.profile.findFirst({
+    where,
+    include: { address: true, customDomain: { select: { host: true, status: true } } },
+  })
+}
+
+/** Host of the profile's custom domain when active (canonical host of the site), else null. */
+export function publicCustomHost(profile: Pick<PublicProfileRecord, "customDomain">): string | null {
+  return activeHostOf(profile.customDomain)
+}
+
+/** Canonical public URL of a loaded profile (custom domain when active, else the subdomain). */
+export function publicSiteUrl(profile: Pick<PublicProfileRecord, "customDomain">, slug: string): string {
+  return getSiteUrl({ slug, customDomainHost: publicCustomHost(profile) })
 }
 
 const byPosition = [{ position: "asc" as const }, { createdAt: "asc" as const }]

@@ -10,6 +10,8 @@ export interface MonthlyReportRecipient {
   siteId: string
   siteName: string
   siteSlug: string
+  /** Active custom domain, used as the site URL when present. */
+  siteHost?: string | null
   monthKey: string
   monthName: string
   previousMonthName: string
@@ -73,6 +75,7 @@ export async function runMonthlyReports({
       id: true,
       name: true,
       slug: true,
+      customDomain: { select: { host: true, status: true } },
       user: { select: { id: true, email: true, name: true } },
     },
     orderBy: { id: "asc" },
@@ -118,6 +121,7 @@ export async function runMonthlyReports({
         siteId: profile.id,
         siteName: profile.name?.trim() || profile.slug,
         siteSlug: profile.slug,
+        siteHost: profile.customDomain?.status === "active" ? profile.customDomain.host : null,
         monthKey: range.key,
         monthName: range.monthName,
         previousMonthName: before.monthName,

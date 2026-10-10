@@ -72,6 +72,13 @@ describe("AppSidebar", () => {
     expect(mockSetOpenMobile).toHaveBeenCalledWith(false)
   })
 
+  it("renders Domínio próprio link and navigates on click", async () => {
+    render(<AppSidebar />)
+    await userEvent.click(screen.getByText("Domínio próprio").closest("button")!)
+    expect(mockRouterPush).toHaveBeenCalledWith("/profile/dominio")
+    expect(mockSetOpenMobile).toHaveBeenCalledWith(false)
+  })
+
   it("renders Mensagens and Artigos links and navigates", async () => {
     render(<AppSidebar />)
     await userEvent.click(screen.getByText("Mensagens").closest("button")!)

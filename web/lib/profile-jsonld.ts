@@ -41,8 +41,14 @@ type AddressForJsonLd = {
  * schema.org LegalService for a public profile. Deliberately has no rating/review data:
  * OAB Provimento 205/2021 forbids advertising based on client testimonials/results.
  */
-export function buildProfileJsonLd(profile: ProfileForJsonLd, address: AddressForJsonLd, areaTitles: string[]) {
-  const url = getProfileUrl(profile.slug)
+export function buildProfileJsonLd(
+  profile: ProfileForJsonLd,
+  address: AddressForJsonLd,
+  areaTitles: string[],
+  /** Canonical site URL (custom domain); defaults to the profile subdomain. */
+  siteUrl?: string,
+) {
+  const url = siteUrl ?? getProfileUrl(profile.slug)
   const data: Record<string, unknown> = {
     "@context": "https://schema.org",
     "@type": "LegalService",

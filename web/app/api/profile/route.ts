@@ -39,7 +39,7 @@ export async function GET() {
   const profileId: string = resolvedProfileId
 
   const [profile, areas, address, links, gallery, customSections, teamMembers, articles] = await Promise.all([
-    prisma.profile.findUnique({ where: { id: profileId } }),
+    prisma.profile.findUnique({ where: { id: profileId }, include: { customDomain: { select: { host: true, status: true } } } }),
     prisma.activityAreas.findMany({
       where: { profileId },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
@@ -52,7 +52,19 @@ export async function GET() {
     prisma.teamMember.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     listPublishedArticles(profileId, { take: HOME_ARTICLES_LIMIT }),
   ])
-  return NextResponse.json({ profile, areas, address, links, gallery, customSections, teamMembers, articles, profileId })
+  // Custom domain ({ host, status } | null): the dashboard shows it as the site's link when active
+  return NextResponse.json({
+    profile,
+    customDomain: profile?.customDomain ?? null,
+    areas,
+    address,
+    links,
+    gallery,
+    customSections,
+    teamMembers,
+    articles,
+    profileId,
+  })
 }
 
 export async function PATCH(req: Request) {

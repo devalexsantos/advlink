@@ -1,8 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { findPublicProfile } from "@/lib/public-profile"
-import { getProfileUrl } from "@/lib/site-url"
+import { findPublicProfile, publicSiteUrl } from "@/lib/public-profile"
 import { formatArticleDate } from "@/components/themes/ArticlesSection"
 import ArticleLayout from "./ArticleLayout"
 
@@ -21,7 +20,7 @@ export default async function ArticlesPage({ params }: { params: RouteParams }) 
   const profile = await findPublicProfile({ slug })
   if (!profile || !profile.isActive) notFound()
   const articles = await loadArticles(profile.id)
-  const siteUrl = getProfileUrl(slug)
+  const siteUrl = publicSiteUrl(profile, slug)
   const primary = profile.primaryColor || "#8B0000"
   const secondary = profile.secondaryColor || "#FFFFFF"
   const text = profile.textColor || "#FFFFFF"
@@ -63,13 +62,13 @@ export async function generateMetadata({ params }: { params: RouteParams }): Pro
   const profile = await findPublicProfile({ slug })
   if (!profile || !profile.isActive) return { title: "Página não encontrada", robots: { index: false, follow: false } }
   const name = profile.publicName?.trim() || "Advogado"
-  const url = `${getProfileUrl(slug)}artigos`
+  const url = `${publicSiteUrl(profile, slug)}artigos`
   const title = `Artigos | ${name}`
   const description = `Artigos publicados por ${name}.`
   return {
     title,
     description,
-    metadataBase: new URL(getProfileUrl(slug)),
+    metadataBase: new URL(publicSiteUrl(profile, slug)),
     alternates: { canonical: url },
     openGraph: { title, description, type: "website", url },
   }

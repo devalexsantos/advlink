@@ -20,6 +20,19 @@ export function getProfileUrl(slug: string): string {
   return `${protocolFor(root)}://${slug}.${root}/`
 }
 
+/**
+ * Canonical public URL of a site: its custom domain when active (https://escritorio.adv.br/),
+ * else the subdomain URL.
+ */
+export function getSiteUrl({ slug, customDomainHost }: { slug: string; customDomainHost?: string | null }): string {
+  return customDomainHost ? `https://${customDomainHost}/` : getProfileUrl(slug)
+}
+
+/** Host of a loaded `customDomain: { host, status }` relation when it is active, else null. */
+export function activeHostOf(d: { host: string; status: string } | null | undefined): string | null {
+  return d?.status === "active" ? d.host : null
+}
+
 /** Host shown to the user for a profile, e.g. joao.advlink.site */
 export function getProfileHost(slug: string): string {
   return `${slug}.${getRootDomain()}`

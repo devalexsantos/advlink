@@ -1,5 +1,6 @@
 import { getResend, EMAIL_FROM } from "@/lib/resend"
-import { getAppOrigin, getProfileUrl } from "@/lib/site-url"
+import { getAppOrigin, getSiteUrl } from "@/lib/site-url"
+import { getActiveCustomDomainHost } from "@/lib/custom-domain"
 import { buildActivationEmail } from "@/lib/emails/activationEmails"
 import { buildMonthlyReportEmail } from "@/lib/emails/monthlyReport"
 import { buildUnsubscribeUrl, signUnsubscribeToken } from "@/lib/emails/unsubscribe-token"
@@ -36,15 +37,17 @@ export async function sendMarketingEmail(
 }
 
 /** Sends one activation e-mail. Throws on any failure so the drip rolls back. */
-export const sendActivationEmail: ActivationSend = ({ userId, email, name, kind, siteSlug }) =>
-  sendMarketingEmail({ userId, to: email }, ({ appUrl, unsubscribeUrl }) =>
+export const sendActivationEmail: ActivationSend = async ({ userId, email, name, kind, siteId, siteSlug }) => {
+  const customDomainHost = siteId && siteSlug ? await getActiveCustomDomainHost(siteId) : null
+  return sendMarketingEmail({ userId, to: email }, ({ appUrl, unsubscribeUrl }) =>
     buildActivationEmail(kind, {
       name,
       appUrl,
-      siteUrl: siteSlug ? getProfileUrl(siteSlug) : null,
+      siteUrl: siteSlug ? getSiteUrl({ slug: siteSlug, customDomainHost }) : null,
       unsubscribeUrl,
     }),
   )
+}
 
 /** Sends one monthly report. Throws on any failure so the runner rolls back. */
 export const sendMonthlyReportEmail: MonthlyReportSend = (r) =>
@@ -52,7 +55,7 @@ export const sendMonthlyReportEmail: MonthlyReportSend = (r) =>
     buildMonthlyReportEmail({
       name: r.name,
       siteName: r.siteName,
-      siteUrl: getProfileUrl(r.siteSlug),
+      siteUrl: getSiteUrl({ slug: r.siteSlug, customDomainHost: r.siteHost }),
       monthName: r.monthName,
       previousMonthName: r.previousMonthName,
       summary: r.summary,

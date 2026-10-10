@@ -24,6 +24,7 @@ import {
   Share2,
   Inbox,
   Newspaper,
+  Globe,
 } from "lucide-react"
 import {
   Sidebar,
@@ -160,6 +161,19 @@ export function AppSidebar() {
               >
                 <Share2 className="h-5 w-5" />
                 <span>Divulgar meu site</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={pathname.startsWith("/profile/dominio")}
+                onClick={() => {
+                  router.push("/profile/dominio")
+                  setOpenMobile(false)
+                }}
+                tooltip="Domínio próprio"
+              >
+                <Globe className="h-5 w-5" />
+                <span>Domínio próprio</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>

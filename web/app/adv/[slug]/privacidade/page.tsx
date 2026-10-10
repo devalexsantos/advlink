@@ -3,9 +3,9 @@ import Link from "next/link"
 import { notFound } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import { prisma } from "@/lib/prisma"
-import { findPublicProfile } from "@/lib/public-profile"
+import { findPublicProfile, publicSiteUrl } from "@/lib/public-profile"
 import { formatOab } from "@/lib/oab"
-import { getAppOrigin, getProfileUrl } from "@/lib/site-url"
+import { getAppOrigin } from "@/lib/site-url"
 import { ResetConsentButton } from "./ResetConsentButton"
 
 type RouteParams = Promise<{ slug: string }>
@@ -34,7 +34,7 @@ export default async function PrivacyNoticePage({ params }: { params: RouteParam
           .join(" — ")
       : ""
   const gtmId = profile.gtmContainerId && GTM_ID.test(profile.gtmContainerId) ? profile.gtmContainerId : null
-  const siteUrl = getProfileUrl(slug)
+  const siteUrl = publicSiteUrl(profile, slug)
   const hasForm = profile.leadFormEnabled === true
 
   return (

@@ -62,6 +62,17 @@ describe("GET /api/profile", () => {
     expect(data.areas).toHaveLength(1)
   })
 
+  it("exposes the site's custom domain at the top level", async () => {
+    getServerSessionMock.mockResolvedValue(session)
+    prismaMock.profile.findUnique.mockResolvedValue({ id: "p1", slug: "test", customDomain: { host: "a.com.br", status: "active" } })
+    const data = await (await GET()).json()
+    expect(data.customDomain).toEqual({ host: "a.com.br", status: "active" })
+    expect(prismaMock.profile.findUnique).toHaveBeenCalledWith({
+      where: { id: "profile-1" },
+      include: { customDomain: { select: { host: true, status: true } } },
+    })
+  })
+
   it("includes the latest 3 published articles of the active site", async () => {
     getServerSessionMock.mockResolvedValue(session)
     prismaMock.article.findMany.mockResolvedValue([{ id: "art1", slug: "a", title: "A" }])

@@ -6,6 +6,8 @@ import { RESERVED_SLUGS } from "@/lib/reserved-slugs"
 import { getAdminJwtSecret } from "@/lib/admin-secret"
 import { ATTRIBUTION_COOKIE, ATTRIBUTION_MAX_AGE, attributionFromRequest } from "@/lib/attribution"
 import { buildCsp, generateNonce, isCspProtectedPath } from "@/lib/csp"
+import { SITE_HEADER, resolveActiveHostForSlug, resolveCustomHost } from "@/lib/custom-domain"
+import { hostnameOf, isPlatformHost } from "@/lib/platform-host"
 
 
 // Subdomain rewrite to /adv/[slug] for *.advlink.site
@@ -21,10 +23,18 @@ export async function proxy(req: NextRequest) {
     }
   }
 
-  // Skip API and static assets from any rewrite consideration
   const isApi = pathname.startsWith("/api")
   const isNextInternal = pathname.startsWith("/_next")
   const isStaticAsset = /\.[^\/]+$/.test(pathname) || pathname === "/favicon.ico"
+
+  // Lawyer's own domain (escritorio.adv.br): only the public site is served there
+  const host = (req.headers.get("host") || "").toLowerCase()
+  const ROOT_DOMAIN = process.env.ROOT_DOMAIN || "advlink.site"
+  if (!isPlatformHost(host, ROOT_DOMAIN)) {
+    return customHostResponse(req, hostnameOf(host), { isApi, isNextInternal, isStaticAsset })
+  }
+
+  // Skip API and static assets from any rewrite consideration
   if (isApi || isNextInternal || isStaticAsset) {
     return NextResponse.next()
   }
@@ -51,8 +61,6 @@ export async function proxy(req: NextRequest) {
 
   // Host-based routing: alex.advlink.site → rewrite to /adv/alex (URL stays on subdomain)
   // Must run BEFORE auth gate so public profiles are never blocked
-  const host = req.headers.get("host") || ""
-  const ROOT_DOMAIN = process.env.ROOT_DOMAIN || "advlink.site"
   const suffix = `.${ROOT_DOMAIN}`
 
   if (host.endsWith(suffix) || host === ROOT_DOMAIN) {
@@ -69,14 +77,15 @@ export async function proxy(req: NextRequest) {
     const subdomain = host.slice(0, -suffix.length)
     const isApex = subdomain.length === 0
     if (!isApex && !RESERVED_SLUGS.has(subdomain)) {
-      const articleMatch = pathname.match(/^\/artigos(?:\/([a-z0-9-]+))?$/)
-      if (pathname === "/" || pathname === "/privacidade" || articleMatch) {
+      const target = profileRewritePath(subdomain, pathname)
+      if (target) {
+        // Sites with an active custom domain live there: keep a single canonical host
+        const customHost = /^[a-z0-9-]+$/.test(subdomain) ? await resolveActiveHostForSlug(subdomain) : null
+        if (customHost) {
+          return NextResponse.redirect(`https://${customHost}${pathname}${nextUrl.search}`, 301)
+        }
         const url = nextUrl.clone()
-        url.pathname = articleMatch
-          ? `/adv/${subdomain}${pathname}`
-          : pathname === "/"
-            ? `/adv/${subdomain}`
-            : `/adv/${subdomain}/privacidade`
+        url.pathname = target
         return NextResponse.rewrite(url)
       }
     }
@@ -97,6 +106,49 @@ export async function proxy(req: NextRequest) {
   }
 
   return withAttribution(req, nextPage(req))
+}
+
+/** Internal page behind a public-site path (/, /privacidade, /artigos[/<slug>]), or null. */
+function profileRewritePath(slug: string, pathname: string): string | null {
+  if (pathname === "/") return `/adv/${slug}`
+  if (pathname === "/privacidade") return `/adv/${slug}/privacidade`
+  if (/^\/artigos(?:\/[a-z0-9-]+)?$/.test(pathname)) return `/adv/${slug}${pathname}`
+  return null
+}
+
+const CUSTOM_HOST_APIS = ["/api/analytics/track", "/api/leads"]
+
+/**
+ * Custom domains serve only the public site: no admin, auth gate or CSP (same as subdomains).
+ * Unknown hosts and any other path get a 404.
+ */
+async function customHostResponse(
+  req: NextRequest,
+  hostname: string,
+  kind: { isApi: boolean; isNextInternal: boolean; isStaticAsset: boolean },
+) {
+  const notFound = () => new NextResponse("Not found", { status: 404 })
+  let site: Awaited<ReturnType<typeof resolveCustomHost>>
+  try {
+    site = await resolveCustomHost(hostname)
+  } catch {
+    return new NextResponse("Service unavailable", { status: 503 })
+  }
+  if (!site) return notFound()
+
+  const { pathname } = req.nextUrl
+  if (kind.isApi) {
+    return CUSTOM_HOST_APIS.some((p) => pathname === p || pathname.startsWith(`${p}/`)) ? NextResponse.next() : notFound()
+  }
+  if (kind.isNextInternal || kind.isStaticAsset) return NextResponse.next()
+
+  const target = profileRewritePath(site.slug, pathname)
+  if (!target) return notFound()
+  const url = req.nextUrl.clone()
+  url.pathname = target
+  const res = NextResponse.rewrite(url)
+  res.headers.set(SITE_HEADER, site.profileId)
+  return res
 }
 
 // Continues to the page. Private areas get a per-request nonce: Next reads it from the request's

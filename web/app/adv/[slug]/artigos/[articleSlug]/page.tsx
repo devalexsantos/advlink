@@ -1,8 +1,7 @@
 import type { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { prisma } from "@/lib/prisma"
-import { findPublicProfile } from "@/lib/public-profile"
-import { getProfileUrl } from "@/lib/site-url"
+import { findPublicProfile, publicSiteUrl } from "@/lib/public-profile"
 import { formatOab } from "@/lib/oab"
 import { renderContent } from "@/lib/render-content"
 import { jsonLdScript } from "@/lib/profile-jsonld"
@@ -22,7 +21,7 @@ export default async function ArticlePage({ params }: { params: RouteParams }) {
   const article = await loadArticle(profile.id, articleSlug)
   if (!article) notFound()
 
-  const siteUrl = getProfileUrl(slug)
+  const siteUrl = publicSiteUrl(profile, slug)
   const name = profile.publicName?.trim() || "Advogado"
   const oab = formatOab(profile.oabNumber, profile.oabState)
   const primary = profile.primaryColor || "#8B0000"
@@ -74,11 +73,11 @@ export async function generateMetadata({ params }: { params: RouteParams }): Pro
   const name = profile.publicName?.trim() || "Advogado"
   const title = `${article.title} | ${name}`
   const description = article.metaDescription || article.excerpt || undefined
-  const url = `${getProfileUrl(slug)}artigos/${article.slug}`
+  const url = `${publicSiteUrl(profile, slug)}artigos/${article.slug}`
   return {
     title,
     description,
-    metadataBase: new URL(getProfileUrl(slug)),
+    metadataBase: new URL(publicSiteUrl(profile, slug)),
     alternates: { canonical: url },
     openGraph: {
       title,

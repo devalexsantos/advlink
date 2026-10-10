@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/auth"
 import { prisma } from "@/lib/prisma"
 import { getActiveSiteId } from "@/lib/active-site"
-import { getProfileUrl } from "@/lib/site-url"
+import { activeHostOf, getSiteUrl } from "@/lib/site-url"
 import DivulgarClient from "./DivulgarClient"
 
 export const metadata = { title: "Divulgar meu site" }
@@ -29,6 +29,7 @@ export default async function DivulgarPage() {
       headline: true,
       isActive: true,
       setupComplete: true,
+      customDomain: { select: { host: true, status: true } },
     },
   })
 
@@ -39,7 +40,7 @@ export default async function DivulgarPage() {
     <DivulgarClient
       site={{
         name: profile.publicName ?? "",
-        url: getProfileUrl(profile.slug),
+        url: getSiteUrl({ slug: profile.slug, customDomainHost: activeHostOf(profile.customDomain) }),
         oabNumber: profile.oabNumber,
         oabState: profile.oabState,
         phone: profile.whatsapp || profile.publicPhone || null,
