@@ -50,6 +50,7 @@ export default async function PreviewPage({ params }: { params: RouteParams }) {
       slug={profile.slug ?? ""}
       showTracker={false}
       gtmContainerId={null}
+      privacyUrl={profile.slug ? `/adv/${profile.slug}/privacidade` : undefined}
       banner={<PreviewBanner publishedUrl={profile.isActive && profile.slug ? getProfileUrl(profile.slug) : null} />}
     />
   )

@@ -17,7 +17,7 @@ vi.mock("@/components/themes/02/Theme02", () => ({ default: () => "Theme02" }))
 vi.mock("@/components/themes/03/Theme03", () => ({ default: () => "Theme03" }))
 vi.mock("@/components/themes/04/Theme04", () => ({ default: () => "Theme04" }))
 vi.mock("@/components/analytics/ProfileTracker", () => ({ ProfileTracker: () => null }))
-vi.mock("next/script", () => ({ default: () => null }))
+vi.mock("@/components/analytics/GtmConsent", () => ({ GtmConsent: () => null }))
 vi.mock("next/link", () => ({ default: ({ children }: { children: unknown }) => children }))
 vi.mock("next/navigation", () => ({
   notFound: () => {
@@ -28,6 +28,7 @@ vi.mock("next/navigation", () => ({
 // We test the server component by calling it as a function and inspecting the returned JSX.
 // Active profiles render <PublicProfileView>, a sync server component: expand it one level.
 import Page from "@/app/adv/[slug]/page"
+import { GtmConsent } from "@/components/analytics/GtmConsent"
 import PublicProfileView from "@/app/adv/[slug]/PublicProfileView"
 
 async function PublicProfilePage(args: Parameters<typeof Page>[0]) {
@@ -83,6 +84,19 @@ describe("Public Profile Page (/adv/[slug])", () => {
     expect(el.props).toMatchObject({ slug: "x", showTracker: true, gtmContainerId: "GTM-ABCD123" })
     expect(prismaMock.profile.findFirst).toHaveBeenCalledWith({ where: { slug: "x" }, include: { address: true } })
     expect(prismaMock.teamMember.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { profileId: "p1" } }))
+  })
+
+  it("gates GTM behind GtmConsent and points to the subdomain's privacy notice", async () => {
+    prismaMock.profile.findFirst.mockResolvedValue({ id: "p1", slug: "x", userId: "u1", isActive: true, theme: "classic", gtmContainerId: "GTM-ABCD123", address: null })
+    const result = (await PublicProfilePage({ params: Promise.resolve({ slug: "x" }) })) as { props: { children: Array<{ type?: unknown; props?: Record<string, unknown> } | false | null> } }
+    const consent = result.props.children.find((c) => c && c.type === GtmConsent) as { props: Record<string, unknown> } | undefined
+    expect(consent?.props).toMatchObject({ gtmContainerId: "GTM-ABCD123", privacyUrl: "https://x.advlink.site/privacidade" })
+  })
+
+  it("does not render GtmConsent without a valid container", async () => {
+    prismaMock.profile.findFirst.mockResolvedValue({ id: "p1", slug: "x", userId: "u1", isActive: true, theme: "classic", gtmContainerId: "bad'id", address: null })
+    const result = (await PublicProfilePage({ params: Promise.resolve({ slug: "x" }) })) as { props: { children: Array<{ type?: unknown } | false | null> } }
+    expect(result.props.children.some((c) => c && c.type === GtmConsent)).toBe(false)
   })
 
   it("does not load the site's content for an inactive profile", async () => {

@@ -1,9 +1,10 @@
 import type { ComponentProps, ReactNode } from "react"
-import Script from "next/script"
 import Theme02 from "@/components/themes/02/Theme02"
 import Theme03 from "@/components/themes/03/Theme03"
 import Theme04 from "@/components/themes/04/Theme04"
 import { ProfileTracker } from "@/components/analytics/ProfileTracker"
+import { GtmConsent } from "@/components/analytics/GtmConsent"
+import { getProfileUrl } from "@/lib/site-url"
 import { buildProfileJsonLd, jsonLdScript } from "@/lib/profile-jsonld"
 import type { PublicProfileData } from "@/lib/public-profile"
 
@@ -20,12 +21,17 @@ export type PublicProfileViewProps = {
   showTracker: boolean
   /** GTM container to load; pass null to never load GTM (previews) */
   gtmContainerId?: string | null
+  /**
+   * Privacy notice URL (footer link and cookie banner). Absolute on the profile's own subdomain,
+   * so it works wherever the page is served; the preview passes /adv/<slug>/privacidade.
+   */
+  privacyUrl?: string
   /** Rendered above everything (e.g. the preview strip) */
   banner?: ReactNode
 }
 
 /** Renders a lawyer's site (JSON-LD, GTM, tracker and theme). Publication checks belong to the caller. */
-export default function PublicProfileView({ data, slug, showTracker, gtmContainerId, banner }: PublicProfileViewProps) {
+export default function PublicProfileView({ data, slug, showTracker, gtmContainerId, privacyUrl: privacyUrlProp, banner }: PublicProfileViewProps) {
   const { profile, areas, links, gallery, customSections, teamMembers } = data
   const address = profile.address ?? undefined
 
@@ -36,6 +42,7 @@ export default function PublicProfileView({ data, slug, showTracker, gtmContaine
   const theme: ThemeName = THEMES.includes(profile.theme as ThemeName) ? (profile.theme as ThemeName) : "classic"
   // Re-checked here for rows saved before the API validated it: the ID is interpolated into a script
   const gtmId = gtmContainerId && GTM_ID.test(gtmContainerId) ? gtmContainerId : null
+  const privacyUrl = privacyUrlProp ?? `${getProfileUrl(profile.slug ?? slug)}privacidade`
   const jsonLd = buildProfileJsonLd(
     { ...profile, slug: profile.slug ?? slug },
     address,
@@ -58,35 +65,14 @@ export default function PublicProfileView({ data, slug, showTracker, gtmContaine
     sectionIcons: profile.sectionIcons as Record<string, string> | undefined,
     sectionTitleHidden: profile.sectionTitleHidden as Record<string, boolean> | undefined,
     teamMembers,
+    privacyUrl,
   }
 
   return (
     <div>
       {banner}
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
-      {gtmId && (
-        <>
-          <Script
-            id="gtm-script"
-            strategy="afterInteractive"
-            dangerouslySetInnerHTML={{
-              __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer',${JSON.stringify(gtmId)});`,
-            }}
-          />
-          <noscript>
-            <iframe
-              src={`https://www.googletagmanager.com/ns.html?id=${encodeURIComponent(gtmId)}`}
-              height="0"
-              width="0"
-              style={{ display: "none", visibility: "hidden" }}
-            />
-          </noscript>
-        </>
-      )}
+      {gtmId && <GtmConsent gtmContainerId={gtmId} privacyUrl={privacyUrl} />}
       {showTracker && <ProfileTracker slug={slug} />}
       {theme === "modern" && <Theme02 {...themeProps} />}
       {theme === "classic" && <Theme03 {...themeProps} />}

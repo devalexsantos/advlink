@@ -34,3 +34,21 @@ describe.each([
     expect(screen.queryByText(/^OAB\//)).not.toBeInTheDocument()
   })
 })
+
+describe.each([
+  ["Theme02", Theme02],
+  ["Theme03", Theme03],
+  ["Theme04", Theme04],
+])("%s privacy link", (_name, Theme) => {
+  const profile = { publicName: "Dra. Ana", headline: "x" }
+
+  it("links to the privacy notice in the footer when privacyUrl is given", () => {
+    render(<Theme {...base} profile={profile} privacyUrl="https://ana.advlink.site/privacidade" />)
+    expect(screen.getByRole("link", { name: "Privacidade" })).toHaveAttribute("href", "https://ana.advlink.site/privacidade")
+  })
+
+  it("shows no link without privacyUrl (editor previews)", () => {
+    render(<Theme {...base} profile={profile} />)
+    expect(screen.queryByRole("link", { name: "Privacidade" })).not.toBeInTheDocument()
+  })
+})

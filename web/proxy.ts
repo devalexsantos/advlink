@@ -69,9 +69,9 @@ export async function proxy(req: NextRequest) {
     const subdomain = host.slice(0, -suffix.length)
     const isApex = subdomain.length === 0
     if (!isApex && !RESERVED_SLUGS.has(subdomain)) {
-      if (pathname === "/") {
+      if (pathname === "/" || pathname === "/privacidade") {
         const url = nextUrl.clone()
-        url.pathname = `/adv/${subdomain}`
+        url.pathname = pathname === "/" ? `/adv/${subdomain}` : `/adv/${subdomain}/privacidade`
         return NextResponse.rewrite(url)
       }
     }

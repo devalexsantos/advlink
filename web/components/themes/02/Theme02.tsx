@@ -22,7 +22,7 @@ type CustomSection = { id: string; title: string; description: string | null; im
 type TeamMember = { id: string; name: string; description: string | null; avatarUrl: string | null; phone: string | null; whatsapp: string | null; email: string | null }
 type Profile = { publicName?: string | null; headline?: string | null; oabNumber?: string | null; oabState?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
 
-export default function Theme02({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [] }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean>; teamMembers?: TeamMember[] }) {
+export default function Theme02({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [], privacyUrl }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean>; teamMembers?: TeamMember[]; privacyUrl?: string }) {
   const order = getSectionOrder(sectionOrder as SectionKey[] | undefined)
   const label = (key: SectionKey) => getSectionLabel(key, sectionLabels as SectionLabels)
   const icon = (key: SectionKey) => getIconComponent(getSectionIcon(key, sectionIcons))
@@ -374,6 +374,12 @@ export default function Theme02({ profile, areas, address, links = [], gallery =
             {" "}
             AdvLink
           </Link>
+          {privacyUrl ? (
+            <>
+              <span aria-hidden className="hidden md:inline">·</span>
+              <a href={privacyUrl} className="hover:underline">Privacidade</a>
+            </>
+          ) : null}
         </span>
       </footer>
 

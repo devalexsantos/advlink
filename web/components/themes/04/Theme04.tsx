@@ -25,7 +25,7 @@ type Profile = { publicName?: string | null; headline?: string | null; oabNumber
 const fade = { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.6 } }
 const fadeInView = { initial: { opacity: 0 }, whileInView: { opacity: 1 }, viewport: { once: true }, transition: { duration: 0.6 } }
 
-export default function Theme04({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [] }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean>; teamMembers?: TeamMember[] }) {
+export default function Theme04({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [], privacyUrl }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean>; teamMembers?: TeamMember[]; privacyUrl?: string }) {
   const order = getSectionOrder(sectionOrder as SectionKey[] | undefined)
   const label = (key: SectionKey) => getSectionLabel(key, sectionLabels as SectionLabels)
   const icon = (key: SectionKey) => getIconComponent(getSectionIcon(key, sectionIcons))
@@ -329,6 +329,12 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
               {" "}
               AdvLink
             </Link>
+          {privacyUrl ? (
+            <>
+              <span aria-hidden className="hidden md:inline">·</span>
+              <a href={privacyUrl} className="hover:underline">Privacidade</a>
+            </>
+          ) : null}
           </span>
         </div>
       </footer>
