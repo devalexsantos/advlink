@@ -55,7 +55,7 @@ export function NewsletterForm() {
             </div>
             <p className="mt-4 text-lg font-semibold text-foreground">{message}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              Fique de olho na sua caixa de entrada.
+              Abra o e-mail e clique em confirmar (o link vale por 48 horas). Não encontrou? Confira a pasta de spam.
             </p>
           </div>
         </div>
@@ -71,7 +71,7 @@ export function NewsletterForm() {
             Receba dicas exclusivas de marketing jurídico
           </h2>
           <p className="mt-2 text-muted-foreground">
-            Novos artigos e estratégias direto no seu e-mail. Sem spam.
+            Novos artigos e estratégias direto no seu e-mail. Sem spam, e você cancela quando quiser.
           </p>
 
           <form onSubmit={handleSubmit} className="mt-6 flex gap-3 sm:flex-row flex-col">
@@ -87,6 +87,7 @@ export function NewsletterForm() {
             />
             <input
               type="email"
+              aria-label="Seu e-mail"
               placeholder="seu@email.com"
               value={email}
               onChange={(e) => {

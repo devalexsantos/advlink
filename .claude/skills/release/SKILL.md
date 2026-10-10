@@ -21,7 +21,7 @@ Cada serviço é um app no Easypanel buildado a partir do Dockerfile do subdiret
 |---|---|---|---|
 | web | `web/Dockerfile` | app.advlink.site + `*.advlink.site` (wildcard) | roda `prisma migrate deploy` no boot; precisa de todas as env de `web/.env.example` |
 | lp | `lp/Dockerfile` | advlink.site | Nginx estático; bump do `?v=` do CSS ao mudar estilos (cache de 1 ano) |
-| blog | `blog/Dockerfile` | blog.advlink.site | **volume persistente em `/app/data`** (newsletter) |
+| blog | `blog/Dockerfile` | blog.advlink.site | env da newsletter (`RESEND_API_KEY`, `RESEND_SEGMENT_ID`, `NEWSLETTER_FROM`, `NEWSLETTER_SECRET`); volume em `/app/data` só até importar o JSON legado para a Resend (`blog/CLAUDE.md`), depois é opcional/removível |
 
 O deploy é disparado pelo usuário no Easypanel (ou por auto-deploy no push para `main`, se configurado lá). Não tente acessar a VPS sem ele pedir.
 
