@@ -114,6 +114,8 @@ export const rateLimiters = {
   onboardingByUser: named("onboarding:user", 10, HOUR),
   /** Public page-view beacon: per IP+slug, so one client can't inflate a profile's analytics. */
   analyticsByIpSlug: named("analytics:ip-slug", 60, HOUR),
+  /** Preview link generation (creates rows + product events), per user. */
+  previewLinkByUser: named("preview-link:user", 20, HOUR),
 }
 
 /**

@@ -1,26 +1,16 @@
 import { prisma } from "@/lib/prisma"
 import type { Metadata } from "next"
-import Theme03 from "@/components/themes/03/Theme03"
-import Theme02 from "@/components/themes/02/Theme02"
-import Theme04 from "@/components/themes/04/Theme04"
-import Script from "next/script"
 import { Wrench } from "lucide-react"
-import { ProfileTracker } from "@/components/analytics/ProfileTracker"
 import { notFound } from "next/navigation"
 import { getAppOrigin, getProfileUrl } from "@/lib/site-url"
-import { buildProfileJsonLd, jsonLdScript } from "@/lib/profile-jsonld"
-
-const THEMES = ["modern", "classic", "corporate"] as const
-type ThemeName = (typeof THEMES)[number]
+import { findPublicProfile, loadPublicProfileRelations } from "@/lib/public-profile"
+import PublicProfileView from "./PublicProfileView"
 
 type RouteParams = Promise<{ slug: string }>
 
 export default async function PublicProfilePage({ params }: { params: RouteParams }) {
   const { slug } = await params
-  const profile = await prisma.profile.findFirst({
-    where: { slug },
-    include: { address: true },
-  })
+  const profile = await findPublicProfile({ slug })
   if (!profile) notFound()
 
   // If the site is not active, show inactive notice (noindex via generateMetadata).
@@ -70,124 +60,14 @@ export default async function PublicProfilePage({ params }: { params: RouteParam
     )
   }
 
-  const [areas, links, gallery, customSections, teamMembers] = await Promise.all([
-    prisma.activityAreas.findMany({
-      where: { profileId: profile.id },
-      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-    }),
-    prisma.links.findMany({
-      where: { profileId: profile.id },
-      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-    }),
-    prisma.gallery.findMany({
-      where: { profileId: profile.id },
-      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-    }),
-    prisma.customSection.findMany({
-      where: { profileId: profile.id },
-      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-    }),
-    prisma.teamMember.findMany({
-      where: { profileId: profile.id },
-      orderBy: [{ position: "asc" }, { createdAt: "asc" }],
-    }),
-  ])
-  const address = profile.address ?? undefined
-
-  const primary = profile.primaryColor || "#8B0000"
-  const text = profile.textColor || "#FFFFFF"
-  const secondary = profile.secondaryColor || "#FFFFFF"
-  // Unknown/legacy values would render an empty page: fall back to the schema default
-  const theme: ThemeName = THEMES.includes(profile.theme as ThemeName) ? (profile.theme as ThemeName) : "classic"
-  // Re-checked here for rows saved before the API validated it: the ID is interpolated into a script
-  const gtmId = profile.gtmContainerId && /^GTM-[A-Z0-9]{4,10}$/.test(profile.gtmContainerId) ? profile.gtmContainerId : null
-  const jsonLd = buildProfileJsonLd(
-    { ...profile, slug: profile.slug ?? slug },
-    address,
-    areas.map((a) => a.title)
-  )
+  const relations = await loadPublicProfileRelations(profile.id)
   return (
-    <div>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: jsonLdScript(jsonLd) }} />
-      {gtmId && (
-        <>
-          <Script
-            id="gtm-script"
-            strategy="afterInteractive"
-            dangerouslySetInnerHTML={{
-              __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer',${JSON.stringify(gtmId)});`,
-            }}
-          />
-          <noscript>
-            <iframe
-              src={`https://www.googletagmanager.com/ns.html?id=${encodeURIComponent(gtmId)}`}
-              height="0"
-              width="0"
-              style={{ display: "none", visibility: "hidden" }}
-            />
-          </noscript>
-        </>
-      )}
-      <ProfileTracker slug={slug} />
-      {theme === "modern" && (
-        <Theme02
-          profile={profile}
-          areas={areas}
-          address={address}
-          links={links}
-          gallery={gallery}
-          primary={primary}
-          text={text}
-          secondary={secondary}
-          sectionOrder={profile.sectionOrder as string[] | undefined}
-          sectionLabels={profile.sectionLabels as Record<string, string> | undefined}
-          customSections={customSections as any}
-          sectionIcons={profile.sectionIcons as Record<string, string> | undefined}
-          sectionTitleHidden={profile.sectionTitleHidden as Record<string, boolean> | undefined}
-          teamMembers={teamMembers as any}
-        />
-      )}
-      {theme === "classic" && (
-        <Theme03
-          profile={profile}
-          areas={areas}
-          address={address}
-          links={links}
-          gallery={gallery}
-          primary={primary}
-          text={text}
-          secondary={secondary}
-          sectionOrder={profile.sectionOrder as string[] | undefined}
-          sectionLabels={profile.sectionLabels as Record<string, string> | undefined}
-          customSections={customSections as any}
-          sectionIcons={profile.sectionIcons as Record<string, string> | undefined}
-          sectionTitleHidden={profile.sectionTitleHidden as Record<string, boolean> | undefined}
-          teamMembers={teamMembers as any}
-        />
-      )}
-      {theme === "corporate" && (
-        <Theme04
-          profile={profile}
-          areas={areas}
-          address={address}
-          links={links}
-          gallery={gallery}
-          primary={primary}
-          text={text}
-          secondary={secondary}
-          sectionOrder={profile.sectionOrder as string[] | undefined}
-          sectionLabels={profile.sectionLabels as Record<string, string> | undefined}
-          customSections={customSections as any}
-          sectionIcons={profile.sectionIcons as Record<string, string> | undefined}
-          sectionTitleHidden={profile.sectionTitleHidden as Record<string, boolean> | undefined}
-          teamMembers={teamMembers as any}
-        />
-      )}
-    </div>
+    <PublicProfileView
+      data={{ profile, ...relations }}
+      slug={slug}
+      showTracker
+      gtmContainerId={profile.gtmContainerId}
+    />
   )
 }
 

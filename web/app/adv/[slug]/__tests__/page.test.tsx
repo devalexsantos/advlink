@@ -18,15 +18,22 @@ vi.mock("@/components/themes/03/Theme03", () => ({ default: () => "Theme03" }))
 vi.mock("@/components/themes/04/Theme04", () => ({ default: () => "Theme04" }))
 vi.mock("@/components/analytics/ProfileTracker", () => ({ ProfileTracker: () => null }))
 vi.mock("next/script", () => ({ default: () => null }))
-vi.mock("next/link", () => ({ default: ({ children }: any) => children }))
+vi.mock("next/link", () => ({ default: ({ children }: { children: unknown }) => children }))
 vi.mock("next/navigation", () => ({
   notFound: () => {
     throw new Error("NEXT_NOT_FOUND")
   },
 }))
 
-// We test the server component by calling it as a function and inspecting the returned JSX
-import PublicProfilePage from "@/app/adv/[slug]/page"
+// We test the server component by calling it as a function and inspecting the returned JSX.
+// Active profiles render <PublicProfileView>, a sync server component: expand it one level.
+import Page from "@/app/adv/[slug]/page"
+import PublicProfileView from "@/app/adv/[slug]/PublicProfileView"
+
+async function PublicProfilePage(args: Parameters<typeof Page>[0]) {
+  const el = (await Page(args)) as { type?: unknown; props?: unknown }
+  return el?.type === PublicProfileView ? PublicProfileView(el.props as Parameters<typeof PublicProfileView>[0]) : el
+}
 
 describe("Public Profile Page (/adv/[slug])", () => {
   beforeEach(() => {
@@ -64,9 +71,24 @@ describe("Public Profile Page (/adv/[slug])", () => {
     const result = (await PublicProfilePage({ params: Promise.resolve({ slug: "x" }) })) as {
       props: { children: unknown[] }
     }
-    // children: [gtm, tracker, modern, classic, corporate] — only the classic slot renders an element
+    // children: [banner, json-ld, gtm, tracker, modern, classic, corporate] — only the classic slot renders an element
     const themeSlots = result.props.children.slice(-3)
     expect(themeSlots.map((c) => Boolean(c))).toEqual([false, true, false])
+  })
+
+  it("renders the published site with tracker and the profile's GTM container", async () => {
+    prismaMock.profile.findFirst.mockResolvedValue({ id: "p1", slug: "x", userId: "u1", isActive: true, theme: "classic", gtmContainerId: "GTM-ABCD123", address: null })
+    const el = (await Page({ params: Promise.resolve({ slug: "x" }) })) as { type: unknown; props: Record<string, unknown> }
+    expect(el.type).toBe(PublicProfileView)
+    expect(el.props).toMatchObject({ slug: "x", showTracker: true, gtmContainerId: "GTM-ABCD123" })
+    expect(prismaMock.profile.findFirst).toHaveBeenCalledWith({ where: { slug: "x" }, include: { address: true } })
+    expect(prismaMock.teamMember.findMany).toHaveBeenCalledWith(expect.objectContaining({ where: { profileId: "p1" } }))
+  })
+
+  it("does not load the site's content for an inactive profile", async () => {
+    prismaMock.profile.findFirst.mockResolvedValue({ id: "p1", slug: "x", userId: "u1", isActive: false, address: null })
+    await PublicProfilePage({ params: Promise.resolve({ slug: "x" }) })
+    expect(prismaMock.activityAreas.findMany).not.toHaveBeenCalled()
   })
 
   it("shows 'Esta página está inativa' when profile is not active", async () => {

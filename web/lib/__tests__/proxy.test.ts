@@ -85,6 +85,17 @@ describe("proxy", () => {
     })
   })
 
+  describe("/previa/* (shared site preview)", () => {
+    it("is public: no login redirect, no rewrite, no CSP nonce", async () => {
+      getTokenMock.mockResolvedValue(null)
+      const res = await proxy(makeReq("https://app.advlink.site/previa/abcdefghijklmnopqrstuvwxyz012345"))
+      expect(res.status).toBe(200)
+      expect(res.headers.get("location")).toBeNull()
+      expect(res.headers.get("x-middleware-rewrite")).toBeNull()
+      expect(res.headers.get("content-security-policy")).toBeNull()
+    })
+  })
+
   describe("/adv/* only on the profile subdomain", () => {
     it("redirects app.advlink.site/adv/<slug> to the subdomain", async () => {
       const res = await proxy(

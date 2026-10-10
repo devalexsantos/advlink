@@ -15,11 +15,11 @@ const FB_PIXEL_ID = process.env.NEXT_PUBLIC_FB_PIXEL_ID ?? '1003801661770634'
 
 /**
  * The AdvLink pixel belongs to the AdvLink funnel only (login, onboarding, dashboard). It must not
- * run on lawyers' public sites (<slug>.ROOT_DOMAIN, or /adv/*) — that would track their visitors
+ * run on lawyers' public sites (<slug>.ROOT_DOMAIN, /adv/* or shared previews at /previa/*) — that would track their visitors
  * for us (LGPD) and pollute our audiences — nor on the internal admin.
  */
 export function shouldLoadPixel(hostname: string, pathname: string, rootDomain = getRootDomain()) {
-  if (pathname.startsWith('/adv/') || pathname.startsWith('/admin')) return false
+  if (pathname.startsWith('/adv/') || pathname.startsWith('/previa') || pathname.startsWith('/admin')) return false
   const root = rootDomain.split(':')[0]
   if (hostname.endsWith(`.${root}`) && hostname !== `app.${root}`) return false
   return true

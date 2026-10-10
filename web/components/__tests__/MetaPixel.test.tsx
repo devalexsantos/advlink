@@ -15,6 +15,10 @@ describe("shouldLoadPixel", () => {
     expect(shouldLoadPixel("app.advlink.site", "/adv/joao", root)).toBe(false)
   })
 
+  it("never loads on shared site previews", () => {
+    expect(shouldLoadPixel("app.advlink.site", "/previa/abc123", root)).toBe(false)
+  })
+
   it("never loads on the admin", () => {
     expect(shouldLoadPixel("app.advlink.site", "/admin/users", root)).toBe(false)
   })
