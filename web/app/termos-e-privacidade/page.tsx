@@ -24,7 +24,7 @@ export default function TermsPrivacyPage() {
             <p className="text-muted-foreground leading-relaxed">
               O AdvLink é uma plataforma que ajuda profissionais do direito a criarem uma landing page moderna e
               personalizável, com recursos como editor assistido por IA, áreas de atuação, galeria, links, integração
-              com WhatsApp, e suporte a agendamentos via Calendly.
+              com WhatsApp, e suporte a agendamentos via Calendly. O AdvLink é operado pela NAIR APPS, inscrita no CNPJ 49.957.258/0001-70.
             </p>
           </section>
 

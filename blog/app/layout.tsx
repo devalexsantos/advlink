@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist } from "next/font/google";
 import { Header } from "@/components/Header";
 import { Footer } from "@/components/Footer";
-import { NewsletterForm } from "@/components/NewsletterForm";
 import { ThemeProvider } from "@/components/ThemeProvider";
 import { SITE_NAME, SITE_DESCRIPTION, SITE_URL } from "@/lib/constants";
 import "./globals.css";
@@ -48,7 +47,6 @@ export default function RootLayout({
         <ThemeProvider>
           <Header />
           {children}
-          <NewsletterForm />
           <Footer />
         </ThemeProvider>
       </body>

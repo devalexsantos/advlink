@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import { Geist, Geist_Mono, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import { Providers } from "./providers";
@@ -27,11 +28,15 @@ export const metadata: Metadata = {
   description: "Criador Inteligente de Sites para Advogados e Escritórios de Advocacia",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // CSP nonce set by proxy.ts on private areas (absent elsewhere). Reading headers() also keeps
+  // these pages dynamically rendered, which nonces require: prerendered HTML has no nonce.
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
+
   return (
     <html lang="pt-BR">
       <body
@@ -39,7 +44,7 @@ export default function RootLayout({
       >
         {/* Meta Pixel (só no funil do app — nunca nos sites públicos dos advogados) */}
         <Suspense fallback={null}>
-          <MetaPixel />
+          <MetaPixel nonce={nonce} />
         </Suspense>
         <NextTopLoader />
         <Providers>

@@ -19,7 +19,7 @@ description: Sobe e diagnostica o ambiente local do AdvLink (Postgres via docker
    ```bash
    curl -s -H "Host: <slug>.localhost:3000" http://localhost:3000/ | head
    ```
-7. **E-mail magic link**: sem SMTP configurado, o envio vai para `127.0.0.1:1025` — rode um Mailpit (`docker run -p 1025:1025 -p 8025:8025 axllent/mailpit`) e abra http://localhost:8025.
+7. **E-mail magic link**: em dev vai para o Mailpit em `127.0.0.1:1025` — rode `docker run -p 1025:1025 -p 8025:8025 axllent/mailpit` e abra http://localhost:8025. Para enviar de verdade via Resend em dev, defina `EMAIL_DEV_TRANSPORT=resend` no `.env.local` (em produção é sempre Resend; não há mais EMAIL_SERVER_*).
 8. **Cobrança (Asaas sandbox)**: veja a skill `asaas-sandbox`.
 
 Blog: `cd blog && npm run dev` (porta 3000 também — use `-- -p 3001`). LP: abra `lp/index.html` ou `docker build lp`.
