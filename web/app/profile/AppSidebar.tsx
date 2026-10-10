@@ -22,6 +22,8 @@ import {
   BarChart3,
   MessageSquare,
   Share2,
+  Inbox,
+  Newspaper,
 } from "lucide-react"
 import {
   Sidebar,
@@ -119,6 +121,32 @@ export function AppSidebar() {
               >
                 <BarChart3 className="h-5 w-5" />
                 <span>Analytics</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={pathname.startsWith("/profile/contatos")}
+                onClick={() => {
+                  router.push("/profile/contatos")
+                  setOpenMobile(false)
+                }}
+                tooltip="Mensagens"
+              >
+                <Inbox className="h-5 w-5" />
+                <span>Mensagens</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                isActive={pathname.startsWith("/profile/artigos")}
+                onClick={() => {
+                  router.push("/profile/artigos")
+                  setOpenMobile(false)
+                }}
+                tooltip="Artigos"
+              >
+                <Newspaper className="h-5 w-5" />
+                <span>Artigos</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
             <SidebarMenuItem>

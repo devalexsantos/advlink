@@ -23,8 +23,9 @@ const CHANNEL_LABEL: Record<ContactKind, string> = {
   phone: "telefone",
   email: "e-mail",
   link: "links",
+  form: "formulário",
 }
-const CHANNEL_ORDER: ContactKind[] = ["whatsapp", "phone", "email", "link"]
+const CHANNEL_ORDER: ContactKind[] = ["whatsapp", "phone", "email", "form", "link"]
 
 const p = (text: string) => `<p style="margin:0 0 16px 0;">${text}</p>`
 const li = (text: string) => `<li style="margin:0 0 6px 0;">${text}</li>`

@@ -1,6 +1,7 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
+import type { ComponentProps } from "react"
 import Preview02 from "./Preview02"
 import Preview03 from "./Preview03"
 import Preview04 from "./Preview04"
@@ -72,13 +73,14 @@ export default function Preview() {
   const sectionTitleHidden = profile.sectionTitleHidden ?? undefined
   const customSections = data?.customSections ?? []
   const teamMembers = data?.teamMembers ?? []
+  const articles = (data as unknown as { articles?: ComponentProps<typeof Preview02>["articles"] })?.articles
   if (theme === "classic") {
-    return <Preview03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} />
+    return <Preview03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} articles={articles} />
   }
   if (theme === "corporate") {
-    return <Preview04 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} />
+    return <Preview04 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} articles={articles} />
   }
-  return <Preview02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} />
+  return <Preview02 profile={profile} areas={areas} address={address} links={links} gallery={gallery} sectionOrder={sectionOrder} sectionLabels={sectionLabels} customSections={customSections} sectionIcons={sectionIcons} sectionTitleHidden={sectionTitleHidden} teamMembers={teamMembers} articles={articles} />
 }
 
 

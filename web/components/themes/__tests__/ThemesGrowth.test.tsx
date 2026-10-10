@@ -103,3 +103,29 @@ describe.each([
     expect(screen.queryByText("Perguntas frequentes")).not.toBeInTheDocument()
   })
 })
+
+describe.each([
+  ["Theme02", Theme02],
+  ["Theme03", Theme03],
+  ["Theme04", Theme04],
+])("%s articles and lead form sections", (_name, Theme) => {
+  const articles = [{ id: "a1", slug: "meu-artigo", title: "Meu artigo", excerpt: "Resumo", publishedAt: "2026-03-05T12:00:00.000Z" }]
+
+  it("renders the articles section with links, and hides it without articles", () => {
+    const { unmount } = render(<Theme {...base} areas={[]} profile={{ publicName: "Ana" }} articles={articles} siteBaseUrl="https://ana.advlink.site/" />)
+    expect(screen.getByText("Artigos")).toBeInTheDocument()
+    expect(screen.getByText("Meu artigo").closest("a")).toHaveAttribute("href", "https://ana.advlink.site/artigos/meu-artigo")
+    unmount()
+    render(<Theme {...base} areas={[]} profile={{ publicName: "Ana" }} />)
+    expect(screen.queryByText("Artigos")).not.toBeInTheDocument()
+  })
+
+  it("renders the lead form only when enabled and disables it on previews", () => {
+    const { unmount } = render(<Theme {...base} areas={[areaWithFaq]} slug="ana" leadFormDisabled profile={{ publicName: "Ana", leadFormEnabled: true }} />)
+    expect(screen.getByText("Fale com o escritório")).toBeInTheDocument()
+    expect(screen.getByRole("button", { name: "Enviar mensagem" })).toBeDisabled()
+    unmount()
+    render(<Theme {...base} areas={[]} slug="ana" profile={{ publicName: "Ana", leadFormEnabled: false }} />)
+    expect(screen.queryByText("Fale com o escritório")).not.toBeInTheDocument()
+  })
+})

@@ -8,6 +8,8 @@ import { renderContent } from "@/lib/render-content"
 import { formatOab } from "@/lib/oab"
 import { buildWhatsAppUrl } from "@/lib/whatsapp"
 import FaqSection, { hasFaqs } from "@/components/themes/FaqSection"
+import ArticlesSection, { hasArticles, type ArticleSummary } from "@/components/themes/ArticlesSection"
+import LeadFormSection from "@/components/themes/LeadFormSection"
 import { buildServiceLine, buildFirmLine } from "@/components/themes/profile-info"
 import { Facebook, Heart, Instagram, Linkedin, Mail, Phone, SquareArrowOutUpRight, Youtube } from "lucide-react"
 import Link from "next/link"
@@ -23,12 +25,12 @@ type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Address = { public?: boolean | null; street?: string | null; number?: string | null; city?: string | null; state?: string | null }
 type CustomSection = { id: string; title: string; description: string | null; imageUrl: string | null; layout: string; iconName: string; videoUrl?: string | null; buttonConfig?: { url: string; label: string; bgColor: string; textColor: string; borderRadius: number; iconName?: string } | null }
 type TeamMember = { id: string; name: string; description: string | null; avatarUrl: string | null; phone: string | null; whatsapp: string | null; email: string | null }
-type Profile = { publicName?: string | null; headline?: string | null; oabNumber?: string | null; oabState?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; linkedinUrl?: string | null; facebookUrl?: string | null; youtubeUrl?: string | null; whatsappMessage?: string | null; firmName?: string | null; firmType?: string | null; firmOabRegistration?: string | null; firmCnpj?: string | null; officeHours?: string | null; languages?: string | null; onlineService?: boolean | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
+type Profile = { leadFormEnabled?: boolean | null; publicName?: string | null; headline?: string | null; oabNumber?: string | null; oabState?: string | null; coverUrl?: string | null; avatarUrl?: string | null; whatsapp?: string | null; publicEmail?: string | null; publicPhone?: string | null; aboutDescription?: string | null; calendlyUrl?: string | null; instagramUrl?: string | null; linkedinUrl?: string | null; facebookUrl?: string | null; youtubeUrl?: string | null; whatsappMessage?: string | null; firmName?: string | null; firmType?: string | null; firmOabRegistration?: string | null; firmCnpj?: string | null; officeHours?: string | null; languages?: string | null; onlineService?: boolean | null; whatsappIsFixed?: boolean | null; publicPhoneIsFixed?: boolean | null }
 
 const fade = { initial: { opacity: 0 }, animate: { opacity: 1 }, transition: { duration: 0.6 } }
 const fadeInView = { initial: { opacity: 0 }, whileInView: { opacity: 1 }, viewport: { once: true }, transition: { duration: 0.6 } }
 
-export default function Theme04({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [], privacyUrl }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean>; teamMembers?: TeamMember[]; privacyUrl?: string }) {
+export default function Theme04({ profile, areas, address, links = [], gallery = [], primary, text, secondary, constrainToContainer = false, forceMobile = false, sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [], privacyUrl, articles, siteBaseUrl, leadFormDisabled = false, slug }: { profile: Profile; areas: Area[]; address?: Address; links?: LinkItem[]; gallery?: GalleryItem[]; primary: string; text: string; secondary: string; constrainToContainer?: boolean; forceMobile?: boolean; sectionOrder?: string[]; sectionLabels?: Record<string, string>; customSections?: CustomSection[]; sectionIcons?: Record<string, string>; sectionTitleHidden?: Record<string, boolean>; teamMembers?: TeamMember[]; privacyUrl?: string; articles?: ArticleSummary[]; siteBaseUrl?: string; leadFormDisabled?: boolean; slug?: string }) {
   const order = getSectionOrder(sectionOrder as SectionKey[] | undefined)
   const label = (key: SectionKey) => getSectionLabel(key, sectionLabels as SectionLabels)
   const icon = (key: SectionKey) => getIconComponent(getSectionIcon(key, sectionIcons))
@@ -66,6 +68,28 @@ export default function Theme04({ profile, areas, address, links = [], gallery =
           </h2>
         )}
         <FaqSection areas={areas} text={text} borderColor={`${text}20`} headingColor={secondary} itemClassName="rounded-none border-2 bg-white/5" />
+      </motion.section>
+    ) : null,
+
+    artigos: () => hasArticles(articles) ? (
+      <motion.section {...fadeInView} className="relative z-10 px-6 py-14 text-center">
+        {!hidden("artigos") && (
+          <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            {(() => { const I = icon("artigos"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("artigos")}
+          </h2>
+        )}
+        <ArticlesSection articles={articles} baseUrl={siteBaseUrl} text={text} borderColor={`${text}20`} headingColor={secondary} cardClassName="rounded-none border-2 bg-white/5" />
+      </motion.section>
+    ) : null,
+
+    contato: () => profile.leadFormEnabled ? (
+      <motion.section {...fadeInView} className="relative z-10 px-6 py-14 text-center">
+        {!hidden("contato") && (
+          <h2 className="mb-8 text-3xl md:text-4xl font-bold flex justify-center items-center gap-3" style={{ color: secondary }}>
+            {(() => { const I = icon("contato"); return I ? <I className="w-8 h-8" style={{ color: secondary }} /> : null })()} {label("contato")}
+          </h2>
+        )}
+        <LeadFormSection slug={slug ?? ""} areas={areas.map((a) => a.title)} privacyUrl={privacyUrl} text={text} borderColor={`${text}33`} buttonBg={secondary} buttonText={primary} disabled={leadFormDisabled} fieldClassName="rounded-none border-2 bg-white/5" />
       </motion.section>
     ) : null,
 

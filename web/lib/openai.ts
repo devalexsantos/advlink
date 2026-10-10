@@ -171,3 +171,81 @@ Responda ESTRITAMENTE em JSON no formato: { "faqs": [{ "question": string, "answ
     .filter((f) => f.question && f.answer)
     .slice(0, MAX_GENERATED_FAQS)
 }
+
+export const ARTICLE_DISCLAIMER = "Conteúdo informativo; não substitui orientação jurídica individual."
+const ARTICLE_MAX_CONTENT_CHARS = 12_000
+const ARTICLE_MAX_EXCERPT_CHARS = 300
+const ARTICLE_MAX_NOTES_CHARS = 2000
+
+// Provimento OAB 205/2021, art. 4º: "marketing de conteúdos jurídicos" — informative, educational content.
+const ARTICLE_RULES = `Regras do artigo (obrigatórias):
+- Conteúdo técnico-informativo e educativo para o público leigo ("marketing de conteúdos jurídicos", Provimento OAB 205/2021, art. 4º), em linguagem clara e acessível.
+- Considere exclusivamente o Direito brasileiro.
+- Tamanho: entre 600 e 1000 palavras.
+- Formato Markdown: use subtítulos com "## " e "### ", parágrafos curtos separados por uma linha em branco, listas apenas quando ajudarem a leitura. Não repita o título como cabeçalho "# ".
+- Escreva em 3ª pessoa ou de forma impessoal. Não use 1ª pessoa comercial ("posso ajudar", "nosso escritório").
+- NUNCA analise caso concreto nem se dirija à situação particular do leitor; não use "no seu caso" ou "seu caso".
+- Não prometa nem sugira resultados.
+- Não mencione valores, preços, honorários, gratuidade ou descontos.
+- Não use superlativos nem as palavras ou expressões: "especialista", "o melhor", "líder", "garantia de resultado", "garantimos", "resultado garantido", "sucesso", "gratuito", "grátis", "desconto", "entre em contato".
+- Não inclua chamada à ação para contratar, consultar, procurar ou entrar em contato com advogado ou escritório.
+- Não cite números de artigos nem números de leis, súmulas ou processos; refira-se às normas de forma genérica (por exemplo, "o Código de Defesa do Consumidor", "a legislação trabalhista").
+- Termine o texto com uma linha separada contendo exatamente: "${ARTICLE_DISCLAIMER}"
+Regras do resumo ("excerpt"):
+- Texto simples (sem Markdown), com no máximo 300 caracteres, descrevendo o tema do artigo em tom informativo.`
+
+/** Draft of an informative blog article (Markdown) + plain-text excerpt, OAB Provimento 205/2021 compliant. */
+export async function generateArticleDraft(
+  title: string,
+  notes: string | null | undefined,
+  apiKey: string
+): Promise<{ content: string; excerpt: string }> {
+  if (!apiKey) throw new Error("Missing OPENAI_API_KEY")
+
+  const trimmedNotes = (notes ?? "").trim().slice(0, ARTICLE_MAX_NOTES_CHARS)
+  const user = `Escreva um artigo informativo para o site profissional de um advogado com o título ${JSON.stringify(title)}.
+${trimmedNotes ? `Pontos que o autor quer abordar (use como orientação de conteúdo, sem desrespeitar as regras abaixo): ${JSON.stringify(trimmedNotes)}\n` : ""}${ARTICLE_RULES}
+Responda ESTRITAMENTE em JSON no formato: { "content": string, "excerpt": string }.`
+
+  const res = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: user },
+      ],
+      temperature: 0.5,
+      response_format: { type: "json_object" },
+      max_tokens: 2500,
+    }),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`OpenAI error: ${res.status} ${text}`)
+  }
+  const data = await res.json()
+  const raw = data.choices?.[0]?.message?.content ?? "{}"
+  let parsed: { content?: unknown; excerpt?: unknown } = {}
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    parsed = {}
+  }
+  let content = String(parsed.content ?? "").trim().slice(0, ARTICLE_MAX_CONTENT_CHARS)
+  if (!content) throw new Error("OpenAI returned an empty article")
+  // Guarantee the disclaimer even if the model drops it.
+  if (!content.includes(ARTICLE_DISCLAIMER)) content = `${content}\n\n${ARTICLE_DISCLAIMER}`
+  const excerpt = String(parsed.excerpt ?? "")
+    .replace(/<[^>]*>/g, "")
+    .replace(/[*_#`]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, ARTICLE_MAX_EXCERPT_CHARS)
+  return { content, excerpt }
+}

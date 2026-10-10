@@ -37,7 +37,7 @@ describe("getSiteSummary", () => {
     const s = await getSiteSummary(db as never, "p1", range)
     expect(s.visits).toBe(120)
     expect(s.visitors).toBe(80)
-    expect(s.contactClicks).toEqual({ total: 9, byKind: { whatsapp: 7, phone: 0, email: 2, link: 0 } })
+    expect(s.contactClicks).toEqual({ total: 9, byKind: { whatsapp: 7, phone: 0, email: 2, link: 0, form: 0 } })
     expect(s.topCities).toEqual([
       { city: "São Paulo", region: "SP", count: 50 },
       { city: "Campinas", region: null, count: 10 },

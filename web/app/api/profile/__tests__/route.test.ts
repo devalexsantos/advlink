@@ -11,6 +11,7 @@ const { prismaMock, getServerSessionMock, uploadToS3Mock, getActiveSiteIdMock } 
     gallery: { findMany: vi.fn() },
     customSection: { findMany: vi.fn() },
     teamMember: { findMany: vi.fn() },
+    article: { findMany: vi.fn() },
   },
   getServerSessionMock: vi.fn(),
   uploadToS3Mock: vi.fn().mockResolvedValue({ url: "https://s3.test/photo.jpg" }),
@@ -39,6 +40,7 @@ describe("GET /api/profile", () => {
     prismaMock.gallery.findMany.mockResolvedValue([])
     prismaMock.customSection.findMany.mockResolvedValue([])
     prismaMock.teamMember.findMany.mockResolvedValue([])
+    prismaMock.article.findMany.mockResolvedValue([])
   })
 
   it("returns 401 without session", async () => {
@@ -58,6 +60,16 @@ describe("GET /api/profile", () => {
     expect(res.status).toBe(200)
     expect(data.profile.publicName).toBe("Test")
     expect(data.areas).toHaveLength(1)
+  })
+
+  it("includes the latest 3 published articles of the active site", async () => {
+    getServerSessionMock.mockResolvedValue(session)
+    prismaMock.article.findMany.mockResolvedValue([{ id: "art1", slug: "a", title: "A" }])
+    const data = await (await GET()).json()
+    expect(data.articles).toEqual([{ id: "art1", slug: "a", title: "A" }])
+    expect(prismaMock.article.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { profileId: "profile-1", status: "published" }, orderBy: { publishedAt: "desc" }, take: 3 }),
+    )
   })
 
   it("returns null profile when none exists", async () => {
@@ -1013,6 +1025,42 @@ describe("PATCH /api/profile — networks, firm data and service info", () => {
     expect(lastData()).toMatchObject(Object.fromEntries(Object.keys(valid).map((k) => [k, null])))
   })
 
+  it("toggles leadFormEnabled alone without touching the address (JSON)", async () => {
+    const res = await PATCH(
+      new Request("http://localhost/api/profile", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ leadFormEnabled: true }),
+      }),
+    )
+    expect(res.status).toBe(200)
+    expect(prismaMock.profile.update).toHaveBeenCalledWith({ where: { id: "profile-1" }, data: { leadFormEnabled: true } })
+    expect(prismaMock.address.upsert).not.toHaveBeenCalled()
+  })
+
+  it("rejects a non-boolean leadFormEnabled sent alone", async () => {
+    const res = await PATCH(
+      new Request("http://localhost/api/profile", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ leadFormEnabled: "yes" }),
+      }),
+    )
+    expect(res.status).toBe(400)
+    expect(prismaMock.profile.update).not.toHaveBeenCalled()
+  })
+
+  it("saves leadFormEnabled with the full form (JSON and multipart) and keeps it when absent", async () => {
+    await jsonPatch({ leadFormEnabled: false })
+    expect(lastData().leadFormEnabled).toBe(false)
+    await formPatch({ leadFormEnabled: "true" })
+    expect(lastData().leadFormEnabled).toBe(true)
+    await formPatch({})
+    expect(lastData().leadFormEnabled).toBeUndefined()
+    await jsonPatch({})
+    expect(lastData().leadFormEnabled).toBeUndefined()
+  })
+
   it("ignores a non-boolean onlineService in JSON", async () => {
     await jsonPatch({ onlineService: "true" })
     expect(lastData().onlineService).toBeUndefined()
@@ -1064,6 +1112,7 @@ describe("GET /api/profile — area FAQs", () => {
     prismaMock.gallery.findMany.mockResolvedValue([])
     prismaMock.customSection.findMany.mockResolvedValue([])
     prismaMock.teamMember.findMany.mockResolvedValue([])
+    prismaMock.article.findMany.mockResolvedValue([])
   })
 
   it("loads the areas of the active site with their FAQs ordered by position", async () => {

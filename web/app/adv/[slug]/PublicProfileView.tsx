@@ -67,6 +67,10 @@ export default function PublicProfileView({ data, slug, showTracker, gtmContaine
     sectionTitleHidden: profile.sectionTitleHidden as Record<string, boolean> | undefined,
     teamMembers,
     privacyUrl,
+    articles: (data as { articles?: ComponentProps<typeof Theme03>["articles"] }).articles,
+    slug: profile.slug ?? slug,
+    siteBaseUrl: getProfileUrl(profile.slug ?? slug),
+    leadFormDisabled: !showTracker || !profile.isActive,
   }
 
   return (

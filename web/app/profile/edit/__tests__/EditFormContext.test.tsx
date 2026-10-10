@@ -1225,6 +1225,7 @@ describe("EditFormContext", () => {
       expect(fd.get("officeHours")).toBe("Seg. a sex.")
       expect(fd.get("languages")).toBe("Português")
       expect(fd.get("onlineService")).toBe("true")
+      expect(fd.get("leadFormEnabled")).toBe("false")
     })
 
     it("calls showToast with 'Salvo com sucesso!' after form submit", async () => {

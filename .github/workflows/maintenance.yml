@@ -1,0 +1,24 @@
+name: Maintenance
+
+# Hourly: LGPD retention purges (contact-form messages older than 90 days) and other housekeeping
+# (web/app/api/cron/maintenance). Secrets: MAINTENANCE_URL, CRON_SECRET.
+on:
+  schedule:
+    - cron: "23 * * * *"
+  workflow_dispatch:
+
+jobs:
+  maintenance:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call maintenance
+        env:
+          URL: ${{ secrets.MAINTENANCE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "MAINTENANCE_URL/CRON_SECRET not configured; skipping"
+            exit 0
+          fi
+          curl --fail-with-body -sS --max-time 240 -H "Authorization: Bearer $CRON_SECRET" "$URL"

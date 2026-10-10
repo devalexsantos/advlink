@@ -55,5 +55,21 @@ describe("sitemap.xml", () => {
     )
     expect(entries).toContainEqual(expect.objectContaining({ url: "https://joao.advlink.site/", lastModified: updatedAt }))
     expect(entries[0].url).toBe("https://app.advlink.site/termos-e-privacidade")
+    expect(entries.some((e) => e.url.includes("/artigos"))).toBe(false)
+  })
+
+  it("lists the published articles of each site and the articles index", async () => {
+    const updatedAt = new Date("2026-10-01T00:00:00Z")
+    const artUpdated = new Date("2026-10-05T00:00:00Z")
+    prismaMock.profile.findMany.mockResolvedValue([
+      { slug: "joao", updatedAt, articles: [{ slug: "direito-do-consumidor", updatedAt: artUpdated }] },
+    ])
+    const entries = await sitemap()
+    const arg = prismaMock.profile.findMany.mock.calls[0][0]
+    expect(arg.select.articles.where).toEqual({ status: "published" })
+    expect(entries).toContainEqual(expect.objectContaining({ url: "https://joao.advlink.site/artigos", lastModified: artUpdated }))
+    expect(entries).toContainEqual(
+      expect.objectContaining({ url: "https://joao.advlink.site/artigos/direito-do-consumidor", lastModified: artUpdated }),
+    )
   })
 })

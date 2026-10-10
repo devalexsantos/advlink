@@ -1,5 +1,6 @@
 import type { Profile, Address } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
+import { HOME_ARTICLES_LIMIT, listPublishedArticles } from "@/lib/articles"
 
 export type PublicProfileWhere = { slug: string } | { id: string }
 
@@ -14,7 +15,7 @@ const byPosition = [{ position: "asc" as const }, { createdAt: "asc" as const }]
 
 /** Everything a theme renders besides the profile row, in the editor's order. */
 export async function loadPublicProfileRelations(profileId: string) {
-  const [areas, links, gallery, customSections, teamMembers] = await Promise.all([
+  const [areas, links, gallery, customSections, teamMembers, articles] = await Promise.all([
     prisma.activityAreas.findMany({
       where: { profileId },
       orderBy: byPosition,
@@ -24,8 +25,9 @@ export async function loadPublicProfileRelations(profileId: string) {
     prisma.gallery.findMany({ where: { profileId }, orderBy: byPosition }),
     prisma.customSection.findMany({ where: { profileId }, orderBy: byPosition }),
     prisma.teamMember.findMany({ where: { profileId }, orderBy: byPosition }),
+    listPublishedArticles(profileId, { take: HOME_ARTICLES_LIMIT }),
   ])
-  return { areas, links, gallery, customSections, teamMembers }
+  return { areas, links, gallery, customSections, teamMembers, articles }
 }
 
 export type PublicProfileData = { profile: PublicProfileRecord } & Awaited<ReturnType<typeof loadPublicProfileRelations>>

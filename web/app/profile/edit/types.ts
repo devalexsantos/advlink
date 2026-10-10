@@ -181,6 +181,7 @@ export type ProfileData = {
   officeHours?: string | null
   languages?: string | null
   onlineService?: boolean | null
+  leadFormEnabled?: boolean | null
   calendlyUrl?: string | null
   avatarUrl?: string | null
   coverUrl?: string | null

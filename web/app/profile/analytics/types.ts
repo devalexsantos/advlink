@@ -10,7 +10,7 @@ export type AnalyticsData = {
   daily: { day: string; count: number }[]
   contactClicks: {
     total: number
-    byKind: { whatsapp: number; phone: number; email: number; link: number }
+    byKind: { whatsapp: number; phone: number; email: number; link: number; form?: number }
   }
   period: number
 }

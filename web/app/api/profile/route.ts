@@ -10,6 +10,7 @@ import { getActiveSiteId } from "@/lib/active-site"
 import { isValidPracticeType, parseOptionalOab } from "@/lib/oab"
 import { isValidCnpj, normalizeCnpj } from "@/lib/cnpj"
 import { WHATSAPP_MESSAGE_MAX } from "@/lib/whatsapp"
+import { HOME_ARTICLES_LIMIT, listPublishedArticles } from "@/lib/articles"
 
 const FIRM_TYPES = ["individual", "sociedade"]
 
@@ -37,7 +38,7 @@ export async function GET() {
   if (!resolvedProfileId) return NextResponse.json({ error: "No site found" }, { status: 404 })
   const profileId: string = resolvedProfileId
 
-  const [profile, areas, address, links, gallery, customSections, teamMembers] = await Promise.all([
+  const [profile, areas, address, links, gallery, customSections, teamMembers, articles] = await Promise.all([
     prisma.profile.findUnique({ where: { id: profileId } }),
     prisma.activityAreas.findMany({
       where: { profileId },
@@ -49,8 +50,9 @@ export async function GET() {
     prisma.gallery.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     prisma.customSection.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
     prisma.teamMember.findMany({ where: { profileId }, orderBy: [{ position: "asc" }, { createdAt: "asc" }] }),
+    listPublishedArticles(profileId, { take: HOME_ARTICLES_LIMIT }),
   ])
-  return NextResponse.json({ profile, areas, address, links, gallery, customSections, teamMembers, profileId })
+  return NextResponse.json({ profile, areas, address, links, gallery, customSections, teamMembers, articles, profileId })
 }
 
 export async function PATCH(req: Request) {
@@ -112,9 +114,23 @@ export async function PATCH(req: Request) {
   let officeHours: string | undefined
   let languages: string | undefined
   let onlineService: boolean | undefined
+  let leadFormEnabled: boolean | undefined
 
   if (contentType.includes("application/json")) {
     const body = await req.json()
+
+    // Contact-form toggle on its own: update just that flag (the full-form path below also
+    // rewrites the address).
+    if (Object.keys(body ?? {}).length === 1 && "leadFormEnabled" in body) {
+      if (typeof body.leadFormEnabled !== "boolean") {
+        return NextResponse.json({ error: "leadFormEnabled inválido" }, { status: 400 })
+      }
+      const updated = await prisma.profile.update({
+        where: { id: profileId },
+        data: { leadFormEnabled: body.leadFormEnabled },
+      })
+      return NextResponse.json({ profile: updated })
+    }
 
     // Handle section config update (sectionOrder / sectionLabels / sectionIcons)
     if (body.sectionOrder !== undefined || body.sectionLabels !== undefined || body.sectionIcons !== undefined || body.sectionTitleHidden !== undefined) {
@@ -173,6 +189,7 @@ export async function PATCH(req: Request) {
     officeHours = jsonStr(body.officeHours)
     languages = jsonStr(body.languages)
     onlineService = typeof body.onlineService === "boolean" ? body.onlineService : undefined
+    leadFormEnabled = typeof body.leadFormEnabled === "boolean" ? body.leadFormEnabled : undefined
   } else if (contentType.includes("multipart/form-data")) {
     const tooLarge = rejectOversizedRequest(req, MAX_IMAGE_BYTES, 2)
     if (tooLarge) return tooLarge
@@ -235,6 +252,7 @@ export async function PATCH(req: Request) {
     officeHours = formStr("officeHours")
     languages = formStr("languages")
     onlineService = parseFormBool(form.get("onlineService"))
+    leadFormEnabled = parseFormBool(form.get("leadFormEnabled"))
     const f = form.get("photo")
     if (f && f instanceof File) avatarFile = f
     const c = form.get("cover")
@@ -473,6 +491,7 @@ export async function PATCH(req: Request) {
       officeHours: validated.officeHours,
       languages: validated.languages,
       onlineService,
+      leadFormEnabled,
     },
   })
 

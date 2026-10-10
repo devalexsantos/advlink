@@ -35,6 +35,7 @@ export default async function PrivacyNoticePage({ params }: { params: RouteParam
       : ""
   const gtmId = profile.gtmContainerId && GTM_ID.test(profile.gtmContainerId) ? profile.gtmContainerId : null
   const siteUrl = getProfileUrl(slug)
+  const hasForm = profile.leadFormEnabled === true
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-background text-foreground">
@@ -57,7 +58,8 @@ export default async function PrivacyNoticePage({ params }: { params: RouteParam
         <section className={card}>
           <h2 className={h2}>Quem é o controlador dos seus dados</h2>
           <p className={body}>
-            Para os contatos que você inicia (WhatsApp, e-mail, telefone), o controlador dos dados é {name}
+            Para os contatos que você inicia (WhatsApp, e-mail, telefone{hasForm ? ", formulário de contato" : ""}), o
+            controlador dos dados é {name}
             {oab ? `, ${oab}` : ""}.
           </p>
           {(email || addressLine) && (
@@ -73,7 +75,8 @@ export default async function PrivacyNoticePage({ params }: { params: RouteParam
           <p className={body}>
             Este site é hospedado pelo AdvLink (NAIR APPS, CNPJ 49.957.258/0001-70), que atua como operador: trata os
             dados de acesso em nome do(a) advogado(a), apenas para hospedar o site e gerar as métricas descritas
-            abaixo.
+            abaixo. Se o site oferecer formulário de contato, o AdvLink também recebe e guarda as mensagens enviadas por
+            ele, sempre em nome do(a) advogado(a) e seguindo as instruções dele(a).
           </p>
         </section>
 
@@ -89,9 +92,18 @@ export default async function PrivacyNoticePage({ params }: { params: RouteParam
               endereço de destino.
             </li>
             <li>
-              Dados que você envia ao entrar em contato (mensagem, nome, telefone). Eles ficam com o(a) advogado(a), nos
-              aplicativos que ele(a) usa para atender você, como WhatsApp ou e-mail, e não passam pelo AdvLink.
+              Dados que você envia ao entrar em contato por WhatsApp, e-mail ou telefone (mensagem, nome, telefone).
+              Eles ficam com o(a) advogado(a), nos aplicativos que ele(a) usa para atender você, e não passam pelo
+              AdvLink.
             </li>
+            {hasForm && (
+              <li>
+                Dados que você envia pelo formulário de contato: nome, e-mail e/ou telefone, assunto e mensagem. Eles são
+                recebidos e guardados pelo AdvLink, como operador, em nome do(a) advogado(a), que é o(a) único(a) a ter
+                acesso a eles, no painel do site e por e-mail. Não envie pelo formulário dados sensíveis (como dados de
+                saúde) nem documentos: descreva o assunto de forma geral.
+              </li>
+            )}
             {gtmId && (
               <li>
                 Se você aceitar, o Google Tag Manager (Google) é carregado e pode coletar dados de navegação conforme
@@ -107,6 +119,8 @@ export default async function PrivacyNoticePage({ params }: { params: RouteParam
             As métricas agregadas e sem cookies se apoiam no legítimo interesse (LGPD, art. 7º, IX) de entender como o
             site é usado e de mantê-lo seguro. Tags de terceiros, como o Google Tag Manager, só são carregadas com o seu
             consentimento (art. 7º, I), que você pode recusar ou revogar a qualquer momento.
+            {hasForm &&
+              " As mensagens do formulário de contato são tratadas com base no seu consentimento (art. 7º, I), dado ao marcar a caixa de concordância antes do envio."}
           </p>
         </section>
 
@@ -114,8 +128,9 @@ export default async function PrivacyNoticePage({ params }: { params: RouteParam
           <h2 className={h2}>Por quanto tempo guardamos</h2>
           <p className={body}>
             As métricas ficam guardadas enquanto o site existir no AdvLink e são excluídas junto com ele. O identificador
-            diário muda a cada dia e não permite acompanhar você por longos períodos. Mensagens enviadas diretamente ao(à)
-            advogado(a) seguem a retenção dele(a).
+            diário muda a cada dia e não permite acompanhar você por longos períodos. Mensagens enviadas pelo formulário
+            de contato, quando o site oferecer um, ficam guardadas no AdvLink por 90 dias e depois são excluídas
+            automaticamente. Mensagens enviadas diretamente ao(à) advogado(a) seguem a retenção dele(a).
           </p>
         </section>
 

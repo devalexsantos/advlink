@@ -58,6 +58,8 @@ function makeEditFormValue(overrides: Record<string, unknown> = {}) {
     whatsappIsFixed: false,
     setWhatsappIsFixed: vi.fn(),
     onlineService: false,
+    leadFormEnabled: false,
+    setLeadFormEnabled: vi.fn(),
     setOnlineService: vi.fn(),
     ...overrides,
   }
@@ -419,6 +421,13 @@ describe("PerfilContatoSection", () => {
     expect(screen.getByText(/já aparece escrito na conversa/i)).toBeInTheDocument()
     await userEvent.type(input, "Oi")
     expect(input).toHaveValue("Oi")
+  })
+
+  it("toggles the contact form switch", async () => {
+    const setLeadFormEnabled = vi.fn()
+    render(<FormWrapper contextOverrides={{ setLeadFormEnabled }} />)
+    await userEvent.click(screen.getByRole("switch", { name: /formulário de contato no site/i }))
+    expect(setLeadFormEnabled).toHaveBeenCalledWith(true)
   })
 
   it("renders the Atendimento card and toggles online service", async () => {

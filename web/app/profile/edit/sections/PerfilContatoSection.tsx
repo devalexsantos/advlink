@@ -21,6 +21,7 @@ export default function PerfilContatoSection() {
     publicPhoneIsFixed, setPublicPhoneIsFixed,
     whatsappIsFixed, setWhatsappIsFixed,
     onlineService, setOnlineService,
+    leadFormEnabled, setLeadFormEnabled,
   } = useEditForm()
 
   const { control, formState: { errors } } = form
@@ -294,6 +295,18 @@ export default function PerfilContatoSection() {
           <Switch checked={onlineService} onCheckedChange={setOnlineService} aria-label="Atendimento on-line" />
           <span className="text-sm">Atendimento on-line</span>
         </label>
+      </div>
+
+      {/* Formulário de contato */}
+      <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+        <Label className="text-base font-bold">Formulário de contato no site</Label>
+        <label className="inline-flex items-center gap-2 cursor-pointer">
+          <Switch checked={leadFormEnabled} onCheckedChange={setLeadFormEnabled} aria-label="Formulário de contato no site" />
+          <span className="text-sm">Exibir formulário de contato no meu site</span>
+        </label>
+        <p className="text-xs text-muted-foreground">
+          Os visitantes poderão enviar nome, contato e uma mensagem curta. Você recebe por e-mail e na página &quot;Mensagens&quot; do painel. As mensagens são apagadas automaticamente após 90 dias. O formulário pede o consentimento do visitante e o orienta a não enviar dados sensíveis.
+        </p>
       </div>
 
       {/* Sociedade de advocacia */}

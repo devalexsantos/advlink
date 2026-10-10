@@ -10,6 +10,7 @@ type LinkItem = { id: string; title: string; description: string | null; url: st
 type Address = { public?: boolean | null; zipCode?: string | null; street?: string | null; number?: string | null; complement?: string | null; neighborhood?: string | null; city?: string | null; state?: string | null }
 type GalleryItem = { id: string; coverImageUrl?: string | null }
 type Profile = {
+  leadFormEnabled?: boolean | null
   publicName?: string | null
   oabNumber?: string | null
   oabState?: string | null
@@ -51,9 +52,10 @@ type Props = {
   sectionIcons?: Record<string, string> | null
   sectionTitleHidden?: Record<string, boolean> | null
   teamMembers?: TeamMember[]
+  articles?: { id: string; slug: string; title: string; excerpt?: string | null; coverImageUrl?: string | null; publishedAt?: Date | string | null }[]
 }
 
-export default function Preview03({ profile, areas, address, links = [], gallery = [], sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [] }: Props) {
+export default function Preview03({ profile, areas, address, links = [], gallery = [], sectionOrder, sectionLabels, customSections = [], sectionIcons, sectionTitleHidden, teamMembers = [], articles }: Props) {
   const [mode, setMode] = useState<"desktop" | "mobile">("desktop")
   const containerStyle = useMemo(
     () => ({
@@ -81,7 +83,7 @@ export default function Preview03({ profile, areas, address, links = [], gallery
 
       <div className={`rounded-xl border border-zinc-800 bg-zinc-900/30 ${mode === "mobile" ? "[&_.min-w-0]:!basis-full [&_.shrink-0]:!basis-full" : ""}`} style={containerStyle}>
         <div className="relative">
-          <Theme03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} primary={primary} text={text} secondary={secondary} constrainToContainer forceMobile={mode === "mobile"} sectionOrder={sectionOrder ?? undefined} sectionLabels={sectionLabels ?? undefined} customSections={customSections} sectionIcons={sectionIcons ?? undefined} sectionTitleHidden={sectionTitleHidden ?? undefined} teamMembers={teamMembers} />
+          <Theme03 profile={profile} areas={areas} address={address} links={links} gallery={gallery} primary={primary} text={text} secondary={secondary} constrainToContainer forceMobile={mode === "mobile"} sectionOrder={sectionOrder ?? undefined} sectionLabels={sectionLabels ?? undefined} customSections={customSections} sectionIcons={sectionIcons ?? undefined} sectionTitleHidden={sectionTitleHidden ?? undefined} teamMembers={teamMembers} articles={articles} leadFormDisabled siteBaseUrl={undefined} />
         </div>
       </div>
     </div>

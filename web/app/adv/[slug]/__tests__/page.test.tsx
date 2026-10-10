@@ -9,6 +9,7 @@ const { prismaMock } = vi.hoisted(() => ({
     gallery: { findMany: vi.fn().mockResolvedValue([]) },
     customSection: { findMany: vi.fn().mockResolvedValue([]) },
     teamMember: { findMany: vi.fn().mockResolvedValue([]) },
+    article: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }))
 

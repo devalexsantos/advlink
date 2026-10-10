@@ -57,6 +57,23 @@ describe("Privacy notice (/adv/[slug]/privacidade)", () => {
     expect(await html()).toContain("Alterar minha escolha de cookies")
   })
 
+  it("explains the contact form (operator, consent, 90 days, no sensitive data) when enabled", async () => {
+    prismaMock.profile.findFirst.mockResolvedValue({ ...base, leadFormEnabled: true })
+    const out = await html()
+    expect(out).toContain("Dados que você envia pelo formulário de contato")
+    expect(out).toContain("como operador, em nome do(a) advogado(a)")
+    expect(out).toContain("com base no seu consentimento")
+    expect(out).toContain("90 dias")
+    expect(out).toContain("Não envie pelo formulário dados sensíveis")
+  })
+
+  it("omits the form details when the form is disabled", async () => {
+    prismaMock.profile.findFirst.mockResolvedValue({ ...base, leadFormEnabled: false })
+    const out = await html()
+    expect(out).not.toContain("Dados que você envia pelo formulário de contato")
+    expect(out).toContain("não passam pelo")
+  })
+
   it("is noindex with the lawyer's name in the title", async () => {
     prismaMock.profile.findFirst.mockResolvedValue({ publicName: "Dra. Ana Souza" })
     const meta = await generateMetadata({ params })

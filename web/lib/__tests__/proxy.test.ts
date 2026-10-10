@@ -122,6 +122,20 @@ describe("proxy", () => {
       expect(res.headers.get("x-middleware-rewrite")).toContain("/adv/alex/privacidade")
     })
 
+    it("rewrites /artigos and /artigos/<slug> on the subdomain", async () => {
+      const list = await proxy(makeReq("https://alex.advlink.site/artigos"))
+      expect(list.headers.get("x-middleware-rewrite")).toContain("/adv/alex/artigos")
+      const one = await proxy(makeReq("https://alex.advlink.site/artigos/meu-artigo-1"))
+      expect(one.headers.get("x-middleware-rewrite")).toContain("/adv/alex/artigos/meu-artigo-1")
+    })
+
+    it("does not rewrite invalid article paths or the app host", async () => {
+      for (const u of ["https://alex.advlink.site/artigos/Bad_Slug", "https://alex.advlink.site/artigos/a/b", "https://app.advlink.site/artigos"]) {
+        const res = await proxy(makeReq(u))
+        expect(res.headers.get("x-middleware-rewrite")).toBeNull()
+      }
+    })
+
     it("does not rewrite /privacidade on the app host or reserved subdomains", async () => {
       const res = await proxy(makeReq("https://app.advlink.site/privacidade"))
       expect(res.headers.get("x-middleware-rewrite")).toBeNull()

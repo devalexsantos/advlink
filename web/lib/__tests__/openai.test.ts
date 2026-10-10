@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { generateActivityDescriptions, generateAreaFaqs } from "@/lib/openai"
+import { ARTICLE_DISCLAIMER, generateActivityDescriptions, generateArticleDraft, generateAreaFaqs } from "@/lib/openai"
 
 describe("generateActivityDescriptions()", () => {
   beforeEach(() => {
@@ -263,5 +263,68 @@ describe("generateAreaFaqs()", () => {
       text: () => Promise.resolve("boom"),
     } as Response)
     await expect(generateAreaFaqs("Civil", "sk-test")).rejects.toThrow("OpenAI error: 500")
+  })
+})
+
+describe("generateArticleDraft()", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  const reply = (content: unknown) =>
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ choices: [{ message: { content: JSON.stringify(content) } }] }),
+      text: () => Promise.resolve(""),
+    } as Response)
+
+  it("throws without API key", async () => {
+    await expect(generateArticleDraft("Guarda compartilhada", null, "")).rejects.toThrow("Missing OPENAI_API_KEY")
+  })
+
+  it("sends JSON mode with the OAB rules, title and notes", async () => {
+    const spy = reply({ content: `## O que é\n\nTexto.\n\n${ARTICLE_DISCLAIMER}`, excerpt: "Resumo." })
+    await generateArticleDraft("Guarda compartilhada", "explicar diferença para guarda unilateral", "sk-test")
+    const body = JSON.parse(String((spy.mock.calls[0][1] as RequestInit).body))
+    expect(body.response_format).toEqual({ type: "json_object" })
+    expect(body.max_tokens).toBe(2500)
+    const prompt: string = body.messages[1].content
+    expect(prompt).toContain("Guarda compartilhada")
+    expect(prompt).toContain("guarda unilateral")
+    expect(prompt).toContain("Provimento OAB 205/2021")
+    expect(prompt).toContain("Direito brasileiro")
+    expect(prompt).toContain("600 e 1000 palavras")
+    expect(prompt).toContain("no seu caso")
+    expect(prompt).toContain("Não cite números de artigos")
+    expect(prompt).toContain("especialista")
+    expect(prompt).toContain(ARTICLE_DISCLAIMER)
+  })
+
+  it("returns content and a plain-text excerpt capped at 300 chars", async () => {
+    reply({ content: `## Tema\n\nTexto.\n\n${ARTICLE_DISCLAIMER}`, excerpt: `**Resumo** <b>em</b> ${"a".repeat(400)}` })
+    const out = await generateArticleDraft("Tema", undefined, "sk-test")
+    expect(out.content).toContain("## Tema")
+    expect(out.excerpt.startsWith("Resumo em ")).toBe(true)
+    expect(out.excerpt.length).toBeLessThanOrEqual(300)
+  })
+
+  it("appends the disclaimer when the model omits it", async () => {
+    reply({ content: "## Tema\n\nTexto.", excerpt: "" })
+    const out = await generateArticleDraft("Tema", null, "sk-test")
+    expect(out.content.endsWith(ARTICLE_DISCLAIMER)).toBe(true)
+  })
+
+  it("throws on an empty or invalid reply", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({
+      ok: true,
+      json: () => Promise.resolve({ choices: [{ message: { content: "not json" } }] }),
+      text: () => Promise.resolve(""),
+    } as Response)
+    await expect(generateArticleDraft("Tema", null, "sk-test")).rejects.toThrow()
+  })
+
+  it("throws on an API error", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue({ ok: false, status: 500, text: () => Promise.resolve("boom") } as Response)
+    await expect(generateArticleDraft("Tema", null, "sk-test")).rejects.toThrow("OpenAI error: 500")
   })
 })

@@ -41,6 +41,7 @@ export default function TermsPrivacyPage() {
             <h2 className="text-xl font-semibold mb-2">Conta, assinatura e pagamentos</h2>
             <ul className="list-disc pl-5 space-y-2 text-muted-foreground">
               <li>Alguns recursos são pagos e exigem uma assinatura ativa.</li>
+              <li>O plano pode ser mensal ou anual, com renovação automática ao fim de cada período, até que você cancele.</li>
               <li>O pagamento (cartão, boleto ou Pix) é processado de forma segura pelo Asaas, parceiro externo de pagamentos; a cobrança é emitida em nome da NAIR APPS.</li>
               <li>Você pode cancelar a qualquer momento; o site permanece publicado até o fim do período já pago.</li>
               <li>Você pode desistir da contratação em até {REFUND_WINDOW_DAYS} dias após o primeiro pagamento, com reembolso integral, solicitando pelo suporte.</li>
@@ -127,7 +128,10 @@ export default function TermsPrivacyPage() {
             <p className="text-muted-foreground leading-relaxed">
               Em relação aos visitantes dos sites publicados pelos assinantes, o assinante é o controlador dos dados e o
               AdvLink atua como operador (LGPD, art. 39), tratando-os apenas para hospedar o site e gerar métricas de
-              visita sem cookies. Cada site tem um aviso de privacidade próprio, acessível pelo link “Privacidade” no
+              visita sem cookies. Quando o assinante ativa o formulário de contato do site, o AdvLink também recebe e
+              guarda, em nome do assinante, as mensagens enviadas pelos visitantes (nome, contato, assunto e mensagem),
+              coletadas com o consentimento do visitante, acessíveis apenas ao assinante e excluídas automaticamente
+              após 90 dias. Cada site tem um aviso de privacidade próprio, acessível pelo link “Privacidade” no
               rodapé. Quando o assinante configura o Google Tag Manager, o AdvLink exibe um banner de consentimento e só
               carrega o script depois que o visitante aceita.
             </p>

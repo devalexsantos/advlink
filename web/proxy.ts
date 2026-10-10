@@ -69,9 +69,14 @@ export async function proxy(req: NextRequest) {
     const subdomain = host.slice(0, -suffix.length)
     const isApex = subdomain.length === 0
     if (!isApex && !RESERVED_SLUGS.has(subdomain)) {
-      if (pathname === "/" || pathname === "/privacidade") {
+      const articleMatch = pathname.match(/^\/artigos(?:\/([a-z0-9-]+))?$/)
+      if (pathname === "/" || pathname === "/privacidade" || articleMatch) {
         const url = nextUrl.clone()
-        url.pathname = pathname === "/" ? `/adv/${subdomain}` : `/adv/${subdomain}/privacidade`
+        url.pathname = articleMatch
+          ? `/adv/${subdomain}${pathname}`
+          : pathname === "/"
+            ? `/adv/${subdomain}`
+            : `/adv/${subdomain}/privacidade`
         return NextResponse.rewrite(url)
       }
     }

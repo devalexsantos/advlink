@@ -5,7 +5,7 @@ import type { SiteSummary } from "@/lib/analytics/summary"
 const summary = (over: Partial<SiteSummary> = {}): SiteSummary => ({
   visits: 120,
   visitors: 80,
-  contactClicks: { total: 9, byKind: { whatsapp: 7, phone: 0, email: 2, link: 0 } },
+  contactClicks: { total: 9, byKind: { whatsapp: 7, phone: 0, email: 2, link: 0, form: 0 } },
   topCities: [{ city: "São Paulo", region: "SP", count: 50 }],
   topSources: [{ source: "Google", count: 70 }],
   ...over,
@@ -25,6 +25,13 @@ const ctx = (over = {}) => ({
 })
 
 describe("buildMonthlyReportEmail", () => {
+  it("lists contact-form messages with the formulário label", () => {
+    const { html } = buildMonthlyReportEmail(
+      ctx({ summary: summary({ contactClicks: { total: 3, byKind: { whatsapp: 0, phone: 0, email: 0, link: 0, form: 3 } } }) }),
+    )
+    expect(html).toContain("formulário: 3")
+  })
+
   it("builds subject and main content", () => {
     const { subject, html } = buildMonthlyReportEmail(ctx())
     expect(subject).toBe("Seu site em setembro: 120 visitas")
@@ -53,7 +60,7 @@ describe("buildMonthlyReportEmail", () => {
         siteName: "<script>x</script>",
         name: "<b>Evil</b>",
         summary: summary({
-          contactClicks: { total: 0, byKind: { whatsapp: 0, phone: 0, email: 0, link: 0 } },
+          contactClicks: { total: 0, byKind: { whatsapp: 0, phone: 0, email: 0, link: 0, form: 0 } },
           topSources: [{ source: "<img src=x>", count: 1 }],
         }),
       }),

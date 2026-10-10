@@ -125,6 +125,8 @@ type EditFormContextType = {
   whatsappIsFixed: boolean
   onlineService: boolean
   setOnlineService: React.Dispatch<React.SetStateAction<boolean>>
+  leadFormEnabled: boolean
+  setLeadFormEnabled: React.Dispatch<React.SetStateAction<boolean>>
   setWhatsappIsFixed: React.Dispatch<React.SetStateAction<boolean>>
   // Custom sections
   customSections: CustomSectionItem[]
@@ -287,6 +289,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
   const [publicPhoneIsFixed, setPublicPhoneIsFixed] = useState<boolean>(false)
   const [whatsappIsFixed, setWhatsappIsFixed] = useState<boolean>(false)
   const [onlineService, setOnlineService] = useState<boolean>(false)
+  const [leadFormEnabled, setLeadFormEnabled] = useState<boolean>(false)
   // Custom sections
   const [customSections, setCustomSections] = useState<CustomSectionItem[]>([])
   // Team members
@@ -382,6 +385,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     setPublicPhoneIsFixed(Boolean(p.publicPhoneIsFixed))
     setWhatsappIsFixed(Boolean(p.whatsappIsFixed))
     setOnlineService(Boolean(p.onlineService))
+    setLeadFormEnabled(Boolean(p.leadFormEnabled))
     setPrimaryColor((p.primaryColor as string) ?? "#8B0000")
     setSecondaryColor((p.secondaryColor as string) ?? "#FFFFFF")
     setTextColor((p.textColor as string) ?? "#FFFFFF")
@@ -647,6 +651,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     fd.set("officeHours", values.officeHours ?? "")
     fd.set("languages", values.languages ?? "")
     fd.set("onlineService", String(onlineService))
+    fd.set("leadFormEnabled", String(leadFormEnabled))
     if (values.calendlyUrl) fd.set("calendlyUrl", values.calendlyUrl)
     if (values.metaTitle) fd.set("metaTitle", values.metaTitle)
     if (values.metaDescription) fd.set("metaDescription", values.metaDescription)
@@ -725,6 +730,7 @@ export function EditFormProvider({ children }: { children: ReactNode }) {
     publicPhoneIsFixed, setPublicPhoneIsFixed,
     whatsappIsFixed, setWhatsappIsFixed,
     onlineService, setOnlineService,
+    leadFormEnabled, setLeadFormEnabled,
     customSections, setCustomSections,
     teamMembers, setTeamMembers,
     deleteTeamMemberConfirm, setDeleteTeamMemberConfirm,
