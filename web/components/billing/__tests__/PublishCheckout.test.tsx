@@ -52,14 +52,16 @@ describe("PublishCheckout", () => {
     window.open = openSpy as unknown as typeof window.open
   })
 
+  const checkoutButton = () => screen.getByRole("button", { name: /assinar e publicar/i })
   async function clickCardBoleto() {
-    await userEvent.click(screen.getByRole("button", { name: /cartão ou boleto/i }))
+    await userEvent.click(checkoutButton())
   }
 
-  it("offers both payment methods", () => {
+  it("offers a single checkout button (card, boleto and Pix are chosen on the Asaas page)", () => {
     render(<PublishCheckout />)
-    expect(screen.getByRole("button", { name: /cartão ou boleto/i })).toBeEnabled()
-    expect(screen.getByRole("button", { name: /pix/i })).toBeEnabled()
+    expect(checkoutButton()).toBeEnabled()
+    expect(screen.getAllByRole("button")).toHaveLength(1)
+    expect(screen.getByText(/cartão, boleto ou Pix na página segura do Asaas/)).toBeInTheDocument()
     expect(screen.queryByRole("alert")).not.toBeInTheDocument()
     expect(screen.queryByRole("status")).not.toBeInTheDocument()
   })
@@ -70,19 +72,16 @@ describe("PublishCheckout", () => {
   })
 
   describe("starting a checkout", () => {
-    it.each([
-      ["Cartão ou boleto", "card_boleto"],
-      ["Pix", "pix"],
-    ])("POSTs method for '%s' and sends the opened tab to the payment page", async (label, method) => {
+    it("POSTs the card/boleto method and sends the opened tab to the payment page", async () => {
       mockFetch.mockResolvedValueOnce(response(true, { url: "https://asaas.test/pay/1" }))
       render(<PublishCheckout />)
-      await userEvent.click(screen.getByRole("button", { name: new RegExp(`^${label}$`, "i") }))
+      await clickCardBoleto()
 
       await waitFor(() => expect(tab.location.href).toBe("https://asaas.test/pay/1"))
       const [url, init] = mockFetch.mock.calls[0]
       expect(url).toBe("/api/billing/checkout")
       expect(init.method).toBe("POST")
-      expect(JSON.parse(init.body)).toEqual({ method, replacePending: false })
+      expect(JSON.parse(init.body)).toEqual({ method: "card_boleto", replacePending: false })
     })
 
     it("opens the blank tab synchronously from the click (popup-blocker safe)", async () => {
@@ -93,12 +92,11 @@ describe("PublishCheckout", () => {
       expect(tab.location.href).toBe("")
     })
 
-    it("disables both buttons while the request is in flight", async () => {
+    it("disables the button while the request is in flight", async () => {
       mockFetch.mockReturnValueOnce(new Promise(() => {}))
       render(<PublishCheckout />)
       await clickCardBoleto()
-      expect(screen.getByRole("button", { name: /cartão ou boleto/i })).toBeDisabled()
-      expect(screen.getByRole("button", { name: /pix/i })).toBeDisabled()
+      expect(checkoutButton()).toBeDisabled()
     })
 
     it("falls back to navigating the current window when the popup was blocked", async () => {
@@ -148,7 +146,7 @@ describe("PublishCheckout", () => {
       expect(tab.close).toHaveBeenCalled()
       expect(screen.getByRole("link", { name: /fale com o suporte/i })).toHaveAttribute("href", "/profile/tickets/new")
       expect(screen.queryByRole("status")).not.toBeInTheDocument()
-      expect(screen.getByRole("button", { name: /cartão ou boleto/i })).toBeEnabled()
+      expect(checkoutButton()).toBeEnabled()
     })
 
     it("uses a generic message when the error response has no message", async () => {
@@ -172,7 +170,7 @@ describe("PublishCheckout", () => {
       await clickCardBoleto()
       expect(await screen.findByRole("alert")).toHaveTextContent(/não foi possível conectar/i)
       expect(tab.close).toHaveBeenCalled()
-      expect(screen.getByRole("button", { name: /pix/i })).toBeEnabled()
+      expect(checkoutButton()).toBeEnabled()
     })
 
     it("clears the previous error when trying again", async () => {
@@ -210,16 +208,16 @@ describe("PublishCheckout", () => {
       expect(screen.getByRole("button", { name: "Pagar de outra forma" })).toBeInTheDocument()
     })
 
-    it("'Pagar de outra forma' retries the same method replacing the pending charge", async () => {
+    it("'Pagar de outra forma' retries replacing the pending charge", async () => {
       mockFetch
         .mockResolvedValueOnce(response(false, { code: "PENDING_PAYMENT", error: "Cobrança em aberto.", invoiceUrl: "https://asaas.test/i/open" }))
         .mockResolvedValueOnce(response(true, { url: "https://asaas.test/pay/new" }))
       render(<PublishCheckout />)
-      await userEvent.click(screen.getByRole("button", { name: /pix/i }))
+      await clickCardBoleto()
       await userEvent.click(await screen.findByRole("button", { name: "Pagar de outra forma" }))
 
       await waitFor(() => expect(mockFetch).toHaveBeenCalledTimes(2))
-      expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toEqual({ method: "pix", replacePending: true })
+      expect(JSON.parse(mockFetch.mock.calls[1][1].body)).toEqual({ method: "card_boleto", replacePending: true })
       await waitFor(() => expect(tab.location.href).toBe("https://asaas.test/pay/new"))
     })
 

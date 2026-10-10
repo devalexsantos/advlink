@@ -76,21 +76,19 @@ describe.skipIf(!TEST_URL)("billing routes (Postgres)", () => {
   })
 
   describe("checkout", () => {
-    it("401 without session, 400 for an unknown method", async () => {
+    it("401 without session, 400 for an unknown method (the Pix-only link is no longer offered)", async () => {
       sessionMock.mockResolvedValueOnce(null)
-      expect((await checkout(post({ method: "pix" }))).status).toBe(401)
+      expect((await checkout(post({ method: "card_boleto" }))).status).toBe(401)
       expect((await checkout(post({ method: "bitcoin" }))).status).toBe(400)
+      expect((await checkout(post({ method: "pix" }))).status).toBe(400)
     })
 
-    it("creates one link per method with the site as externalReference and reuses it", async () => {
+    it("creates one hosted link with the site as externalReference and reuses it", async () => {
       const r1 = await (await checkout(post({ method: "card_boleto" }))).json()
       const r2 = await (await checkout(post({ method: "card_boleto" }))).json()
-      const r3 = await (await checkout(post({ method: "pix" }))).json()
       expect(r1.url).toBe(r2.url)
-      expect(r3.url).not.toBe(r1.url)
       expect(asaas.calls.filter((c) => c.startsWith("createPaymentLink"))).toEqual([
         `createPaymentLink:UNDEFINED:${profileId}`,
-        `createPaymentLink:PIX:${profileId}`,
       ])
       expect((await profile()).billingStatus).toBe("PENDING")
     })
@@ -99,35 +97,35 @@ describe.skipIf(!TEST_URL)("billing routes (Postgres)", () => {
       await checkout(post({ method: "card_boleto" }))
       const { payment } = asaas.simulatePayment(lastLinkId(), { status: "CONFIRMED", dueDate: "2026-10-06" })
       await paymentHook(payment.id)
-      const res = await checkout(post({ method: "pix" }))
+      const res = await checkout(post({ method: "card_boleto" }))
       expect(res.status).toBe(409)
       expect((await res.json()).code).toBe("ALREADY_ACTIVE")
     })
 
-    it("409 with the invoice when a boleto is still open; replacePending switches method", async () => {
+    it("409 with the invoice when a boleto is still open; replacePending drops it and reopens the link", async () => {
       await checkout(post({ method: "card_boleto" }))
       const { payment, subscription } = asaas.simulatePayment(lastLinkId(), { status: "PENDING", dueDate: "2099-10-09", billingType: "BOLETO" })
       await paymentHook(payment.id, "PAYMENT_CREATED")
 
-      const blocked = await checkout(post({ method: "pix" }))
+      const blocked = await checkout(post({ method: "card_boleto" }))
       expect(blocked.status).toBe(409)
       expect(await blocked.json()).toMatchObject({ code: "PENDING_PAYMENT", invoiceUrl: payment.invoiceUrl })
 
-      const switched = await checkout(post({ method: "pix", replacePending: true }))
+      const switched = await checkout(post({ method: "card_boleto", replacePending: true }))
       expect(switched.status).toBe(200)
       expect(asaas.calls).toContain(`deleteSubscription:${subscription.id}`)
     })
 
     it("403 for a site suspended by the admin", async () => {
       await db.profile.update({ where: { id: profileId }, data: { suspendedByAdmin: true } })
-      expect((await checkout(post({ method: "pix" }))).status).toBe(403)
+      expect((await checkout(post({ method: "card_boleto" }))).status).toBe(403)
     })
 
     it("502 with a friendly message when Asaas fails to create the link (UX-7)", async () => {
       asaas.createPaymentLink = async () => {
         throw new Error("Asaas 500")
       }
-      const res = await checkout(post({ method: "pix" }))
+      const res = await checkout(post({ method: "card_boleto" }))
       expect(res.status).toBe(502)
       expect((await res.json()).code).toBe("GATEWAY_ERROR")
       expect(await db.billingPaymentLink.count()).toBe(0)
@@ -135,7 +133,7 @@ describe.skipIf(!TEST_URL)("billing routes (Postgres)", () => {
 
     it("503 when Asaas isn't configured", async () => {
       setAsaasForTests(null)
-      expect((await checkout(post({ method: "pix" }))).status).toBe(503)
+      expect((await checkout(post({ method: "card_boleto" }))).status).toBe(503)
     })
   })
 
@@ -189,7 +187,7 @@ describe.skipIf(!TEST_URL)("billing routes (Postgres)", () => {
 
   describe("status", () => {
     it("confirms the payment straight from Asaas on refresh, before the webhook arrives (BIL-3)", async () => {
-      await checkout(post({ method: "pix" }))
+      await checkout(post({ method: "card_boleto" }))
       asaas.simulatePayment(lastLinkId(), { status: "RECEIVED", dueDate: "2026-10-06", billingType: "PIX" })
       const plain = await (await status(new Request("http://localhost/api/billing/status"))).json()
       expect(plain.billingStatus).toBe("PENDING")
@@ -208,7 +206,7 @@ describe.skipIf(!TEST_URL)("billing routes (Postgres)", () => {
     it("cancels only the active site's subscription and keeps it published until the paid period ends (BIL-1)", async () => {
       // other site of the same user is paid too
       activeSiteMock.mockResolvedValue(otherProfileId)
-      await checkout(post({ method: "pix" }))
+      await checkout(post({ method: "card_boleto" }))
       const other = asaas.simulatePayment(lastLinkId(), { status: "RECEIVED", dueDate: "2099-10-06", billingType: "PIX" })
       await paymentHook(other.payment.id, "PAYMENT_RECEIVED")
 

@@ -4,20 +4,20 @@ import Link from "next/link"
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useQueryClient } from "@tanstack/react-query"
-import { CreditCard, Loader2, QrCode } from "lucide-react"
+import { CreditCard, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/components/toast/ToastProvider"
 import { REFUND_WINDOW_DAYS } from "@/lib/billing/plan"
 import { BILLING_STATUS_KEY, useBillingStatus } from "./useBillingStatus"
 
-type Method = "card_boleto" | "pix"
+type Method = "card_boleto"
 type CheckoutError = { code?: string; error?: string; invoiceUrl?: string | null }
 
 /** Stop watching the payment after this long (the lawyer can come back later; the webhook still publishes). */
 const WATCH_TIMEOUT_MS = 15 * 60 * 1000
 
 /**
- * "Publicar" checkout: the lawyer picks card/boleto or Pix, the Asaas hosted page opens in a new tab and
+ * "Publicar" checkout: the Asaas hosted page (card, boleto or Pix) opens in a new tab and
  * this component watches the payment until the site is published (UX-3). Errors are shown inline (UX-7).
  */
 export default function PublishCheckout({ compact = false }: { compact?: boolean }) {
@@ -90,20 +90,13 @@ export default function PublishCheckout({ compact = false }: { compact?: boolean
           className="gap-2 cursor-pointer border border-purple-400 bg-purple-600 text-white hover:bg-purple-500"
         >
           {loading === "card_boleto" ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
-          Cartão ou boleto
-        </Button>
-        <Button
-          type="button"
-          variant="secondary"
-          onClick={() => start("pix")}
-          disabled={loading !== null}
-          className="gap-2 cursor-pointer"
-        >
-          {loading === "pix" ? <Loader2 className="w-4 h-4 animate-spin" /> : <QrCode className="w-4 h-4" />}
-          Pix
+          Assinar e publicar
         </Button>
       </div>
 
+      <p className="text-xs text-muted-foreground">
+        Pague com cartão, boleto ou Pix na página segura do Asaas. No cartão, a renovação é automática.
+      </p>
       <p className="text-xs text-muted-foreground">
         Garantia de {REFUND_WINDOW_DAYS} dias: desistiu, devolvemos o valor integral.
       </p>

@@ -9,18 +9,14 @@ import { trackEvent } from "@/lib/product-events"
 import { getBillingDeps } from "@/lib/billing/deps"
 import { isPaidStatus } from "@/lib/billing/entitlement"
 import { recomputeProfile } from "@/lib/billing/sync"
-import type { LinkBillingType } from "@/lib/billing/asaas-client"
 
 const bodySchema = z.object({
-  method: z.enum(["card_boleto", "pix"]),
+  // Single hosted link (card, boleto or Pix on the Asaas page); the old Pix-only button was removed
+  method: z.literal("card_boleto"),
   /** Lawyer chose to drop an unpaid pending charge and pay another way */
   replacePending: z.boolean().optional(),
 })
 
-const LINK_TYPE: Record<z.infer<typeof bodySchema>["method"], LinkBillingType> = {
-  card_boleto: "UNDEFINED",
-  pix: "PIX",
-}
 const UNPAID_OPEN = new Set(["PENDING", "OVERDUE"])
 
 /** Starts (or resumes) the Asaas checkout of the active site: returns the hosted payment link. */
@@ -98,7 +94,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const billingType = LINK_TYPE[method]
+  const billingType = "UNDEFINED"
   let link = await prisma.billingPaymentLink.findFirst({
     where: { profileId, environment: env, billingType, status: "ACTIVE" },
     orderBy: { createdAt: "desc" },
